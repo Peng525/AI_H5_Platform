@@ -11,7 +11,7 @@ from app.api.auth import pwd_context
 from app.database import get_db
 from app.deps.auth import require_admin
 from app.models import Order, User
-from app.schemas import H5TemplateCreate, H5TemplateOut, H5TemplateUpdate
+from app.schemas import H5TemplateCreate, H5TemplateOut, H5TemplateUpdate, RelayQuotaOut
 from app.services.h5_template_service import (
     H5TemplateError,
     admin_list,
@@ -19,7 +19,15 @@ from app.services.h5_template_service import (
     delete_template,
     update_template,
 )
+from app.services.order_service import (
+    OrderServiceError,
+    confirm_order_payment,
+    get_order_by_id,
+    list_claimed_orders,
+    reject_order_payment,
+)
 from app.services.quota import quota_remaining, quota_total
+from app.services.relay_quota_service import RelayQuotaError, fetch_relay_quota
 from app.services.visits import visit_stats
 
 router = APIRouter(prefix="/api/v1/管理", tags=["管理"])
@@ -58,8 +66,11 @@ class AdminOrderOut(BaseModel):
     amount: float
     payment_channel: str
     status: str
+    user_remark: str = ""
+    admin_remark: str = ""
     quota_remaining: int
     created_at: datetime | None = None
+    claimed_at: datetime | None = None
 
 
 class AdminDashboardOut(BaseModel):
@@ -68,10 +79,12 @@ class AdminDashboardOut(BaseModel):
     visits_30d: int
     orders_total: int
     orders_paid: int
+    orders_pending_confirm: int
     revenue_total: float
     users_total: int
     visit_chart: list[dict]
     recent_orders: list[AdminOrderOut]
+    pending_payment_orders: list[AdminOrderOut]
 
 
 def _user_out(user: User) -> AdminUserOut:
@@ -98,8 +111,11 @@ def _order_out(order: Order, user: User | None = None) -> AdminOrderOut:
         amount=float(order.amount),
         payment_channel=order.payment_channel,
         status=order.status,
+        user_remark=getattr(order, "user_remark", "") or "",
+        admin_remark=getattr(order, "admin_remark", "") or "",
         quota_remaining=quota_remaining(u) if u else 0,
         created_at=order.created_at,
+        claimed_at=getattr(order, "claimed_at", None),
     )
 
 
@@ -124,16 +140,30 @@ async def admin_dashboard(
     )
     recent = [_order_out(o) for o in result.scalars().all()]
 
+    pending_result = await db.execute(
+        select(Order)
+        .options(selectinload(Order.user))
+        .where(Order.status == "claimed")
+        .order_by(Order.claimed_at.desc())
+        .limit(10)
+    )
+    pending_orders = [_order_out(o) for o in pending_result.scalars().all()]
+    orders_pending = await db.scalar(
+        select(func.count(Order.id)).where(Order.status == "claimed")
+    )
+
     return AdminDashboardOut(
         visits_today=stats["visits_today"],
         visits_7d=stats["visits_7d"],
         visits_30d=stats["visits_30d"],
         orders_total=orders_total,
         orders_paid=orders_paid,
+        orders_pending_confirm=int(orders_pending or 0),
         revenue_total=float(revenue or 0),
         users_total=users_total,
         visit_chart=stats["chart"],
         recent_orders=recent,
+        pending_payment_orders=pending_orders,
     )
 
 
@@ -261,3 +291,68 @@ async def admin_delete_template(
     except H5TemplateError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"message": "已删除"}
+
+
+class OrderConfirmRequest(BaseModel):
+    admin_remark: str = Field("", max_length=255)
+
+
+@router.get("/中转额度", response_model=RelayQuotaOut, summary="查询中转 API 账户余额")
+async def admin_relay_quota(_admin: User = Depends(require_admin)):
+    try:
+        info = await fetch_relay_quota()
+    except RelayQuotaError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return RelayQuotaOut(
+        profile=info.profile,
+        remaining_label=info.remaining_label,
+        remaining_usd=info.remaining_usd,
+        used_raw=info.used_raw,
+        request_count=info.request_count,
+        is_low=info.is_low,
+        low_threshold_usd=info.low_threshold_usd,
+        recharge_url=info.recharge_url,
+        message=info.message,
+    )
+
+
+@router.post("/订单/{order_id}/确认收款", response_model=AdminOrderOut, summary="确认微信收款并开通套餐")
+async def admin_confirm_order(
+    order_id: int,
+    body: OrderConfirmRequest,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    order = await get_order_by_id(db, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="订单不存在")
+    try:
+        await confirm_order_payment(db, order, body.admin_remark)
+        await db.commit()
+        await db.refresh(order)
+        result = await db.execute(select(Order).where(Order.id == order.id).options(selectinload(Order.user)))
+        order = result.scalar_one()
+    except OrderServiceError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _order_out(order)
+
+
+@router.post("/订单/{order_id}/拒绝收款", response_model=AdminOrderOut, summary="拒绝收款申报")
+async def admin_reject_order(
+    order_id: int,
+    body: OrderConfirmRequest,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    order = await get_order_by_id(db, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="订单不存在")
+    try:
+        await reject_order_payment(db, order, body.admin_remark)
+        await db.commit()
+        await db.refresh(order)
+        result = await db.execute(select(Order).where(Order.id == order.id).options(selectinload(Order.user)))
+        order = result.scalar_one()
+    except OrderServiceError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _order_out(order)

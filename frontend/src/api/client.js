@@ -100,9 +100,26 @@ export const api = {
   getMe: () => request('/api/v1/认证/我'),
   recordVisit: () => request('/api/v1/统计/访问', { method: 'POST' }),
   createOrder: (body) => request('/api/v1/订单/创建', { method: 'POST', body: JSON.stringify(body) }),
+  claimOrderPaid: (orderId, remark = '') =>
+    request(`/api/v1/订单/${orderId}/申报已付`, {
+      method: 'POST',
+      body: JSON.stringify({ remark }),
+    }),
+  getWechatQrConfig: () => request('/api/v1/支付/微信收款码'),
   getOrder: (id) => request(`/api/v1/订单/${id}`),
   listOrders: () => request('/api/v1/订单'),
   getAdminDashboard: () => request('/api/v1/管理/仪表盘'),
+  getRelayQuota: () => request('/api/v1/管理/中转额度'),
+  confirmAdminOrder: (id, admin_remark = '') =>
+    request(`/api/v1/管理/订单/${id}/确认收款`, {
+      method: 'POST',
+      body: JSON.stringify({ admin_remark }),
+    }),
+  rejectAdminOrder: (id, admin_remark = '') =>
+    request(`/api/v1/管理/订单/${id}/拒绝收款`, {
+      method: 'POST',
+      body: JSON.stringify({ admin_remark }),
+    }),
   listAdminOrders: () => request('/api/v1/管理/订单'),
   listAdminUsers: (q = '') => request(`/api/v1/管理/用户?q=${encodeURIComponent(q)}`),
   createAdminUser: (body) => request('/api/v1/管理/用户', { method: 'POST', body: JSON.stringify(body) }),

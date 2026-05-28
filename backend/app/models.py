@@ -32,6 +32,10 @@ class Order(Base):
     amount: Mapped[float] = mapped_column(Numeric(10, 2))
     payment_channel: Mapped[str] = mapped_column(String(32), default="demo")
     status: Mapped[str] = mapped_column(String(16), default="paid")
+    user_remark: Mapped[str] = mapped_column(String(255), default="")
+    admin_remark: Mapped[str] = mapped_column(String(255), default="")
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     user: Mapped["User"] = relationship(back_populates="orders")

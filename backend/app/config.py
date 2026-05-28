@@ -35,8 +35,17 @@ class Settings(BaseSettings):
 
     # 逗号分隔的管理员账号（与 users.username 匹配）
     admin_usernames: str = "admin@ai-h5.com"
-    # .env 持久化路径（Docker 内建议 /app/.env）
     env_persist_path: str = "../.env"
+
+    # 微信个人收款码（本地）：图片 URL 或 /static/wechat-pay-qr.png
+    wechat_personal_qr_url: str = "/static/wechat-pay-qr.png"
+
+    # 中转 API 额度查询（newapi=OneAPI/NewAPI 风格 | novita | custom）
+    relay_quota_profile: str = "newapi"
+    relay_quota_api_url: str = ""
+    relay_quota_low_threshold: float = 1.0
+    relay_dashboard_recharge_url: str = ""
+    relay_quota_usd_divisor: float = 500000.0
 
 
 settings = Settings()

@@ -47,6 +47,16 @@ async def _migrate_sqlite_columns(conn) -> None:
         slide_names = {row[1] for row in slide_cols}
         if "canvas_json" not in slide_names:
             sync_conn.execute(text("ALTER TABLE slides ADD COLUMN canvas_json TEXT DEFAULT '[]'"))
+        order_cols = sync_conn.execute(text("PRAGMA table_info(orders)")).fetchall()
+        order_names = {row[1] for row in order_cols}
+        if "user_remark" not in order_names:
+            sync_conn.execute(text("ALTER TABLE orders ADD COLUMN user_remark VARCHAR(255) DEFAULT ''"))
+        if "admin_remark" not in order_names:
+            sync_conn.execute(text("ALTER TABLE orders ADD COLUMN admin_remark VARCHAR(255) DEFAULT ''"))
+        if "claimed_at" not in order_names:
+            sync_conn.execute(text("ALTER TABLE orders ADD COLUMN claimed_at DATETIME"))
+        if "confirmed_at" not in order_names:
+            sync_conn.execute(text("ALTER TABLE orders ADD COLUMN confirmed_at DATETIME"))
         orphan = sync_conn.execute(text("SELECT id FROM projects WHERE user_id IS NULL")).fetchall()
         if orphan:
             demo = sync_conn.execute(

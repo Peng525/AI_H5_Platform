@@ -59,7 +59,27 @@ class OrderOut(BaseModel):
     amount: float
     payment_channel: str
     status: str
+    user_remark: str = ""
+    admin_remark: str = ""
     created_at: Any | None = None
+    claimed_at: Any | None = None
+    confirmed_at: Any | None = None
+
+
+class OrderClaimRequest(BaseModel):
+    remark: str = Field("", max_length=255, description="付款备注（可选，如微信昵称后四位）")
+
+
+class RelayQuotaOut(BaseModel):
+    profile: str
+    remaining_label: str
+    remaining_usd: float | None = None
+    used_raw: float | None = None
+    request_count: int | None = None
+    is_low: bool
+    low_threshold_usd: float
+    recharge_url: str = ""
+    message: str
 
 
 class H5TemplateOut(BaseModel):

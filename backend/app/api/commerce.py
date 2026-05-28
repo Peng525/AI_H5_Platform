@@ -1,17 +1,17 @@
 """访问统计与订单 API。"""
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.deps.auth import get_current_user
 from app.models import User
-from app.schemas import OrderOut
+from app.schemas import OrderClaimRequest, OrderOut
 from app.services.order_service import (
     LocalPaymentRequired,
     OrderServiceError,
+    claim_order_paid,
     create_order,
     get_user_order,
     list_user_orders,
@@ -24,7 +24,7 @@ router = APIRouter(prefix="/api/v1", tags=["统计与订单"])
 
 class OrderCreateRequest(BaseModel):
     plan_id: str = Field(..., description="newbie | sprint | monthly")
-    payment_channel: str = Field("demo", description="wechat | alipay | demo")
+    payment_channel: str = Field("demo", description="wechat | wechat_qr | demo")
 
 
 class OrderCreateResponse(BaseModel):
@@ -37,6 +37,11 @@ class OrderCreateResponse(BaseModel):
     quota_total: int
     message: str
     qr_code_url: str | None = None
+
+
+@router.get("/支付/微信收款码", summary="微信个人收款码地址")
+async def wechat_qr_config():
+    return {"qr_code_url": settings.wechat_personal_qr_url or "/static/wechat-pay-qr.png"}
 
 
 @router.post("/统计/访问", summary="记录站点访问")
@@ -52,8 +57,11 @@ async def api_create_order(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    channel = body.payment_channel
+    if channel == "wechat":
+        channel = "wechat_qr"
     try:
-        order, message, qr_url = await create_order(db, user, body.plan_id, body.payment_channel)
+        order, message, qr_url = await create_order(db, user, body.plan_id, channel)
         await db.commit()
         await db.refresh(user)
     except LocalPaymentRequired as exc:
@@ -75,6 +83,21 @@ async def api_create_order(
     )
 
 
+@router.post("/订单/{order_id}/申报已付", response_model=OrderOut, summary="用户申报已完成微信转账")
+async def api_claim_order(
+    order_id: int,
+    body: OrderClaimRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        order = await claim_order_paid(db, user, order_id, body.remark)
+        await db.commit()
+    except OrderServiceError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _order_out(order)
+
+
 @router.get("/订单/{order_id}", response_model=OrderOut, summary="查询订单")
 async def api_get_order(
     order_id: int,
@@ -85,15 +108,7 @@ async def api_get_order(
         order = await get_user_order(db, user, order_id)
     except OrderServiceError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return OrderOut(
-        id=order.id,
-        plan_id=order.plan_id,
-        plan_name=order.plan_name,
-        amount=float(order.amount),
-        payment_channel=order.payment_channel,
-        status=order.status,
-        created_at=order.created_at,
-    )
+    return _order_out(order)
 
 
 @router.get("/订单", response_model=list[OrderOut], summary="我的订单")
@@ -102,15 +117,20 @@ async def api_list_orders(
     db: AsyncSession = Depends(get_db),
 ):
     orders = await list_user_orders(db, user)
-    return [
-        OrderOut(
-            id=o.id,
-            plan_id=o.plan_id,
-            plan_name=o.plan_name,
-            amount=float(o.amount),
-            payment_channel=o.payment_channel,
-            status=o.status,
-            created_at=o.created_at,
-        )
-        for o in orders
-    ]
+    return [_order_out(o) for o in orders]
+
+
+def _order_out(order) -> OrderOut:
+    return OrderOut(
+        id=order.id,
+        plan_id=order.plan_id,
+        plan_name=order.plan_name,
+        amount=float(order.amount),
+        payment_channel=order.payment_channel,
+        status=order.status,
+        user_remark=getattr(order, "user_remark", "") or "",
+        admin_remark=getattr(order, "admin_remark", "") or "",
+        created_at=order.created_at,
+        claimed_at=getattr(order, "claimed_at", None),
+        confirmed_at=getattr(order, "confirmed_at", None),
+    )
