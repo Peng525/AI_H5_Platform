@@ -9,8 +9,7 @@ const routes = [
     redirect: () => {
       const { isLoggedIn, user } = useAuth()
       if (!isLoggedIn.value) return { name: 'login' }
-      if (user.value?.is_admin) return { name: 'admin' }
-      return { name: 'templates' }
+      return user.value?.is_admin ? { name: 'admin' } : { name: 'templates' }
     },
   },
   { path: '/templates', name: 'templates', component: () => import('../views/Templates.vue'), meta: { title: '探索模板', requiresAuth: true } },
@@ -24,6 +23,7 @@ const routes = [
   { path: '/admin/users', name: 'admin-users', component: () => import('../views/admin/AdminUsers.vue'), meta: { title: '用户管理', requiresAuth: true, admin: true } },
   { path: '/settings', name: 'settings', component: () => import('../views/Settings.vue'), meta: { title: '系统设置', requiresAuth: true, admin: true } },
   { path: '/s/:slug', name: 'share', component: () => import('../views/Share.vue'), meta: { title: '分享预览', public: true } },
+  { path: '/:pathMatch(.*)*', redirect: { name: 'login' } },
 ]
 
 const router = createRouter({
@@ -31,44 +31,47 @@ const router = createRouter({
   routes,
 })
 
+async function waitAuthReady() {
+  const { authReady } = useAuth()
+  if (authReady.value) return
+  await new Promise((resolve) => {
+    const timer = setInterval(() => {
+      if (authReady.value) {
+        clearInterval(timer)
+        resolve()
+      }
+    }, 10)
+  })
+}
+
+/** 确保已登录；未登录时仅在有「记住密码」时尝试静默登录 */
+async function ensureAuthenticated() {
+  const { isLoggedIn, refreshProfile, logout } = useAuth()
+  if (!isLoggedIn.value) {
+    const ok = await tryRememberLogin()
+    if (!ok) return false
+  }
+  const me = await refreshProfile()
+  if (!me) {
+    logout()
+    return false
+  }
+  return true
+}
+
 router.beforeEach(async (to) => {
-  const { isLoggedIn, user, authReady, refreshProfile, logout } = useAuth()
+  await waitAuthReady()
+  const { isLoggedIn, user, logout } = useAuth()
 
-  if (!authReady.value) {
-    await new Promise((resolve) => {
-      const timer = setInterval(() => {
-        if (authReady.value) {
-          clearInterval(timer)
-          resolve()
-        }
-      }, 10)
-    })
-  }
+  // 公开页：分享
+  if (to.meta.public) return
 
-  const needsAuth = to.meta.requiresAuth || to.meta.admin
-
-  if (needsAuth && !isLoggedIn.value) {
-    const remembered = await tryRememberLogin()
-    if (!remembered) {
-      return { name: 'login', query: { redirect: to.fullPath } }
-    }
-  }
-
-  if (needsAuth && isLoggedIn.value) {
-    const me = await refreshProfile()
-    if (!me) {
-      logout()
-      return { name: 'login', query: { redirect: to.fullPath } }
-    }
-  }
-
+  // 登录页
   if (to.name === 'login') {
-    // 主动退出后必须停留在登录页，不自动跳走
-    if (to.query.from === 'logout') {
-      return
-    }
+    if (to.query.from === 'logout') return
     if (isLoggedIn.value) {
-      if (user.value?.is_admin === undefined) await refreshProfile()
+      const ok = await ensureAuthenticated()
+      if (!ok) return
       if (user.value?.is_admin) return { name: 'admin' }
       const redirect = to.query.redirect
       if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('/admin')) {
@@ -76,15 +79,18 @@ router.beforeEach(async (to) => {
       }
       return { name: 'templates' }
     }
+    return
   }
 
-  if (to.meta.admin) {
-    if (user.value?.is_admin === undefined && isLoggedIn.value) {
-      await refreshProfile()
-    }
-    if (!user.value?.is_admin) {
-      return { name: 'login', query: { redirect: to.fullPath } }
-    }
+  // 所有受保护路由（含 /admin、/editor 等）
+  const authed = await ensureAuthenticated()
+  if (!authed) {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  if (to.meta.admin && !user.value?.is_admin) {
+    logout()
+    return { name: 'login', query: { redirect: to.fullPath } }
   }
 })
 

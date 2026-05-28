@@ -7,34 +7,34 @@ const REMEMBER_KEY = 'ai_h5_remember'
 const user = ref(null)
 const authReady = ref(false)
 
-function getStoredToken() {
-  return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY)
+function hasRememberCredentials() {
+  return !!localStorage.getItem(REMEMBER_KEY)
 }
 
-function loadUserFromStorage() {
+/** 仅内存 token，或「记住密码」时的 localStorage token */
+function getStoredToken() {
+  if (user.value?.token) return user.value.token
+  if (hasRememberCredentials()) {
+    return localStorage.getItem(TOKEN_KEY)
+  }
+  return null
+}
+
+function loadPersistedUser() {
+  if (!hasRememberCredentials()) return null
   try {
-    const raw =
-      sessionStorage.getItem(USER_KEY) ||
-      localStorage.getItem(USER_KEY)
+    const raw = localStorage.getItem(USER_KEY)
     return raw ? JSON.parse(raw) : null
   } catch {
     return null
   }
 }
 
-function clearSessionStorage() {
-  sessionStorage.removeItem(TOKEN_KEY)
-  sessionStorage.removeItem(USER_KEY)
-}
-
-function clearLocalSession() {
+function clearPersistedSession() {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(USER_KEY)
-}
-
-function clearAllSession() {
-  clearSessionStorage()
-  clearLocalSession()
+  sessionStorage.removeItem(TOKEN_KEY)
+  sessionStorage.removeItem(USER_KEY)
 }
 
 export function useAuth() {
@@ -42,22 +42,22 @@ export function useAuth() {
   const isAdmin = computed(() => !!user.value?.is_admin)
 
   function setSession(data, remember = false) {
-    user.value = data
-    clearAllSession()
-    const store = remember ? localStorage : sessionStorage
-    store.setItem(TOKEN_KEY, data.token)
-    store.setItem(USER_KEY, JSON.stringify(data))
+    clearPersistedSession()
+    user.value = { ...data, token: data.token }
+    if (remember) {
+      localStorage.setItem(TOKEN_KEY, data.token)
+      localStorage.setItem(USER_KEY, JSON.stringify(user.value))
+    }
   }
 
   function logout(options = {}) {
     user.value = null
-    clearAllSession()
+    clearPersistedSession()
     if (options.clearRemember) {
       clearRememberCredentials()
     }
   }
 
-  /** 退出并跳转登录页（不触发自动登录） */
   function performLogout(router) {
     logout()
     router.replace({
@@ -69,8 +69,9 @@ export function useAuth() {
   function updateUser(patch) {
     if (!user.value) return
     user.value = { ...user.value, ...patch }
-    const store = localStorage.getItem(TOKEN_KEY) ? localStorage : sessionStorage
-    store.setItem(USER_KEY, JSON.stringify(user.value))
+    if (hasRememberCredentials() && localStorage.getItem(TOKEN_KEY)) {
+      localStorage.setItem(USER_KEY, JSON.stringify(user.value))
+    }
   }
 
   function authHeaders() {
@@ -91,14 +92,12 @@ export function useAuth() {
   }
 
   function saveRememberCredentials(account, password) {
-    localStorage.setItem(
-      REMEMBER_KEY,
-      JSON.stringify({ account, password })
-    )
+    localStorage.setItem(REMEMBER_KEY, JSON.stringify({ account, password }))
   }
 
   function clearRememberCredentials() {
     localStorage.removeItem(REMEMBER_KEY)
+    clearPersistedSession()
   }
 
   async function refreshProfile() {
@@ -110,17 +109,18 @@ export function useAuth() {
       })
       if (!res.ok) return null
       const me = await res.json()
-      if (!user.value?.token) {
-        user.value = { token, ...me, user_id: me.user_id }
-      } else {
-        updateUser({
-          user_id: me.user_id,
-          username: me.username,
-          tier: me.tier,
-          is_admin: me.is_admin,
-          quota_remaining: me.quota_remaining,
-          quota_total: me.quota_total,
-        })
+      user.value = {
+        ...user.value,
+        token,
+        user_id: me.user_id,
+        username: me.username,
+        tier: me.tier,
+        is_admin: me.is_admin,
+        quota_remaining: me.quota_remaining,
+        quota_total: me.quota_total,
+      }
+      if (hasRememberCredentials() && localStorage.getItem(TOKEN_KEY)) {
+        localStorage.setItem(USER_KEY, JSON.stringify(user.value))
       }
       return me
     } catch {
@@ -143,31 +143,31 @@ export function useAuth() {
     saveRememberCredentials,
     clearRememberCredentials,
     getStoredToken,
+    hasRememberCredentials,
   }
 }
 
-/** 应用启动时校验本地 token，无效则清除 */
+/** 启动时：无「记住密码」则不恢复登录；有则校验 token */
 export async function initAuth() {
-  const { refreshProfile, logout } = useAuth()
+  const { refreshProfile, logout, getRememberedCredentials } = useAuth()
 
-  // 清除旧版「未记住密码却写入 localStorage」的登录态
-  const remembered = localStorage.getItem(REMEMBER_KEY)
-  if (localStorage.getItem(TOKEN_KEY) && !remembered) {
-    localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem(USER_KEY)
+  user.value = null
+  const saved = getRememberedCredentials()
+
+  if (!saved) {
+    clearPersistedSession()
+    authReady.value = true
+    return
   }
 
-  const token = getStoredToken()
+  const token = localStorage.getItem(TOKEN_KEY)
   if (token) {
-    const stored = loadUserFromStorage()
+    const stored = loadPersistedUser()
     user.value = stored ? { ...stored, token } : { token }
     const me = await refreshProfile()
-    if (!me) {
-      logout()
-    }
-  } else {
-    user.value = null
+    if (!me) logout()
   }
+
   authReady.value = true
 }
 
@@ -187,9 +187,7 @@ export async function tryRememberLogin() {
     }),
   })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) {
-    return null
-  }
+  if (!res.ok) return null
   setSession(data, true)
   await refreshProfile()
   return data
