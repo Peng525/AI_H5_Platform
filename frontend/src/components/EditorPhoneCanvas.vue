@@ -1,5 +1,8 @@
 <template>
-  <section class="flex-1 bg-surface-container-low flex items-center justify-center overflow-hidden relative">
+  <section
+    class="flex-1 bg-surface-container-low flex items-center justify-center overflow-hidden relative"
+    @wheel.prevent="onWheelZoom"
+  >
     <EditorCanvasToolbar
       :selected="selectedElement"
       @add-text="$emit('add-text')"
@@ -260,5 +263,10 @@ function zoomIn() {
 
 function zoomOut() {
   zoomPercent.value = clampZoom(zoomPercent.value - ZOOM_STEP)
+}
+
+function onWheelZoom(e) {
+  const step = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP
+  zoomPercent.value = clampZoom(zoomPercent.value + step)
 }
 </script>

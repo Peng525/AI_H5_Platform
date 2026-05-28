@@ -9,7 +9,16 @@
       <router-link :to="`/editor/${$route.params.id}`" class="text-white underline mt-4 inline-block">返回编辑器</router-link>
     </div>
     <template v-else>
-      <div class="absolute top-4 right-4 z-10 flex gap-2">
+      <div class="absolute top-4 right-4 z-10 flex items-center gap-2">
+        <span class="text-xs text-white/80 tabular-nums min-w-[40px] text-center">{{ Math.round(userZoom) }}%</span>
+        <button
+          type="button"
+          class="px-2 py-1.5 rounded-lg bg-white/10 text-white text-xs border border-white/20 hover:bg-white/20"
+          title="重置缩放"
+          @click="resetUserZoom"
+        >
+          重置
+        </button>
         <select
           v-model="viewportId"
           class="text-xs rounded-lg bg-white/10 text-white border border-white/20 px-2 py-1.5 max-w-[140px]"
@@ -30,7 +39,11 @@
         </button>
       </div>
 
-      <div v-if="scrollEffect === 'page'" class="flex-1 flex items-center justify-center p-4 overflow-hidden">
+      <div
+        v-if="scrollEffect === 'page'"
+        class="flex-1 flex items-center justify-center p-4 overflow-hidden"
+        @wheel.prevent="onWheelZoom"
+      >
         <div :class="outerFrameClass">
           <Transition :name="transitionName" mode="out-in">
             <div :key="index" :style="scaledWrapStyle">
@@ -119,6 +132,11 @@ const error = ref('')
 const phoneFrame = ref(true)
 const viewportId = ref('mobile-375')
 const scrollEffect = ref('page')
+const userZoom = ref(100)
+
+const MIN_ZOOM = 25
+const MAX_ZOOM = 200
+const ZOOM_STEP = 5
 
 const mobileViewports = VIEWPORT_PRESETS.filter((v) => v.device === 'mobile')
 const webViewports = VIEWPORT_PRESETS.filter((v) => v.device === 'web')
@@ -158,8 +176,10 @@ const previewScale = computed(() => {
   return Math.min(1, maxW / viewport.value.width, maxH / viewport.value.height)
 })
 
+const displayScale = computed(() => previewScale.value * (userZoom.value / 100))
+
 const scaledWrapStyle = computed(() => ({
-  transform: `scale(${previewScale.value})`,
+  transform: `scale(${displayScale.value})`,
   transformOrigin: 'center center',
 }))
 
@@ -198,14 +218,28 @@ onMounted(async () => {
   }
 })
 
-watch(viewportId, (id) => {
+watch(viewportId, () => {
+  resetUserZoom()
   try {
     const key = `ai_h5_project_settings_${route.params.id}`
     const s = JSON.parse(localStorage.getItem(key) || '{}')
-    s.viewportId = id
+    s.viewportId = viewportId.value
     localStorage.setItem(key, JSON.stringify(s))
   } catch { /* ignore */ }
 })
+
+function resetUserZoom() {
+  userZoom.value = 100
+}
+
+function clampUserZoom(v) {
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(v)))
+}
+
+function onWheelZoom(e) {
+  const step = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP
+  userZoom.value = clampUserZoom(userZoom.value + step)
+}
 
 function prev() {
   if (index.value > 0) index.value--
