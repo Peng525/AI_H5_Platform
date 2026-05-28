@@ -104,7 +104,7 @@ async def create_project(
                 sort_order=0,
                 layout="title",
                 title=body.title,
-                subtitle="点击右侧 AI 生成配图或手动编辑",
+                subtitle="点击右侧 AI 生图或手动编辑",
                 bullets_json="[]",
             )
         )
@@ -212,7 +212,7 @@ async def delete_slide(slide: Slide = Depends(get_owned_slide), db: AsyncSession
 @router.post(
     "/项目/{project_id}/生成/配图",
     response_model=GenerateImageResponse,
-    summary="AI 生成配图",
+    summary="AI 生图",
 )
 async def api_generate_image(
     body: GenerateImageRequest,

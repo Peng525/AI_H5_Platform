@@ -99,7 +99,7 @@ async def update_llm_settings(body: LlmSettingsUpdate, _admin: User = Depends(re
     return _admin_settings_out()
 
 
-@router.post("/大模型/测试", response_model=LlmTestResult, summary="测试 AI 配图连通性")
+@router.post("/大模型/测试", response_model=LlmTestResult, summary="测试 AI 生图连通性")
 async def test_llm(
     channel: str | None = Query(None, description="relay | official | 留空为 auto"),
     tier: str = Query("free", description="free 免费 | pro 升级"),
@@ -116,22 +116,22 @@ async def test_llm(
             success=True,
             channel=used,
             model=used_model or model,
-            message=f"配图连接成功（{'免费档' if tier == 'free' else '升级档'}）",
+            message=f"生图连接成功（{'免费档' if tier == 'free' else '升级档'}）",
         )
     except LlmError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
-@router.get("/大模型/档位", summary="查看免费/升级配图模型")
+@router.get("/大模型/档位", summary="查看免费/升级生图模型")
 async def get_model_tiers(_admin: User = Depends(require_admin)):
     return {
         "免费档": {
-            "配图生成": settings.llm_image_model_free,
-            "说明": "编辑器 AI 面板「生成配图」",
+            "生图模型": settings.llm_image_model_free,
+            "说明": "编辑器 AI 面板「AI 生图」",
         },
         "升级档": {
-            "配图生成": settings.llm_image_model_pro,
-            "说明": "会员高清配图通道",
+            "生图模型": settings.llm_image_model_pro,
+            "说明": "会员高清生图通道",
         },
     }
 

@@ -95,7 +95,7 @@
             @click="onGenerateImage"
           >
             <span class="material-symbols-outlined text-lg">image</span>
-            {{ imageLoading ? '配图生成中…' : '生成配图' }}
+            {{ imageLoading ? '生图生成中…' : 'AI 生图' }}
           </button>
           <p class="text-xs text-center text-on-surface-variant">
             剩余免费次数 {{ quotaRemaining }}/{{ quotaTotal }}
@@ -114,7 +114,7 @@
           <div class="p-2 bg-surface-container-low">
             <img
               :src="generatedImage.url"
-              alt="AI 生成配图"
+              alt="AI 生图结果"
               class="w-full h-auto max-w-full object-contain rounded-sm mx-auto block"
               draggable="false"
             />
@@ -146,7 +146,7 @@
       <div v-else-if="tab === 'prompts'" class="p-4 pb-6 text-sm text-on-surface-variant">
         <p class="font-medium text-on-surface mb-2">内置模板</p>
         <ul class="space-y-2">
-          <li class="p-2 bg-white rounded-lg border">AI 配图 — 根据描述生成插画并添加到页面</li>
+          <li class="p-2 bg-white rounded-lg border">AI 生图 — 根据描述生成图片并添加到页面</li>
         </ul>
       </div>
 

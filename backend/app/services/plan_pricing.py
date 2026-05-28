@@ -1,9 +1,10 @@
 """套餐定价：统一按张计价。"""
 from dataclasses import dataclass
 
-# 统一使用 gpt-image-2 配图
+# 统一使用 gpt-image-2 生图
 PRICE_PER_GENERATION = 0.5  # 每张 ¥0.5
-MONTHLY_QUOTA = 60
+MONTHLY_QUOTA = 80
+MONTHLY_PRICE = 29.9
 PACK_QUOTA_MIN = 10
 PACK_QUOTA_MAX = 50
 
@@ -30,7 +31,7 @@ def pack_price(quota: int) -> float:
 
 
 def monthly_price() -> float:
-    return round(MONTHLY_QUOTA * PRICE_PER_GENERATION, 1)
+    return MONTHLY_PRICE
 
 
 def resolve_plan(plan_id: str, quota: int | None = None) -> PlanSpec | None:
@@ -43,7 +44,7 @@ def resolve_plan(plan_id: str, quota: int | None = None) -> PlanSpec | None:
             price=p,
             quota=q,
             tier="pro",
-            desc=f"每月 {q} 次 GPT 配图 · 尊享官方直连通道",
+            desc=f"每月 {q} 次 GPT 生图 · 尊享官方直连通道",
             recommended=True,
             plan_type="monthly",
         )
@@ -54,11 +55,11 @@ def resolve_plan(plan_id: str, quota: int | None = None) -> PlanSpec | None:
         p = pack_price(q)
         return PlanSpec(
             id="custom",
-            name=f"AI 配图 {q} 次",
+            name=f"AI 生图 {q} 次",
             price=p,
             quota=q,
             tier="free",
-            desc=f"{q} 次 GPT 配图 · ¥{PRICE_PER_GENERATION}/张",
+            desc=f"{q} 次 GPT 生图 · ¥{PRICE_PER_GENERATION}/张",
             plan_type="pack",
         )
     return None
@@ -71,4 +72,5 @@ def pricing_meta() -> dict:
         "pack_quota_min": PACK_QUOTA_MIN,
         "pack_quota_max": PACK_QUOTA_MAX,
         "monthly_quota": MONTHLY_QUOTA,
+        "monthly_price": MONTHLY_PRICE,
     }

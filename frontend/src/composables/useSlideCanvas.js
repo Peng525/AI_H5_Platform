@@ -49,7 +49,7 @@ export function buildElementsFromSlide(slide) {
     )
   })
   if (slide.layout === 'image-text') {
-    const label = encodeURIComponent((slide.title || 'AI配图').slice(0, 16))
+    const label = encodeURIComponent((slide.title || 'AI生图').slice(0, 16))
     items.push(
       defaultElement('image', {
         x: 20,

@@ -3,7 +3,7 @@
     <EditorTopBar />
     <div class="max-w-xl mx-auto p-6 md:p-10 flex-1 w-full">
       <h1 class="text-2xl font-bold mb-2">新建演示</h1>
-      <p class="text-on-surface-variant text-sm mb-8">创建空白项目，在编辑器中使用 AI 生成配图并手动排版</p>
+      <p class="text-on-surface-variant text-sm mb-8">创建空白项目，在编辑器中使用 AI 生图并手动排版</p>
 
       <form class="bg-white rounded-xl border border-outline-variant p-6 shadow-card space-y-5" @submit.prevent="submit">
         <label class="block">

@@ -109,14 +109,14 @@
         </section>
 
         <section class="bg-white rounded-xl border border-outline-variant p-6 shadow-card space-y-4">
-          <h2 class="font-semibold">AI 配图模型</h2>
+          <h2 class="font-semibold">AI 生图模型</h2>
           <div class="grid md:grid-cols-2 gap-4 text-sm">
             <label class="block">
-              <span class="text-on-surface-variant text-xs">免费档配图</span>
+              <span class="text-on-surface-variant text-xs">免费档生图</span>
               <input v-model="form.image_model_free" class="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2" />
             </label>
             <label class="block">
-              <span class="text-on-surface-variant text-xs">升级档配图</span>
+              <span class="text-on-surface-variant text-xs">升级档生图</span>
               <input v-model="form.image_model_pro" class="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2" />
             </label>
           </div>
@@ -127,14 +127,14 @@
               :disabled="testing"
               @click="runTest('', 'free')"
             >
-              测试免费配图
+              测试免费生图
             </button>
             <button
               class="px-4 py-2 rounded-lg bg-secondary text-white text-sm disabled:opacity-50"
               :disabled="testing"
               @click="runTest('', 'pro')"
             >
-              测试升级配图
+              测试升级生图
             </button>
             <button class="px-4 py-2 rounded-lg border text-sm" :disabled="testing" @click="runTest('relay', 'free')">
               中转 + 免费档

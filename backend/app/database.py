@@ -43,6 +43,10 @@ async def _migrate_sqlite_columns(conn) -> None:
         names = {row[1] for row in cols}
         if "quota_limit" not in names:
             sync_conn.execute(text("ALTER TABLE users ADD COLUMN quota_limit INTEGER"))
+        if "tier" not in names:
+            sync_conn.execute(text("ALTER TABLE users ADD COLUMN tier VARCHAR(16) DEFAULT 'free'"))
+        if "free_quota_used" not in names:
+            sync_conn.execute(text("ALTER TABLE users ADD COLUMN free_quota_used INTEGER DEFAULT 0"))
         slide_cols = sync_conn.execute(text("PRAGMA table_info(slides)")).fetchall()
         slide_names = {row[1] for row in slide_cols}
         if "canvas_json" not in slide_names:

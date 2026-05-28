@@ -5,7 +5,7 @@
       <header class="mb-8 md:mb-10">
         <h1 class="text-2xl md:text-3xl font-bold">升级套餐</h1>
         <p class="mt-2 text-on-surface-variant text-sm md:text-base">
-          GPT 配图 ¥0.5/张 · 按次 10～50 张，或包月 60 张更省心
+          GPT 生图 ¥0.5/张 · 按次 10～50 张，或包月 80 张 ¥29.9
         </p>
       </header>
 
@@ -20,7 +20,7 @@
           >
             <div class="flex items-start justify-between gap-4">
               <div>
-                <h2 class="font-bold text-lg">按次配图包</h2>
+                <h2 class="font-bold text-lg">按次生图包</h2>
                 <p class="text-sm text-on-surface-variant mt-1">灵活购买，用多少买多少</p>
               </div>
               <p class="text-2xl font-bold text-primary shrink-0">¥{{ formatPrice(customPrice) }}</p>
@@ -29,7 +29,7 @@
             <div class="mt-5 rounded-xl bg-surface-container-low p-4 space-y-4" @click.stop>
               <div class="flex items-center justify-between gap-3">
                 <label class="text-sm font-medium text-on-surface-variant shrink-0" for="quota-input">
-                  配图次数
+                  生图次数
                 </label>
                 <div class="flex items-center gap-1">
                   <button
@@ -128,7 +128,7 @@
             <ul class="mt-4 space-y-2 text-sm text-on-surface-variant">
               <li class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-base text-primary">check_circle</span>
-                每月 {{ monthlyPlan.quota }} 次 GPT 配图
+                每月 {{ monthlyPlan.quota }} 次 GPT 生图
               </li>
               <li class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-base text-primary">check_circle</span>
@@ -163,7 +163,7 @@
                   <dd class="font-medium text-right">{{ selected.name }}</dd>
                 </div>
                 <div v-if="selected.id === 'custom'" class="flex justify-between gap-4">
-                  <dt class="text-on-surface-variant">配图次数</dt>
+                  <dt class="text-on-surface-variant">生图次数</dt>
                   <dd class="font-medium">{{ customQuota }} 次</dd>
                 </div>
                 <div class="flex justify-between gap-4 pt-3 border-t border-outline-variant">
@@ -267,10 +267,10 @@ const customPlan = computed(() => {
   const item = planItems.value.find((p) => p.id === 'custom') || {}
   return {
     id: 'custom',
-    name: `AI 配图 ${customQuota.value} 次`,
+    name: `AI 生图 ${customQuota.value} 次`,
     price: customPrice.value,
     quota: customQuota.value,
-    desc: item.desc || 'GPT 配图 · 10～50 次自选',
+    desc: item.desc || 'GPT 生图 · 10～50 次自选',
     recommended: false,
   }
 })
@@ -280,9 +280,9 @@ const monthlyPlan = computed(() => {
   return {
     id: 'monthly',
     name: item.name || '官方直连包月',
-    price: item.price ?? 30.0,
-    quota: item.quota ?? 60,
-    desc: item.desc || '每月 60 次 · 尊享官方直连通道',
+    price: item.price ?? 29.9,
+    quota: item.quota ?? 80,
+    desc: item.desc || '每月 80 次 · 尊享官方直连通道',
     recommended: true,
   }
 })

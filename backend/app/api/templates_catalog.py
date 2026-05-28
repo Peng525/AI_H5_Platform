@@ -46,7 +46,7 @@ async def quote_pack(
         "plan_id": "custom",
         "quota": spec.quota if spec else quota,
         "price": pack_price(quota),
-        "name": spec.name if spec else f"AI 配图 {quota} 次",
+        "name": spec.name if spec else f"AI 生图 {quota} 次",
     }
 
 
@@ -58,12 +58,12 @@ async def plans(_user: User = Depends(get_current_user)):
         "items": [
             {
                 "id": "custom",
-                "name": "按次配图包",
+                "name": "按次生图包",
                 "type": "custom",
                 "quota_min": PACK_QUOTA_MIN,
                 "quota_max": PACK_QUOTA_MAX,
                 "quota_default": 20,
-                "desc": "GPT 配图 · 10～50 次自选",
+                "desc": "GPT 生图 · 10～50 次自选",
             },
             {
                 "id": monthly.id if monthly else "monthly",

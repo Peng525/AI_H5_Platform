@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.models import Order, User
+from app.services.payment import get_payment_provider
 from app.services.payment.url_utils import wechat_qr_path
 from app.services.payment.base import PaymentError, PaymentNotConfigured
 from app.services.quota import apply_plan_to_user, get_plan, quota_remaining, quota_total
@@ -110,7 +111,7 @@ async def create_order(
     quota: int | None = None,
 ) -> tuple[Order, str, str | None]:
     if plan_id == "custom" and quota is None:
-        raise OrderServiceError("请指定配图次数（10～50）")
+        raise OrderServiceError("请指定生图次数（10～50）")
     plan = get_plan(plan_id, quota)
     if not plan:
         raise OrderServiceError("未知套餐")

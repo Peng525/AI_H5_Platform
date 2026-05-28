@@ -36,7 +36,7 @@ async def check_and_consume(db: AsyncSession, user_id: int | None, tier: str) ->
         return
     total = quota_total(user)
     if user.free_quota_used >= total:
-        raise QuotaExceeded(f"AI 配图次数已用完（{total} 次），请升级套餐")
+        raise QuotaExceeded(f"AI 生图次数已用完（{total} 次），请升级套餐")
     user.free_quota_used += 1
     await db.flush()
 
@@ -48,8 +48,8 @@ LEGACY_PLANS = {
 }
 
 PLAN_CATALOG = {
-    "custom": {"name": "按次配图包", "price": 0, "quota": 0, "tier": "free", "desc": ""},
-    "monthly": {"name": "官方直连包月", "price": 30.0, "quota": 60, "tier": "pro", "desc": ""},
+    "custom": {"name": "按次生图包", "price": 0, "quota": 0, "tier": "free", "desc": ""},
+    "monthly": {"name": "官方直连包月", "price": 29.9, "quota": 80, "tier": "pro", "desc": ""},
 }
 
 

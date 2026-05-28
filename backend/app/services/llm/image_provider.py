@@ -143,7 +143,7 @@ async def _post_json(url: str, api_key: str, payload: dict[str, Any]) -> dict[st
     async with httpx.AsyncClient(timeout=settings.llm_timeout) as client:
         resp = await client.post(url, headers=headers, json=payload)
         if resp.status_code >= 400:
-            raise LlmError(f"配图请求失败 ({resp.status_code}): {resp.text[:500]}")
+            raise LlmError(f"生图请求失败 ({resp.status_code}): {resp.text[:500]}")
         return resp.json()
 
 
