@@ -33,8 +33,9 @@ router = APIRouter(prefix="/api/v1", tags=["统计与订单"])
 
 
 class OrderCreateRequest(BaseModel):
-    plan_id: str = Field(..., description="newbie | sprint | monthly")
+    plan_id: str = Field(..., description="custom | monthly")
     payment_channel: str = Field("demo", description="wechat | wechat_qr | demo")
+    quota: int | None = Field(None, ge=10, le=50, description="custom 套餐配图次数")
 
 
 class OrderCreateResponse(BaseModel):
@@ -72,8 +73,10 @@ async def api_create_order(
     channel = body.payment_channel
     if channel == "wechat":
         channel = "wechat_native"
+    if body.plan_id == "custom" and body.quota is None:
+        raise HTTPException(status_code=400, detail="请指定配图次数（10～50）")
     try:
-        order, message, qr_url = await create_order(db, user, body.plan_id, channel)
+        order, message, qr_url = await create_order(db, user, body.plan_id, channel, body.quota)
         await db.commit()
         await db.refresh(user)
     except LocalPaymentRequired as exc:

@@ -22,7 +22,5 @@ def resolve_text_model(tier: str | None = None) -> str:
 
 
 def resolve_image_model(tier: str | None = None) -> str:
-    """配图生成：免费档与文稿同为 Flash，升级后为 Pro。"""
-    if normalize_tier(tier) == "pro":
-        return settings.llm_image_model_pro
-    return settings.llm_image_model_free
+    """配图统一使用 gpt-image-2（见 LLM_IMAGE_MODEL_FREE）。"""
+    return settings.llm_image_model_free or settings.llm_image_model_pro

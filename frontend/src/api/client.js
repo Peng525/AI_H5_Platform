@@ -47,6 +47,7 @@ export const api = {
     return request(`/api/v1/模板库?${params.toString()}`)
   },
   getPlans: () => request('/api/v1/模板库/套餐'),
+  quotePack: (quota) => request(`/api/v1/模板库/套餐/计价?quota=${quota}`),
   listProjects: () => request('/api/v1/项目'),
   createProject: (body) =>
     request('/api/v1/项目', {

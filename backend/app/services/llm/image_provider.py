@@ -6,7 +6,7 @@ from typing import Any
 import httpx
 
 from app.config import settings
-from app.services.llm.model_tier import resolve_image_model
+from app.services.llm.model_tier import normalize_tier, resolve_image_model
 from app.services.llm.provider import LlmError, _normalize_openai_base_url, _official_ready, _relay_ready
 
 
@@ -200,9 +200,14 @@ async def generate_image(
     if not full_prompt:
         raise LlmError("请输入画面描述")
     model = resolve_image_model(tier)
+    tier_norm = normalize_tier(tier)
     ch = (channel or settings.llm_default_channel).lower()
+    display_channel = ch
 
-    if ch == "auto":
+    if tier_norm == "pro":
+        actual_channel = "relay"
+        display_channel = "official"
+    elif ch == "auto":
         channels = _resolve_auto_order()
         if not channels:
             raise LlmError("auto 模式无可用通道，请配置 LLM_RELAY_* 或 LLM_OFFICIAL_API_KEY")
@@ -214,8 +219,11 @@ async def generate_image(
             except LlmError as exc:
                 errors.append(f"{used}: {exc}")
         raise LlmError("auto 模式全部通道失败 — " + "；".join(errors))
+    else:
+        if ch not in ("relay", "official"):
+            raise LlmError(f"未知通道: {channel}")
+        actual_channel = ch
+        display_channel = ch
 
-    if ch not in ("relay", "official"):
-        raise LlmError(f"未知通道: {channel}")
-    image = await _generate_on_channel(ch, model, full_prompt)
-    return image, ch, model, 1024, 1024
+    image = await _generate_on_channel(actual_channel, model, full_prompt)
+    return image, display_channel, model, 1024, 1024

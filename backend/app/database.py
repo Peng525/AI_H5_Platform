@@ -68,6 +68,8 @@ async def _migrate_sqlite_columns(conn) -> None:
             if col not in order_names:
                 sync_conn.execute(text(ddl))
                 order_names.add(col)
+        if "plan_quota" not in order_names:
+            sync_conn.execute(text("ALTER TABLE orders ADD COLUMN plan_quota INTEGER"))
         sync_conn.execute(
             text(
                 "CREATE TABLE IF NOT EXISTS sms_codes ("

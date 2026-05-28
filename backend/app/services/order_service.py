@@ -9,7 +9,7 @@ from app.config import settings
 from app.models import Order, User
 from app.services.payment import get_payment_provider
 from app.services.payment.base import PaymentError, PaymentNotConfigured
-from app.services.quota import PLAN_CATALOG, apply_plan_to_user, quota_remaining, quota_total
+from app.services.quota import apply_plan_to_user, get_plan, quota_remaining, quota_total
 
 
 class OrderServiceError(Exception):
@@ -80,8 +80,9 @@ async def _find_reusable_pending_order(
     user: User,
     plan_id: str,
     payment_channel: str,
+    quota: int | None = None,
 ) -> Order | None:
-    result = await db.execute(
+    query = (
         select(Order)
         .where(
             Order.user_id == user.id,
@@ -92,6 +93,9 @@ async def _find_reusable_pending_order(
         .order_by(Order.created_at.desc())
         .limit(1)
     )
+    if plan_id == "custom" and quota is not None:
+        query = query.where(Order.plan_quota == quota)
+    result = await db.execute(query)
     order = result.scalar_one_or_none()
     if order and not is_order_expired(order):
         return order
@@ -103,8 +107,11 @@ async def create_order(
     user: User,
     plan_id: str,
     payment_channel: str,
+    quota: int | None = None,
 ) -> tuple[Order, str, str | None]:
-    plan = PLAN_CATALOG.get(plan_id)
+    if plan_id == "custom" and quota is None:
+        raise OrderServiceError("请指定配图次数（10～50）")
+    plan = get_plan(plan_id, quota)
     if not plan:
         raise OrderServiceError("未知套餐")
 
@@ -113,7 +120,7 @@ async def create_order(
 
     if payment_channel in WECHAT_CHANNELS:
         await expire_stale_orders(db, user.id)
-        existing = await _find_reusable_pending_order(db, user, plan_id, payment_channel)
+        existing = await _find_reusable_pending_order(db, user, plan_id, payment_channel, quota)
         if existing:
             msg = (
                 f"请使用微信扫码支付 ¥{float(existing.amount):.2f}，"
@@ -126,6 +133,7 @@ async def create_order(
     except ValueError as exc:
         raise OrderServiceError(str(exc)) from exc
 
+    order_quota = plan["quota"] if plan_id in ("custom", "monthly") else None
     order = Order(
         user_id=user.id,
         plan_id=plan_id,
@@ -133,6 +141,7 @@ async def create_order(
         amount=plan["price"],
         payment_channel=payment_channel,
         status="pending",
+        plan_quota=order_quota,
     )
     db.add(order)
     await db.flush()
@@ -150,7 +159,7 @@ async def create_order(
 
     order.status = result.status
     if result.status == "paid":
-        apply_plan_to_user(user, plan_id)
+        apply_plan_to_user(user, plan_id, quota)
 
     await db.flush()
     message = result.message
@@ -197,7 +206,7 @@ async def confirm_order_payment(
     order.status = "paid"
     order.admin_remark = (admin_remark or "").strip()[:255]
     order.confirmed_at = datetime.now(timezone.utc)
-    apply_plan_to_user(user, order.plan_id)
+    apply_plan_to_user(user, order.plan_id, order.plan_quota)
     await db.flush()
     return order
 
@@ -249,7 +258,7 @@ async def complete_wechat_native_payment(
     order.paid_at = datetime.now(timezone.utc)
     order.notify_raw = notify_raw[:8000] if notify_raw else None
     order.confirmed_at = order.paid_at
-    apply_plan_to_user(user, order.plan_id)
+    apply_plan_to_user(user, order.plan_id, order.plan_quota)
     await db.flush()
     return order
 

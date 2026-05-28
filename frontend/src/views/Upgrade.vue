@@ -1,40 +1,66 @@
 <template>
   <div class="min-h-screen bg-background">
     <AppShell :show-quota="false" />
-    <div class="max-w-5xl mx-auto p-6 md:p-10">
-      <h1 class="text-3xl font-bold text-center mb-2">升级套餐，解锁官方高速 API</h1>
-      <p class="text-center text-on-surface-variant mb-10">使用 Gemini 3 Pro 模型，享受无限次 AI 生成</p>
+    <div class="max-w-4xl mx-auto p-6 md:p-10">
+      <h1 class="text-3xl font-bold text-center mb-2">升级套餐，解锁 AI 配图</h1>
+      <p class="text-center text-on-surface-variant mb-10">
+        统一 GPT 配图引擎 · 按次包约 50% 毛利 · 包月尊享官方直连通道
+      </p>
 
-      <div class="grid md:grid-cols-3 gap-6">
+      <div class="grid md:grid-cols-2 gap-6">
         <article
-          v-for="p in plans"
+          v-for="p in displayPlans"
           :key="p.id"
-          class="bg-white rounded-xl border p-6 shadow-card relative transition-all cursor-pointer"
-          :class="[
-            p.recommended ? 'border-primary border-2 scale-[1.02]' : 'border-outline-variant',
-            selected?.id === p.id ? 'ring-2 ring-primary/30' : '',
-          ]"
+          class="bg-white rounded-xl border border-outline-variant p-6 shadow-card relative transition-all cursor-pointer"
           @click="selectPlan(p)"
         >
-          <span v-if="p.recommended" class="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-on-primary text-xs px-3 py-1 rounded-full font-medium">
+          <span
+            v-if="p.recommended"
+            class="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-on-primary text-xs px-3 py-1 rounded-full font-medium"
+          >
             推荐
           </span>
           <h3 class="font-bold text-lg">{{ p.name }}</h3>
-          <p class="text-3xl font-bold mt-2 text-primary">¥{{ p.price }}</p>
+          <p class="text-3xl font-bold mt-2 text-primary">¥{{ formatPrice(p.price) }}</p>
           <p class="text-sm text-on-surface-variant mt-2">{{ p.desc }}</p>
+
+          <div v-if="p.id === 'custom'" class="mt-5 space-y-3" @click.stop>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-on-surface-variant">配图次数</span>
+              <span class="font-semibold text-primary">{{ customQuota }} 次</span>
+            </div>
+            <input
+              v-model.number="customQuota"
+              type="range"
+              :min="quotaMin"
+              :max="quotaMax"
+              step="1"
+              class="w-full accent-primary"
+              @input="onCustomQuotaChange"
+            />
+            <div class="flex justify-between text-xs text-on-surface-variant">
+              <span>{{ quotaMin }} 次</span>
+              <span>{{ quotaMax }} 次</span>
+            </div>
+          </div>
+
           <button
             class="mt-6 w-full py-2.5 rounded-lg text-sm font-medium transition"
-            :class="p.recommended ? 'bg-primary text-on-primary' : 'border border-outline-variant hover:bg-surface-container-low'"
+            :class="
+              selected?.id === p.id
+                ? 'bg-primary text-on-primary'
+                : 'border border-outline-variant text-on-surface hover:bg-surface-container-low'
+            "
             @click.stop="selectPlan(p)"
           >
-            选择套餐
+            {{ selected?.id === p.id ? '已选择' : '选择套餐' }}
           </button>
         </article>
       </div>
 
       <div v-if="selected" class="mt-12 bg-white rounded-2xl border border-outline-variant p-8 shadow-card max-w-md mx-auto">
         <p class="font-medium text-center mb-2">已选择「{{ selected.name }}」</p>
-        <p class="text-center text-2xl font-bold text-primary mb-6">应付 ¥{{ selected.price }}</p>
+        <p class="text-center text-2xl font-bold text-primary mb-6">应付 ¥{{ formatPrice(selected.price) }}</p>
 
         <div class="text-center">
           <button
@@ -87,7 +113,10 @@ import { useAuth } from '../composables/useAuth'
 import AppShell from '../components/AppShell.vue'
 
 const { updateUser } = useAuth()
-const plans = ref([])
+const planItems = ref([])
+const pricing = ref(null)
+const customQuota = ref(20)
+const customPrice = ref(6.8)
 const selected = ref(null)
 const payMsg = ref('')
 const payOk = ref(false)
@@ -97,6 +126,35 @@ const qrImageSrc = ref('')
 const countdownSec = ref(0)
 let pollTimer = null
 let countdownTimer = null
+
+const quotaMin = computed(() => pricing.value?.pack_quota_min ?? 10)
+const quotaMax = computed(() => pricing.value?.pack_quota_max ?? 50)
+
+const customPlan = computed(() => {
+  const item = planItems.value.find((p) => p.id === 'custom') || {}
+  return {
+    id: 'custom',
+    name: `AI 配图 ${customQuota.value} 次`,
+    price: customPrice.value,
+    quota: customQuota.value,
+    desc: item.desc || 'GPT 配图 · 10～50 次自选',
+    recommended: false,
+  }
+})
+
+const monthlyPlan = computed(() => {
+  const item = planItems.value.find((p) => p.id === 'monthly') || {}
+  return {
+    id: 'monthly',
+    name: item.name || '官方直连包月',
+    price: item.price ?? 49.9,
+    quota: item.quota ?? 60,
+    desc: item.desc || '每月 60 次 · 尊享官方直连通道',
+    recommended: true,
+  }
+})
+
+const displayPlans = computed(() => [customPlan.value, monthlyPlan.value])
 
 const showQr = computed(() => {
   const s = activeOrder.value?.status
@@ -114,15 +172,43 @@ const countdownLabel = computed(() => {
   return `${m}:${String(s).padStart(2, '0')}`
 })
 
+function formatPrice(v) {
+  return Number(v).toFixed(1)
+}
+
+function clearPayState() {
+  activeOrder.value = null
+  qrImageSrc.value = ''
+  payMsg.value = ''
+  stopPoll()
+  stopCountdown()
+}
+
 function selectPlan(plan) {
   if (selected.value?.id !== plan.id) {
-    activeOrder.value = null
-    qrImageSrc.value = ''
-    payMsg.value = ''
-    stopPoll()
-    stopCountdown()
+    clearPayState()
   }
   selected.value = plan
+}
+
+async function refreshCustomPrice() {
+  try {
+    const res = await api.quotePack(customQuota.value)
+    customPrice.value = res.price
+    if (selected.value?.id === 'custom') {
+      selected.value = { ...customPlan.value }
+    }
+  } catch {
+    /* 忽略计价失败 */
+  }
+}
+
+function onCustomQuotaChange() {
+  clearPayState()
+  refreshCustomPrice()
+  if (selected.value?.id === 'custom') {
+    selected.value = { ...customPlan.value }
+  }
 }
 
 function stopCountdown() {
@@ -170,8 +256,13 @@ async function renderQr(order) {
 
 onMounted(async () => {
   const res = await api.getPlans()
-  plans.value = res.items
-  selected.value = res.items.find((p) => p.recommended) || res.items[0]
+  planItems.value = res.items || []
+  pricing.value = res.pricing || null
+  if (res.items?.find((p) => p.quota_default)) {
+    customQuota.value = res.items.find((p) => p.id === 'custom')?.quota_default ?? 20
+  }
+  await refreshCustomPrice()
+  selected.value = monthlyPlan.value
 })
 
 onUnmounted(() => {
@@ -243,10 +334,14 @@ async function startWechatPay() {
   payMsg.value = ''
   payOk.value = false
   try {
-    const res = await api.createOrder({
+    const body = {
       plan_id: selected.value.id,
       payment_channel: 'wechat_qr',
-    })
+    }
+    if (selected.value.id === 'custom') {
+      body.quota = customQuota.value
+    }
+    const res = await api.createOrder(body)
     activeOrder.value = res
   } catch (e) {
     payOk.value = false
