@@ -54,15 +54,29 @@
       v-else-if="element.type === 'table'"
       class="w-full h-full border-collapse text-xs cursor-move table-fixed"
       :style="{ borderColor: element.style?.borderColor || '#c0c7d6' }"
+      @dblclick.stop
     >
       <tbody>
         <tr v-for="(row, ri) in tableRows" :key="ri">
           <td
             v-for="(cell, ci) in row"
             :key="ci"
-            class="border px-1 py-0.5 truncate"
+            class="border px-1 py-0.5 align-top"
+            :class="editingCell?.ri === ri && editingCell?.ci === ci ? 'p-0' : 'truncate'"
             :style="cellStyle(ri)"
-          >{{ cell }}</td>
+            @dblclick.stop="startCellEdit(ri, ci)"
+          >
+            <input
+              v-if="editingCell?.ri === ri && editingCell?.ci === ci"
+              ref="cellInputRef"
+              v-model="editCellValue"
+              class="w-full h-full min-h-[22px] bg-white border border-primary outline-none px-1 text-inherit text-xs"
+              @blur="commitCellEdit"
+              @keydown.enter="commitCellEdit"
+              @mousedown.stop
+            />
+            <span v-else class="block min-h-[18px]">{{ cell }}</span>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -91,7 +105,8 @@
         v-if="element.content"
         :src="element.content"
         alt="素材"
-        class="w-full h-full object-cover pointer-events-none"
+        class="w-full h-full pointer-events-none"
+        :class="element.style?.objectFit === 'cover' ? 'object-cover' : 'object-contain'"
         draggable="false"
       />
       <span v-else class="material-symbols-outlined text-3xl text-on-surface-variant/50 pointer-events-none">image</span>
@@ -120,6 +135,9 @@ const emit = defineEmits(['select', 'update', 'remove'])
 const editing = ref(false)
 const editText = ref('')
 const inputRef = ref(null)
+const editingCell = ref(null)
+const editCellValue = ref('')
+const cellInputRef = ref(null)
 
 const textStyle = computed(() => ({
   fontSize: (props.element.style?.fontSize || 16) + 'px',
@@ -192,6 +210,21 @@ function commitEdit() {
   emit('update', props.element.id, { content: editText.value })
 }
 
+function startCellEdit(ri, ci) {
+  editingCell.value = { ri, ci }
+  editCellValue.value = tableRows.value[ri]?.[ci] ?? ''
+  nextTick(() => cellInputRef.value?.focus())
+}
+
+function commitCellEdit() {
+  if (!editingCell.value) return
+  const { ri, ci } = editingCell.value
+  const rows = tableRows.value.map((row) => [...row])
+  if (rows[ri]) rows[ri][ci] = editCellValue.value
+  editingCell.value = null
+  emit('update', props.element.id, { content: { rows } })
+}
+
 function startDrag(e) {
   const startX = e.clientX
   const startY = e.clientY
@@ -237,7 +270,10 @@ function startResize(e) {
 watch(
   () => props.selected,
   (v) => {
-    if (!v) editing.value = false
+    if (!v) {
+      editing.value = false
+      editingCell.value = null
+    }
   }
 )
 </script>

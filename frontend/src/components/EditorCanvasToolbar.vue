@@ -114,7 +114,9 @@
             @change="onStyle({ background: $event })"
           />
         </template>
+        <!-- 表格：双击单元格编辑 -->
         <template v-else-if="selected.type === 'table'">
+          <span class="text-xs text-on-surface-variant px-1">双击单元格编辑</span>
           <WordColorPicker
             :model-value="selected.style?.headerBackground || '#005daa'"
             label="表头背景"

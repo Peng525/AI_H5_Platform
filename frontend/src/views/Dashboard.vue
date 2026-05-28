@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-background flex flex-col">
-    <AppShell page-title="我的项目" />
+    <AppShell />
     <div class="max-w-6xl mx-auto p-6 md:p-10 flex-1 w-full">
       <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>

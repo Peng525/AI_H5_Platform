@@ -1,6 +1,6 @@
 <template>
   <div class="h-screen flex flex-col bg-background overflow-hidden">
-    <EditorTopBar project-title="探索模板" />
+    <EditorTopBar />
     <div class="flex flex-1 min-h-0">
       <!-- 左侧工具箱 -->
       <aside class="w-14 md:w-52 border-r border-outline-variant bg-surface-container-low flex flex-col shrink-0">

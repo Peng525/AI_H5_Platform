@@ -7,8 +7,12 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models import Project, Slide
+from app.deps.auth import get_current_user
+from app.models import User
 from app.schemas import (
     GenerateFullRequest,
+    GenerateImageRequest,
+    GenerateImageResponse,
     GeneratePageRequest,
     ProjectCreate,
     ProjectOut,
@@ -18,6 +22,7 @@ from app.schemas import (
     SlideUpdate,
 )
 from app.services.deck_generator import generate_full_deck, generate_single_page, new_share_slug
+from app.services.image_generator import generate_slide_image
 from app.services.llm.provider import LlmError
 from app.services.template_engine import list_templates
 
@@ -178,6 +183,25 @@ async def api_generate_page(
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return SlideOut.from_orm_slide(slide)
+
+
+@router.post(
+    "/项目/{project_id}/生成/配图",
+    response_model=GenerateImageResponse,
+    summary="AI 生成配图",
+)
+async def api_generate_image(
+    project_id: int,
+    body: GenerateImageRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await _get_project(db, project_id)
+    try:
+        result = await generate_slide_image(db, project_id, body, user_id=user.id)
+    except LlmError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return GenerateImageResponse(**result)
 
 
 @router.get("/分享/{share_slug}", response_model=ProjectOut, summary="通过分享链接预览")

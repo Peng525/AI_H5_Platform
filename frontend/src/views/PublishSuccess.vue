@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-surface-container-low flex flex-col">
-    <AppShell page-title="发布成功" :show-quota="false" />
+    <AppShell :show-quota="false" />
     <div class="flex-1 flex items-center justify-center p-6">
       <div class="max-w-3xl w-full bg-white rounded-2xl shadow-card p-8 md:p-10 border border-outline-variant">
         <div class="text-center mb-8">

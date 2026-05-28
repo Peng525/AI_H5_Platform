@@ -64,6 +64,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  generateImage: (projectId, body) =>
+    request(`/api/v1/项目/${projectId}/生成/配图`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   addSlide: (projectId, body) =>
     request(`/api/v1/项目/${projectId}/页面`, { method: 'POST', body: JSON.stringify(body) }),
   deleteSlide: (projectId, slideId) =>

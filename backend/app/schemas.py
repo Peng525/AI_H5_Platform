@@ -82,6 +82,21 @@ class GeneratePageRequest(BaseModel):
     tier: str = Field("free", description="会员档位：free 免费 | pro 升级")
 
 
+class GenerateImageRequest(BaseModel):
+    prompt: str = Field(..., description="画面描述")
+    channel: str | None = None
+    tier: str = Field("free", description="会员档位：free 免费 | pro 升级")
+    style: str | None = Field(None, description="画面风格标签")
+
+
+class GenerateImageResponse(BaseModel):
+    image_url: str
+    channel: str
+    model: str
+    width: int = 1024
+    height: int = 1024
+
+
 class LlmSettingsOut(BaseModel):
     default_channel: str
     auto_order: str

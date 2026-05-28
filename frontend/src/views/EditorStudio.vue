@@ -1,6 +1,6 @@
 <template>
   <div class="h-screen flex flex-col bg-background overflow-hidden">
-    <EditorTopBar :project-title="project?.title" :project-id="projectId" />
+    <EditorTopBar :project-id="projectId" />
     <div class="flex flex-1 min-h-0">
       <EditorToolbox
         :slides="project?.slides || []"
@@ -43,10 +43,14 @@
       />
 
       <AiPanel
-        :loading="aiLoading"
+        ref="aiPanelRef"
+        :text-loading="aiLoading"
+        :image-loading="imageLoading"
         :quota-remaining="quota.remaining"
         :quota-total="quota.total"
-        @generate="onGenerate"
+        @generate-text="onGenerateText"
+        @generate-image="onGenerateImage"
+        @add-image-to-page="onAddImageToPage"
       />
     </div>
   </div>
@@ -70,6 +74,8 @@ const projectId = computed(() => route.params.id)
 const project = ref(null)
 const current = ref(null)
 const aiLoading = ref(false)
+const imageLoading = ref(false)
+const aiPanelRef = ref(null)
 const quota = ref({ remaining: 5, total: 5 })
 const previewAnimation = ref('')
 
@@ -89,6 +95,7 @@ const {
   duplicateElement,
   bringToFront,
   syncFromSlide,
+  addImageFromAi,
 } = useSlideCanvas(projectId, slideIdRef)
 
 const slideIndex = computed(() => {
@@ -259,7 +266,7 @@ function onKeyDown(e) {
 onMounted(() => window.addEventListener('keydown', onKeyDown))
 onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
 
-async function onGenerate({ prompt, channelTier, channel }) {
+async function onGenerateText({ prompt, channelTier, channel }) {
   if (!prompt?.trim() || !current.value) return
   aiLoading.value = true
   try {
@@ -273,12 +280,41 @@ async function onGenerate({ prompt, channelTier, channel }) {
     if (idx >= 0) project.value.slides[idx] = updated
     current.value = updated
     syncCanvasFromSlide()
-    const q = await api.getQuota(user.value?.user_id)
-    quota.value = { remaining: q.quota_remaining, total: q.quota_total }
+    await refreshQuota()
   } catch (e) {
     alert(e.message)
   } finally {
     aiLoading.value = false
   }
+}
+
+async function refreshQuota() {
+  const q = await api.getQuota(user.value?.user_id)
+  quota.value = { remaining: q.quota_remaining, total: q.quota_total }
+}
+
+async function onGenerateImage({ prompt, channelTier, channel, style }) {
+  if (!prompt?.trim() || !project.value) return
+  imageLoading.value = true
+  aiPanelRef.value?.setImageError('')
+  try {
+    const result = await api.generateImage(project.value.id, {
+      prompt,
+      tier: channelTier,
+      channel: channel || undefined,
+      style,
+    })
+    aiPanelRef.value?.setGeneratedImage(result)
+    await refreshQuota()
+  } catch (e) {
+    aiPanelRef.value?.setImageError(e.message)
+  } finally {
+    imageLoading.value = false
+  }
+}
+
+function onAddImageToPage({ url, width, height, fitMode }) {
+  if (!url) return
+  addImageFromAi(url, fitMode || 'width', viewport.value, { width, height })
 }
 </script>

@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-background flex flex-col">
-    <EditorTopBar project-title="AI 创建演示" />
+    <EditorTopBar />
     <div class="max-w-2xl mx-auto p-6 md:p-10 flex-1 w-full">
       <h1 class="text-2xl font-bold mb-2">AI 创建演示</h1>
       <p class="text-on-surface-variant text-sm mb-6">使用「全量生成」模板，一次性生成整套 H5 结构</p>

@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-background">
-    <AppShell page-title="套餐升级" :show-quota="false" />
+    <AppShell :show-quota="false" />
     <div class="max-w-5xl mx-auto p-6 md:p-10">
       <h1 class="text-3xl font-bold text-center mb-2">升级套餐，解锁官方高速 API</h1>
       <p class="text-center text-on-surface-variant mb-10">使用 Gemini 3 Pro 模型，享受无限次 AI 生成</p>

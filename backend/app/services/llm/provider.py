@@ -14,11 +14,11 @@ class LlmError(Exception):
 
 
 def _relay_ready() -> bool:
-    return bool(settings.llm_relay_base_url and settings.llm_relay_api_key)
+    return bool(settings.llm_relay_base_url and settings.llm_relay_api_key.strip())
 
 
 def _official_ready() -> bool:
-    return bool(settings.llm_official_api_key)
+    return bool(settings.llm_official_api_key.strip())
 
 
 def _normalize_openai_base_url(base_url: str) -> str:
@@ -55,7 +55,7 @@ async def chat_relay(messages: list[dict[str, str]], tier: str | None = "free") 
     model = resolve_text_model(tier)
     return await _chat_openai_compatible(
         settings.llm_relay_base_url,
-        settings.llm_relay_api_key,
+        settings.llm_relay_api_key.strip(),
         model,
         messages,
     )
@@ -67,7 +67,7 @@ async def chat_official(messages: list[dict[str, str]], tier: str | None = "free
     model = resolve_text_model(tier)
     return await _chat_openai_compatible(
         settings.llm_official_base_url,
-        settings.llm_official_api_key,
+        settings.llm_official_api_key.strip(),
         model,
         messages,
     )

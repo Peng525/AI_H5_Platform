@@ -174,6 +174,18 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
         })
       )
     })
+    if (slide.layout === 'image-text') {
+      const label = encodeURIComponent((slide.title || 'AI配图').slice(0, 16))
+      items.push(
+        defaultElement('image', {
+          x: 20,
+          y: 280,
+          width: 335,
+          height: 200,
+          content: `https://placehold.co/335x200/005daa/ffffff?text=${label}`,
+        })
+      )
+    }
     if (items.length) {
       elements.value = items
       saveElements()
@@ -182,12 +194,60 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
 
   watch([projectIdRef, slideIdRef], () => loadElements(), { immediate: true })
 
+  function addImageFromAi(src, fit = 'width', viewport = { width: 375, height: 812 }, meta = {}) {
+    const vp = viewport
+    const aspect = meta.height && meta.width ? meta.height / meta.width : 16 / 9
+    let x = 24
+    let y = 120
+    let width = vp.width - 48
+    let height = Math.round(width * aspect)
+    let zIndex = elements.value.reduce((m, el) => Math.max(m, el.zIndex || 0), 0) + 1
+
+    if (fit === 'fill') {
+      x = 0
+      y = 0
+      width = vp.width
+      height = vp.height
+      zIndex = 0
+    } else if (fit === 'original') {
+      width = Math.min(meta.width || 280, vp.width - 48)
+      height = Math.min(meta.height || Math.round(width * aspect), vp.height - 160)
+      x = Math.round((vp.width - width) / 2)
+      y = Math.round((vp.height - height) / 2)
+    } else if (fit === 'width') {
+      height = Math.round(width * aspect)
+      x = Math.round((vp.width - width) / 2)
+    }
+
+    const el = defaultElement('image', {
+      x,
+      y,
+      width,
+      height,
+      content: src,
+      zIndex,
+      style: {
+        background: fit === 'fill' ? 'transparent' : '#f0f0f0',
+        objectFit: fit === 'fill' ? 'cover' : 'contain',
+      },
+    })
+    if (fit === 'fill') {
+      elements.value.unshift(el)
+    } else {
+      elements.value.push(el)
+    }
+    selectedId.value = el.id
+    saveElements()
+    return el
+  }
+
   return {
     elements,
     selectedId,
     loadElements,
     saveElements,
     addElement,
+    addImageFromAi,
     updateElement,
     removeElement,
     duplicateElement,

@@ -18,10 +18,6 @@
           {{ link.label }}
         </router-link>
       </nav>
-      <span v-if="pageTitle" class="hidden md:block h-5 w-px bg-outline-variant" />
-      <span v-if="pageTitle" class="truncate text-sm font-medium text-on-surface max-w-[140px] md:max-w-xs">
-        {{ pageTitle }}
-      </span>
     </div>
 
     <div class="flex items-center gap-2 shrink-0">
@@ -120,7 +116,6 @@ import ConfirmDialog from './ConfirmDialog.vue'
 import { useAuth } from '../composables/useAuth'
 
 defineProps({
-  pageTitle: { type: String, default: '' },
   projectId: { type: [String, Number], default: null },
   showQuota: { type: Boolean, default: true },
 })

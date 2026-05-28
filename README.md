@@ -40,6 +40,8 @@
 - Word 风格文本格式工具栏
 - AI 全量生成演示结构（模板：全量生成）
 - AI 单页改写（模板：单页改写）
+- **AI 配图生成**：读取 `.env` 通道与 `LLM_IMAGE_MODEL_*`，面板预览、复制、一键添加到画布（适应宽度 / 填充页面 / 原始尺寸）
+- 表格双击单元格编辑
 - 分享链接 `/s/{slug}`
 - **管理员控制台**：访问统计、订单仪表盘、用户管理、在线编辑 `.env`
 - Docker 一键本地/云端部署
@@ -89,12 +91,23 @@ npm run dev
 
 ## 大模型档位与模型
 
-| 档位 | 文稿生成 | 配图（免费配图同档） |
-|------|----------|----------------------|
-| **免费（默认）** | `gemini-3.1-flash` | `gemini-3.1-flash` |
-| **升级** | `gemini-3-pro` | `gemini-3-pro` |
+| 档位 | 文稿生成 | AI 配图 |
+|------|----------|---------|
+| **免费（默认）** | `LLM_MODEL_FREE`（如 `gemini-3.1-flash-image-preview`） | `LLM_IMAGE_MODEL_FREE` |
+| **升级** | `LLM_MODEL_PRO`（如 `gemini-3-pro-image-preview`） | `LLM_IMAGE_MODEL_PRO` |
 
-可在 `.env` 中通过 `LLM_MODEL_FREE`、`LLM_MODEL_PRO`、`LLM_IMAGE_MODEL_*` 覆盖。创建演示时可选档位；升级会员后请求传 `tier=pro`。
+可在 `.env` 中配置 `LLM_RELAY_BASE_URL`、`LLM_RELAY_API_KEY` 及上述模型名。编辑器右侧 **「生成配图」** 会调用 `POST /api/v1/项目/{id}/生成/配图`；**「仅生成文案」** 仍走单页改写接口。免费档按次扣减配额。
+
+### 配图环境变量示例
+
+```env
+LLM_DEFAULT_CHANNEL=auto
+LLM_AUTO_ORDER=relay,official
+LLM_RELAY_BASE_URL=https://你的中转地址
+LLM_RELAY_API_KEY=sk-...
+LLM_IMAGE_MODEL_FREE=gemini-3.1-flash-image-preview
+LLM_IMAGE_MODEL_PRO=gemini-3-pro-image-preview
+```
 
 ## 大模型 auto 模式
 
@@ -106,6 +119,7 @@ npm run dev
 develop/
 ├── backend/          # FastAPI
 │   ├── app/
+│   ├── services/llm/image_provider.py  # AI 配图（images/generations + chat modalities）
 │   └── templates/    # 全量生成.yaml、单页改写.yaml
 ├── frontend/         # Vue 3 + Vite + Tailwind
 ├── Dockerfile
