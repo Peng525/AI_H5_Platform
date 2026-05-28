@@ -56,8 +56,12 @@
       </main>
     </div>
 
-    <LogoutDialog
+    <ConfirmDialog
       :open="logoutOpen"
+      title="退出登录"
+      message="确定要退出当前账号吗？退出后将返回登录页。"
+      confirm-text="退出登录"
+      cancel-text="取消"
       @cancel="logoutOpen = false"
       @confirm="onLogoutConfirm"
     />
@@ -67,7 +71,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import LogoutDialog from './LogoutDialog.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 import { useAuth } from '../composables/useAuth'
 
 defineProps({
@@ -90,8 +94,8 @@ function isActive(match) {
   return route.path.startsWith(match)
 }
 
-function onLogoutConfirm(keepRemember) {
+function onLogoutConfirm() {
   logoutOpen.value = false
-  performLogout(router, keepRemember)
+  performLogout(router)
 }
 </script>

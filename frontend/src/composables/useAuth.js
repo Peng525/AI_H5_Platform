@@ -58,14 +58,11 @@ export function useAuth() {
   }
 
   /** 退出并跳转登录页（不触发自动登录） */
-  function performLogout(router, keepRemember = true) {
-    logout({ clearRemember: !keepRemember })
+  function performLogout(router) {
+    logout()
     router.replace({
       name: 'login',
-      query: {
-        from: 'logout',
-        keep: keepRemember ? '1' : '0',
-      },
+      query: { from: 'logout' },
     })
   }
 
