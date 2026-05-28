@@ -4,10 +4,7 @@
 
     <div class="max-w-7xl mx-auto p-6 md:p-10 flex-1 w-full">
       <div class="mb-8">
-        <h1 class="text-2xl md:text-3xl font-bold mb-1">探索模板</h1>
-        <p class="text-on-surface-variant text-sm">
-          按模板类型与终端（移动端 / 网页版）筛选，选中后进入编辑器使用 AI 配图
-        </p>
+        <h1 class="text-2xl md:text-3xl font-bold">探索模板</h1>
       </div>
 
       <div class="flex flex-wrap gap-2 mb-5">
@@ -16,7 +13,7 @@
           <input
             v-model="search"
             class="w-full border border-outline-variant rounded-lg pl-10 pr-3 py-2.5 text-sm"
-            placeholder="搜索模板名称、类型、移动端、网页版…"
+            placeholder="搜索模板…"
             @keyup.enter="load"
           />
         </div>

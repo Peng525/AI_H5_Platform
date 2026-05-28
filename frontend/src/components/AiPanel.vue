@@ -2,7 +2,6 @@
   <aside class="w-[300px] border-l border-outline-variant bg-surface-container-low flex flex-col h-full min-h-0 shrink-0 overflow-hidden">
     <div class="p-4 border-b border-outline-variant shrink-0">
       <h2 class="font-semibold text-sm">AI 智能面板</h2>
-      <p class="text-xs text-on-surface-variant">智能创作 · 滚轮可上下浏览全部内容</p>
     </div>
 
     <nav class="flex border-b border-outline-variant text-sm shrink-0">
@@ -32,7 +31,7 @@
             <span class="text-sm font-medium">基础通道（免费）</span>
             <span v-if="channelTier === 'free'" class="material-symbols-outlined text-secondary text-lg">check_circle</span>
           </div>
-          <p class="text-xs text-on-surface-variant mt-1">Gemini 配图模型 · 读取 .env 配置</p>
+          <p class="text-xs text-on-surface-variant mt-1">标准画质，免费使用</p>
         </button>
         <button
           class="w-full text-left p-3 rounded-lg border border-outline-variant opacity-70"
@@ -43,7 +42,7 @@
             <span class="text-sm font-medium">官方原生通道（VIP）</span>
             <span class="material-symbols-outlined text-lg">lock</span>
           </div>
-          <p class="text-xs text-on-surface-variant mt-1">Gemini 3 Pro · 需升级</p>
+          <p class="text-xs text-on-surface-variant mt-1">高清画质，会员专享</p>
         </button>
 
         <div>
@@ -104,12 +103,12 @@
             :disabled="textLoading"
             @click="onGenerateText"
           >
-            {{ textLoading ? '文案生成中…' : '仅生成文案（标题与要点）' }}
+            {{ textLoading ? '文案生成中…' : '生成文案' }}
           </button>
           <p class="text-xs text-center text-on-surface-variant">
             剩余免费次数 {{ quotaRemaining }}/{{ quotaTotal }}
           </p>
-          <router-link to="/upgrade" class="block text-center text-xs text-primary pb-1">升级解锁 Pro 模型 →</router-link>
+          <router-link to="/upgrade" class="block text-center text-xs text-primary pb-1">升级会员 →</router-link>
         </div>
 
         <div
@@ -117,15 +116,8 @@
           ref="previewRef"
           class="rounded-lg border border-outline-variant overflow-hidden bg-white"
         >
-          <div class="px-2 py-1.5 bg-surface-container-low border-b border-outline-variant flex items-center justify-between">
-            <span class="text-[10px] text-on-surface-variant">生成结果（完整展示，可滚轮查看）</span>
-            <button
-              type="button"
-              class="text-[10px] text-primary hover:underline"
-              @click="scrollPreviewIntoView"
-            >
-              定位到预览
-            </button>
+          <div class="px-2 py-1.5 bg-surface-container-low border-b border-outline-variant">
+            <span class="text-xs text-on-surface-variant">生成结果</span>
           </div>
           <div class="p-2 bg-surface-container-low">
             <img
@@ -136,9 +128,6 @@
             />
           </div>
           <div class="p-2 space-y-1.5 border-t border-outline-variant">
-            <p class="text-[10px] text-on-surface-variant break-all" :title="generatedImage.model">
-              {{ generatedImage.channel }} · {{ generatedImage.model }}
-            </p>
             <div class="flex gap-1.5">
               <button
                 type="button"
