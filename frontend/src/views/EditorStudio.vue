@@ -104,7 +104,7 @@ async function addSlide() {
       title: '新页面',
       subtitle: '',
       bullets: [],
-      layout: 'default',
+      layout: 'bullets',
     })
     project.value.slides.push(slide)
     current.value = slide
