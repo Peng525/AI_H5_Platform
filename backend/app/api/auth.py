@@ -20,6 +20,7 @@ class AuthRequest(BaseModel):
     account: str = Field(..., description="手机号或邮箱")
     password: str = Field(..., min_length=6)
     captcha_ok: bool = False
+    remember_login: bool = Field(False, description="本机记住密码的快速登录，可跳过拼图")
 
 
 class AuthResponse(BaseModel):
@@ -59,7 +60,7 @@ def _token_for(user_id: int) -> str:
 @router.post("/注册", response_model=AuthResponse, summary="注册并登录")
 @router.post("/登录", response_model=AuthResponse, summary="登录")
 async def login_or_register(body: AuthRequest, db: AsyncSession = Depends(get_db)):
-    if not body.captcha_ok:
+    if not body.captcha_ok and not body.remember_login:
         raise HTTPException(status_code=400, detail="请完成拼图验证")
     account = body.account.strip()
     result = await db.execute(select(User).where(User.username == account))

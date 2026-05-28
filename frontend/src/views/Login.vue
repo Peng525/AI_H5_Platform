@@ -6,10 +6,15 @@
           AI
         </div>
         <h1 class="text-xl font-bold">欢迎来到 AI 智能 H5 平台</h1>
-        <p class="text-sm text-on-surface-variant mt-1">专业、高效的智能创作工具</p>
+        <p class="text-sm text-on-surface-variant mt-1">请先登录后再使用编辑器等功能</p>
       </div>
 
-      <form class="space-y-4" @submit.prevent="submit">
+      <div v-if="autoLogging" class="text-center py-8 text-on-surface-variant text-sm">
+        <span class="material-symbols-outlined animate-spin text-primary text-2xl mb-2">progress_activity</span>
+        <p>正在使用已保存的账号登录…</p>
+      </div>
+
+      <form v-else class="space-y-4" @submit.prevent="submit">
         <label class="block text-sm">
           <span class="font-medium">手机号或邮箱</span>
           <div class="relative mt-1">
@@ -35,6 +40,11 @@
               placeholder="输入密码"
             />
           </div>
+        </label>
+
+        <label class="flex items-center gap-2 text-sm cursor-pointer select-none">
+          <input v-model="rememberMe" type="checkbox" class="rounded border-outline-variant text-primary focus:ring-primary" />
+          <span>记住密码，下次自动登录</span>
         </label>
 
         <PuzzleCaptcha @verified="captchaOk = $event" />
@@ -65,20 +75,56 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api/client'
-import { useAuth } from '../composables/useAuth'
+import { useAuth, tryRememberLogin } from '../composables/useAuth'
 import PuzzleCaptcha from '../components/PuzzleCaptcha.vue'
 
 const route = useRoute()
 const router = useRouter()
-const { setSession } = useAuth()
+const { setSession, saveRememberCredentials, clearRememberCredentials, isLoggedIn, getRememberedCredentials } = useAuth()
 const account = ref('')
 const password = ref('')
+const rememberMe = ref(false)
 const captchaOk = ref(false)
 const loading = ref(false)
+const autoLogging = ref(false)
 const error = ref('')
+
+onMounted(async () => {
+  if (isLoggedIn.value) {
+    goAfterLogin(null)
+    return
+  }
+  const saved = getRememberedCredentials()
+  if (saved) {
+    account.value = saved.account
+    password.value = saved.password
+    rememberMe.value = true
+    autoLogging.value = true
+    const data = await tryRememberLogin()
+    autoLogging.value = false
+    if (data) {
+      goAfterLogin(data)
+      return
+    }
+    error.value = '已保存的登录已失效，请重新验证并登录'
+  }
+})
+
+function goAfterLogin(data) {
+  const redirect = route.query.redirect
+  if (data?.is_admin) {
+    router.replace(typeof redirect === 'string' && redirect.startsWith('/admin') ? redirect : '/admin')
+    return
+  }
+  if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('/admin')) {
+    router.replace(redirect)
+    return
+  }
+  router.replace('/templates')
+}
 
 async function submit() {
   if (!captchaOk.value) {
@@ -88,15 +134,19 @@ async function submit() {
   loading.value = true
   error.value = ''
   try {
-    const body = { account: account.value, password: password.value, captcha_ok: captchaOk.value }
-    const data = await api.login(body).catch(() => api.register(body))
-    setSession(data)
-    const redirect = route.query.redirect
-    if (data.is_admin) {
-      router.push(typeof redirect === 'string' && redirect.startsWith('/admin') ? redirect : '/admin')
-    } else {
-      router.push(typeof redirect === 'string' && !redirect.startsWith('/admin') ? redirect : '/templates')
+    const body = {
+      account: account.value,
+      password: password.value,
+      captcha_ok: captchaOk.value,
     }
+    const data = await api.login(body).catch(() => api.register(body))
+    setSession(data, rememberMe.value)
+    if (rememberMe.value) {
+      saveRememberCredentials(account.value, password.value)
+    } else {
+      clearRememberCredentials()
+    }
+    goAfterLogin(data)
   } catch (e) {
     error.value = e.message
   } finally {
@@ -104,3 +154,13 @@ async function submit() {
   }
 }
 </script>
+
+<style scoped>
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.animate-spin {
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+</style>

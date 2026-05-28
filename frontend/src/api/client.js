@@ -13,6 +13,13 @@ async function request(path, options = {}) {
     ...options,
   })
   const data = await res.json().catch(() => ({}))
+  if (res.status === 401 && !path.includes('/认证/')) {
+    const { logout } = useAuth()
+    logout()
+    const redirect = encodeURIComponent(window.location.pathname + window.location.search)
+    window.location.replace(`/login?redirect=${redirect}`)
+    throw new Error('登录已过期，请重新登录')
+  }
   if (!res.ok) {
     let detail = data.detail ?? data.message
     if (Array.isArray(detail)) {
