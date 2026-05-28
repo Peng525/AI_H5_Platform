@@ -51,7 +51,14 @@
             中转 + 免费档
           </button>
         </div>
-        <p v-if="testMsg" class="mt-3 text-sm" :class="testOk ? 'text-secondary' : 'text-red-600'">{{ testMsg }}</p>
+        <div
+          v-if="testMsg"
+          class="mt-4 px-4 py-3 rounded-lg text-sm flex items-start gap-2"
+          :class="testOk ? 'bg-secondary/10 text-secondary border border-secondary/20' : 'bg-red-50 text-red-700 border border-red-200'"
+        >
+          <span class="material-symbols-outlined text-[18px] shrink-0">{{ testOk ? 'check_circle' : 'error' }}</span>
+          <span>{{ testMsg }}</span>
+        </div>
       </section>
 
       <section class="bg-white rounded-xl border border-outline-variant p-6 shadow-card">

@@ -31,7 +31,8 @@
 
       <!-- 中间模板区 -->
       <main class="flex-1 overflow-y-auto p-6">
-        <h1 class="text-2xl font-bold mb-4">探索模板</h1>
+        <h1 class="text-2xl md:text-3xl font-bold mb-1">探索模板</h1>
+        <p class="text-on-surface-variant text-sm mb-6">从精选模板快速开始，或使用 AI 定制专属 H5</p>
         <div class="flex flex-wrap gap-2 mb-4">
           <input
             v-model="search"
@@ -57,13 +58,15 @@
           <article
             v-for="t in templates"
             :key="t.id"
-            class="bg-white rounded-xl border border-outline-variant overflow-hidden shadow-card hover:shadow-lg transition"
+            class="bg-white rounded-xl border border-outline-variant overflow-hidden shadow-card hover:shadow-lg transition group"
           >
-            <div class="h-36 bg-gradient-to-br" :class="t.cover_gradient" />
+            <div class="h-36 bg-gradient-to-br overflow-hidden" :class="t.cover_gradient">
+              <div class="w-full h-full transition-transform duration-500 group-hover:scale-105" :class="'bg-gradient-to-br ' + t.cover_gradient" />
+            </div>
             <div class="p-4">
               <div class="flex items-start justify-between gap-2">
-                <h3 class="font-semibold">{{ t.title }}</h3>
-                <span v-if="t.premium" class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded">Premium</span>
+                <h3 class="font-semibold group-hover:text-primary transition-colors">{{ t.title }}</h3>
+                <span v-if="t.premium" class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full shrink-0">高级</span>
               </div>
               <p class="text-sm text-on-surface-variant mt-2 line-clamp-2">{{ t.description }}</p>
               <p class="text-xs text-on-surface-variant mt-2">{{ t.pages }} 页</p>

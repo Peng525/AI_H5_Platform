@@ -6,7 +6,31 @@
   width: 6px;
   height: 6px;
 }
+::-webkit-scrollbar-track {
+  background: transparent;
+}
 ::-webkit-scrollbar-thumb {
   background: #dcd9d9;
   border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c0c7d6;
+}
+
+::selection {
+  background: rgba(0, 93, 170, 0.2);
+  color: #1b1b1c;
+}
+
+body {
+  @apply bg-background text-on-background antialiased;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-spin {
+  animation: spin 0.8s linear infinite;
 }
