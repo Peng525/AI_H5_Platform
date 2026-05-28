@@ -11,7 +11,8 @@ from app.api import projects, settings
 from app.config import settings as app_settings
 from app.database import init_db
 
-STATIC_DIR = Path(__file__).resolve().parents[2] / "static"
+# app/main.py -> parents[1] = backend 目录，静态资源在 backend/static
+STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 
 
 @asynccontextmanager
