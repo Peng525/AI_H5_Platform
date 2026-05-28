@@ -11,21 +11,23 @@
 
       <div v-if="autoLogging" class="text-center py-8 text-on-surface-variant text-sm">
         <span class="material-symbols-outlined animate-spin text-primary text-2xl mb-2">progress_activity</span>
-        <p>正在使用已保存的账号登录…</p>
+        <p>正在恢复登录状态…</p>
       </div>
 
       <form v-else class="space-y-4" @submit.prevent="submit">
         <label class="block text-sm">
-          <span class="font-medium">手机号或邮箱</span>
+          <span class="font-medium">邮箱</span>
           <div class="relative mt-1">
-            <span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-lg">person</span>
+            <span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-lg">mail</span>
             <input
               v-model="account"
+              type="email"
               required
               class="w-full pl-10 pr-3 py-2.5 border border-outline-variant rounded-lg"
-              placeholder="输入您的账号"
+              placeholder="name@example.com"
             />
           </div>
+          <p class="text-xs text-on-surface-variant mt-1">请使用邮箱注册，暂不支持手机号</p>
         </label>
         <label class="block text-sm">
           <span class="font-medium">密码</span>
@@ -47,23 +49,18 @@
           <span>记住密码，下次自动登录</span>
         </label>
 
-        <PuzzleCaptcha @verified="captchaOk = $event" />
+        <TencentCaptcha @ticket="onCaptchaTicket" @verified="captchaOk = $event" />
 
         <p v-if="error" class="text-red-600 text-sm">{{ error }}</p>
 
-        <div class="flex gap-2">
-          <button type="button" class="flex-1 py-2.5 border border-outline-variant rounded-lg text-sm text-on-surface-variant" disabled>
-            获取验证码
-          </button>
-          <button
-            type="submit"
-            :disabled="loading || !captchaOk"
-            class="flex-[2] py-2.5 bg-primary text-on-primary rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-1"
-          >
-            注册 / 登录
-            <span class="material-symbols-outlined text-lg">login</span>
-          </button>
-        </div>
+        <button
+          type="submit"
+          :disabled="loading || !captchaOk"
+          class="w-full py-2.5 bg-primary text-on-primary rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-1"
+        >
+          注册 / 登录
+          <span class="material-symbols-outlined text-lg">login</span>
+        </button>
       </form>
 
       <p class="text-xs text-center text-on-surface-variant mt-6">
@@ -78,25 +75,23 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api/client'
-import { useAuth, tryRememberLogin } from '../composables/useAuth'
-import PuzzleCaptcha from '../components/PuzzleCaptcha.vue'
+import { useAuth } from '../composables/useAuth'
+import TencentCaptcha from '../components/TencentCaptcha.vue'
 
 const route = useRoute()
 const router = useRouter()
-const { setSession, saveRememberCredentials, clearRememberCredentials, isLoggedIn, getRememberedCredentials } = useAuth()
+const { setSession, saveRememberCredentials, clearRememberCredentials, isLoggedIn, getRememberedCredentials, refreshProfile } = useAuth()
 const account = ref('')
 const password = ref('')
 const rememberMe = ref(false)
 const captchaOk = ref(false)
+const captchaTicket = ref({ ticket: '', randstr: '' })
 const loading = ref(false)
 const autoLogging = ref(false)
 const error = ref('')
-const fromLogout = ref(false)
 
 onMounted(async () => {
-  fromLogout.value = route.query.from === 'logout'
-
-  if (fromLogout.value) {
+  if (route.query.from === 'logout') {
     const saved = getRememberedCredentials()
     if (saved) {
       account.value = saved.account
@@ -110,25 +105,31 @@ onMounted(async () => {
     goAfterLogin(null)
     return
   }
+
   const saved = getRememberedCredentials()
   if (saved) {
     account.value = saved.account
     password.value = saved.password
     rememberMe.value = true
     autoLogging.value = true
-    const data = await tryRememberLogin()
+    const me = await refreshProfile()
     autoLogging.value = false
-    if (data) {
-      goAfterLogin(data)
+    if (me) {
+      goAfterLogin(useAuth().user.value)
       return
     }
-    error.value = '已保存的登录已失效，请重新验证并登录'
+    error.value = '登录已过期，请重新完成验证并登录'
   }
 })
 
+function onCaptchaTicket(payload) {
+  captchaTicket.value = payload
+}
+
 function goAfterLogin(data) {
   const redirect = route.query.redirect
-  if (data?.is_admin) {
+  const user = data || useAuth().user.value
+  if (user?.is_admin) {
     router.replace(typeof redirect === 'string' && redirect.startsWith('/admin') ? redirect : '/admin')
     return
   }
@@ -148,14 +149,15 @@ async function submit() {
   error.value = ''
   try {
     const body = {
-      account: account.value,
+      account: account.value.trim(),
       password: password.value,
-      captcha_ok: captchaOk.value,
+      captcha_ticket: captchaTicket.value.ticket,
+      captcha_randstr: captchaTicket.value.randstr,
     }
     const data = await api.login(body).catch(() => api.register(body))
     setSession(data, rememberMe.value)
     if (rememberMe.value) {
-      saveRememberCredentials(account.value, password.value)
+      saveRememberCredentials(account.value.trim(), password.value)
     } else {
       clearRememberCredentials()
     }

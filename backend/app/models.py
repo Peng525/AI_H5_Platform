@@ -22,6 +22,19 @@ class User(Base):
     orders: Mapped[list["Order"]] = relationship(back_populates="user")
 
 
+class SmsCode(Base):
+    __tablename__ = "sms_codes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    phone: Mapped[str] = mapped_column(String(16), index=True)
+    code_hash: Mapped[str] = mapped_column(String(255))
+    scene: Mapped[str] = mapped_column(String(32), default="login")
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    client_ip: Mapped[str] = mapped_column(String(64), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Order(Base):
     __tablename__ = "orders"
 
@@ -32,6 +45,12 @@ class Order(Base):
     amount: Mapped[float] = mapped_column(Numeric(10, 2))
     payment_channel: Mapped[str] = mapped_column(String(32), default="demo")
     status: Mapped[str] = mapped_column(String(16), default="paid")
+    out_trade_no: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, index=True)
+    transaction_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    prepay_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    code_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    notify_raw: Mapped[str | None] = mapped_column(Text, nullable=True)
     user_remark: Mapped[str] = mapped_column(String(255), default="")
     admin_remark: Mapped[str] = mapped_column(String(255), default="")
     claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

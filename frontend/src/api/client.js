@@ -32,6 +32,9 @@ async function request(path, options = {}) {
 
 export const api = {
   health: () => request('/api/v1/健康'),
+  getCaptchaConfig: () => request('/api/v1/认证/验证码/配置'),
+  sendSmsCode: (body) =>
+    request('/api/v1/认证/验证码/发送', { method: 'POST', body: JSON.stringify(body) }),
   login: (body) => request('/api/v1/认证/登录', { method: 'POST', body: JSON.stringify(body) }),
   register: (body) => request('/api/v1/认证/注册', { method: 'POST', body: JSON.stringify(body) }),
   getQuota: () => request('/api/v1/认证/配额'),

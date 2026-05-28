@@ -1,5 +1,9 @@
 """访问统计与订单 API。"""
-from fastapi import APIRouter, Depends, HTTPException
+import json
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,13 +16,16 @@ from app.services.order_service import (
     LocalPaymentRequired,
     OrderServiceError,
     claim_order_paid,
+    complete_wechat_native_payment,
     create_order,
     get_user_order,
     list_user_orders,
     order_snapshot,
 )
+from app.services.payment.wechat_native import decrypt_notify_resource, verify_notify_signature
 from app.services.visits import record_visit
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["统计与订单"])
 
 
@@ -37,6 +44,7 @@ class OrderCreateResponse(BaseModel):
     quota_total: int
     message: str
     qr_code_url: str | None = None
+    payment_channel: str = ""
 
 
 @router.get("/支付/微信收款码", summary="微信个人收款码地址")
@@ -59,13 +67,14 @@ async def api_create_order(
 ):
     channel = body.payment_channel
     if channel == "wechat":
-        channel = "wechat_qr"
+        channel = "wechat_native"
     try:
         order, message, qr_url = await create_order(db, user, body.plan_id, channel)
         await db.commit()
         await db.refresh(user)
     except LocalPaymentRequired as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        status_code = 503 if channel in ("wechat_native", "wechat") else 400
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
     except OrderServiceError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -80,7 +89,48 @@ async def api_create_order(
         quota_total=int(snap["quota_total"]),
         message=message,
         qr_code_url=qr_url,
+        payment_channel=order.payment_channel,
     )
+
+
+@router.post("/支付/回调/wechat", summary="微信支付异步通知")
+async def wechat_pay_notify(request: Request, db: AsyncSession = Depends(get_db)):
+    body_bytes = await request.body()
+    timestamp = request.headers.get("Wechatpay-Timestamp", "")
+    nonce = request.headers.get("Wechatpay-Nonce", "")
+    signature = request.headers.get("Wechatpay-Signature", "")
+    serial = request.headers.get("Wechatpay-Serial", "")
+
+    if not verify_notify_signature(timestamp, nonce, body_bytes, signature, serial):
+        logger.warning("WeChat notify signature rejected")
+        return JSONResponse({"code": "FAIL", "message": "签名失败"}, status_code=401)
+
+    try:
+        envelope = json.loads(body_bytes.decode("utf-8"))
+        resource = envelope.get("resource") or {}
+        plain = decrypt_notify_resource(resource)
+    except Exception:
+        logger.exception("WeChat notify decrypt failed")
+        return JSONResponse({"code": "FAIL", "message": "解密失败"}, status_code=400)
+
+    trade_state = plain.get("trade_state")
+    out_trade_no = plain.get("out_trade_no", "")
+    transaction_id = plain.get("transaction_id", "")
+
+    if trade_state == "SUCCESS" and out_trade_no:
+        try:
+            await complete_wechat_native_payment(
+                db,
+                out_trade_no,
+                transaction_id,
+                body_bytes.decode("utf-8", errors="replace"),
+            )
+            await db.commit()
+        except OrderServiceError:
+            await db.rollback()
+            logger.exception("WeChat notify order update failed")
+
+    return JSONResponse({"code": "SUCCESS", "message": "成功"})
 
 
 @router.post("/订单/{order_id}/申报已付", response_model=OrderOut, summary="用户申报已完成微信转账")

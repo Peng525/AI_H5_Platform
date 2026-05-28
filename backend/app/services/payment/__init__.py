@@ -1,10 +1,12 @@
 from app.services.payment.demo import DemoPaymentProvider
+from app.services.payment.wechat_native import WechatNativePaymentProvider
 from app.services.payment.wechat_qr import WechatQrPaymentProvider
 
 PROVIDERS = {
     "demo": DemoPaymentProvider(),
     "wechat_qr": WechatQrPaymentProvider(),
-    "wechat": WechatQrPaymentProvider(),
+    "wechat": WechatNativePaymentProvider(),
+    "wechat_native": WechatNativePaymentProvider(),
 }
 
 

@@ -23,7 +23,7 @@ from app.services.order_service import (
     OrderServiceError,
     confirm_order_payment,
     get_order_by_id,
-    list_claimed_orders,
+    list_pending_wechat_orders,
     reject_order_payment,
 )
 from app.services.quota import quota_remaining, quota_total
@@ -143,13 +143,19 @@ async def admin_dashboard(
     pending_result = await db.execute(
         select(Order)
         .options(selectinload(Order.user))
-        .where(Order.status == "claimed")
-        .order_by(Order.claimed_at.desc())
+        .where(
+            Order.status.in_(("pending", "claimed")),
+            Order.payment_channel.in_(("wechat", "wechat_qr")),
+        )
+        .order_by(Order.created_at.desc())
         .limit(10)
     )
     pending_orders = [_order_out(o) for o in pending_result.scalars().all()]
     orders_pending = await db.scalar(
-        select(func.count(Order.id)).where(Order.status == "claimed")
+        select(func.count(Order.id)).where(
+            Order.status.in_(("pending", "claimed")),
+            Order.payment_channel.in_(("wechat", "wechat_qr")),
+        )
     )
 
     return AdminDashboardOut(

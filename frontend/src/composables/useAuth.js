@@ -171,24 +171,9 @@ export async function initAuth() {
   authReady.value = true
 }
 
-/** 记住密码时静默登录（无需拼图） */
+/** 记住密码时仅尝试用已存 JWT 恢复会话（不再跳过拼图） */
 export async function tryRememberLogin() {
-  const { getRememberedCredentials, setSession, refreshProfile } = useAuth()
-  const saved = getRememberedCredentials()
-  if (!saved) return null
-
-  const res = await fetch('/api/v1/认证/登录', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      account: saved.account,
-      password: saved.password,
-      remember_login: true,
-    }),
-  })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) return null
-  setSession(data, true)
-  await refreshProfile()
-  return data
+  const { refreshProfile, user } = useAuth()
+  const me = await refreshProfile()
+  return me ? user.value : null
 }

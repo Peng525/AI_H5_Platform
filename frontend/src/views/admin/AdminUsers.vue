@@ -17,6 +17,10 @@
       </button>
     </div>
 
+    <p class="text-xs text-on-surface-variant mb-4">
+      收款后也可在此直接将用户改为 Pro 会员，无需走订单（适合补发或赠送）。
+    </p>
+
     <div v-if="loading" class="text-on-surface-variant">加载中…</div>
     <div v-else class="bg-white rounded-xl border border-outline-variant shadow-card overflow-hidden">
       <div class="overflow-x-auto">
@@ -62,9 +66,12 @@
         <h3 class="font-bold text-lg mb-4">{{ editing ? '编辑用户' : '创建账号' }}</h3>
         <form class="space-y-4" @submit.prevent="submitForm">
           <label v-if="!editing" class="block text-sm">
-            <span class="text-on-surface-variant text-xs">用户名（邮箱/手机号）</span>
-            <input v-model="form.username" required class="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2" />
+            <span class="text-on-surface-variant text-xs">邮箱</span>
+            <input v-model="form.username" type="email" required class="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2" />
           </label>
+          <p v-if="editing" class="text-xs text-on-surface-variant bg-surface-container-low rounded-lg p-3">
+            收款后也可在此直接改为 Pro，无需走订单确认。
+          </p>
           <label class="block text-sm">
             <span class="text-on-surface-variant text-xs">{{ editing ? '新密码（留空不修改）' : '密码' }}</span>
             <input v-model="form.password" type="password" :required="!editing" minlength="6" class="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2" />

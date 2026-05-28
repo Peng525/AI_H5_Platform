@@ -11,4 +11,5 @@ services:
     volumes:
       - ./data:/app/backend/data
       - ./.env:/app/.env
+      - ./backend/pay_assets:/app/backend/pay_assets
     restart: unless-stopped

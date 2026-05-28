@@ -57,12 +57,15 @@
 
         <section class="lg:col-span-2 bg-white rounded-xl border border-outline-variant p-5 shadow-card">
           <h2 class="font-semibold text-sm mb-3">
-            待确认收款
+            待支付订单（微信）
             <span v-if="data.orders_pending_confirm" class="ml-2 text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
               {{ data.orders_pending_confirm }} 笔
             </span>
           </h2>
-          <p class="text-xs text-on-surface-variant mb-3">用户申报已付后，请对照微信到账通知再确认</p>
+          <p class="text-xs text-on-surface-variant mb-3">
+            用户扫码下单后，请对照微信到账通知核对订单号、用户 ID 与金额后确认收款并开通套餐。
+            也可在 <router-link to="/admin/users" class="text-primary hover:underline">用户管理</router-link> 直接改为 Pro（补发/赠送）。
+          </p>
           <div v-if="!data.pending_payment_orders?.length" class="text-sm text-on-surface-variant py-6 text-center">
             暂无待确认订单
           </div>
@@ -73,8 +76,8 @@
               class="flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg bg-surface-container-low text-sm"
             >
               <div>
-                <p class="font-medium">#{{ o.id }} · {{ o.username }} · ¥{{ o.amount.toFixed(2) }}</p>
-                <p class="text-xs text-on-surface-variant mt-0.5">{{ o.plan_name }} · 备注：{{ o.user_remark || '无' }}</p>
+                <p class="font-medium">#{{ o.id }} · 用户 {{ o.user_id }} · {{ o.username }} · ¥{{ o.amount.toFixed(2) }}</p>
+                <p class="text-xs text-on-surface-variant mt-0.5">{{ o.plan_name }} · {{ o.payment_channel }}</p>
               </div>
               <div class="flex gap-2">
                 <button

@@ -1,6 +1,7 @@
 """认证与管理员鉴权。"""
 from fastapi import Depends, Header, HTTPException
 from jose import JWTError, jwt
+from jose.exceptions import ExpiredSignatureError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -23,6 +24,8 @@ async def get_current_user(
     try:
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         user_id = int(payload["sub"])
+    except ExpiredSignatureError as exc:
+        raise HTTPException(status_code=401, detail="登录已过期，请重新登录") from exc
     except (JWTError, ValueError, TypeError) as exc:
         raise HTTPException(status_code=401, detail="登录已失效") from exc
 

@@ -12,8 +12,20 @@ from app.config import settings as app_settings
 from app.database import init_db
 from app.seed import seed_demo_user
 
-# app/main.py -> parents[1] = backend 目录，静态资源在 backend/static
+# app/main.py -> parents[1] = backend 目录
 STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
+# 个人收款码放此目录，不会被前端 build 清空（Docker 可挂载）
+PAY_ASSETS_DIR = Path(__file__).resolve().parents[1] / "pay_assets"
+
+
+def _wechat_qr_image_path() -> Path | None:
+    for candidate in (
+        PAY_ASSETS_DIR / "wechat-pay-qr.png",
+        STATIC_DIR / "wechat-pay-qr.png",
+    ):
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 @asynccontextmanager
@@ -56,6 +68,15 @@ if STATIC_DIR.exists():
     assets_dir = STATIC_DIR / "assets"
     if assets_dir.exists():
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.get("/static/wechat-pay-qr.png", include_in_schema=False)
+    async def wechat_pay_qr_image():
+        from fastapi import HTTPException
+
+        path = _wechat_qr_image_path()
+        if not path:
+            raise HTTPException(status_code=404, detail="收款码图片未配置")
+        return FileResponse(path, media_type="image/png")
 
     @app.get("/", include_in_schema=False)
     async def spa_index():

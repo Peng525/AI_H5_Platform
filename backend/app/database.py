@@ -57,6 +57,31 @@ async def _migrate_sqlite_columns(conn) -> None:
             sync_conn.execute(text("ALTER TABLE orders ADD COLUMN claimed_at DATETIME"))
         if "confirmed_at" not in order_names:
             sync_conn.execute(text("ALTER TABLE orders ADD COLUMN confirmed_at DATETIME"))
+        for col, ddl in (
+            ("out_trade_no", "ALTER TABLE orders ADD COLUMN out_trade_no VARCHAR(64)"),
+            ("transaction_id", "ALTER TABLE orders ADD COLUMN transaction_id VARCHAR(64)"),
+            ("prepay_id", "ALTER TABLE orders ADD COLUMN prepay_id VARCHAR(64)"),
+            ("code_url", "ALTER TABLE orders ADD COLUMN code_url TEXT"),
+            ("paid_at", "ALTER TABLE orders ADD COLUMN paid_at DATETIME"),
+            ("notify_raw", "ALTER TABLE orders ADD COLUMN notify_raw TEXT"),
+        ):
+            if col not in order_names:
+                sync_conn.execute(text(ddl))
+                order_names.add(col)
+        sync_conn.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS sms_codes ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                "phone VARCHAR(16) NOT NULL, "
+                "code_hash VARCHAR(255) NOT NULL, "
+                "scene VARCHAR(32) DEFAULT 'login', "
+                "expires_at DATETIME NOT NULL, "
+                "used_at DATETIME, "
+                "client_ip VARCHAR(64) DEFAULT '', "
+                "created_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
+            )
+        )
+        sync_conn.execute(text("CREATE INDEX IF NOT EXISTS ix_sms_codes_phone ON sms_codes (phone)"))
         orphan = sync_conn.execute(text("SELECT id FROM projects WHERE user_id IS NULL")).fetchall()
         if orphan:
             demo = sync_conn.execute(

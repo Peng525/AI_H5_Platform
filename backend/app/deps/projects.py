@@ -20,7 +20,9 @@ async def get_owned_project(
     project = result.scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="项目不存在")
-    if project.user_id is not None and project.user_id != user.id:
+    if project.user_id is None:
+        raise HTTPException(status_code=403, detail="无权访问该项目")
+    if project.user_id != user.id:
         raise HTTPException(status_code=403, detail="无权访问该项目")
     return project
 

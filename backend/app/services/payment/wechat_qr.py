@@ -11,6 +11,6 @@ class WechatQrPaymentProvider(PaymentProvider):
         qr_url = settings.wechat_personal_qr_url.strip() or "/static/wechat-pay-qr.png"
         return PaymentResult(
             status="pending",
-            message=f"请微信扫码支付 ¥{float(order.amount):.2f}，支付后点击「我已支付」",
+            message=f"请使用微信扫码支付 ¥{float(order.amount):.2f}，页面会显示订单号供核对",
             qr_code_url=qr_url,
         )

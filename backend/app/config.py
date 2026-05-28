@@ -31,7 +31,33 @@ class Settings(BaseSettings):
 
     jwt_secret: str = "dev-change-me-in-production"
     jwt_algorithm: str = "HS256"
+    jwt_expire_hours: int = 168
     free_quota_per_user: int = 5
+
+    # 人机验证：mock（仅开发）| tencent
+    captcha_provider: str = "mock"
+    tencent_captcha_app_id: str = ""
+    tencent_captcha_app_secret_key: str = ""
+    tencent_secret_id: str = ""
+    tencent_secret_key: str = ""
+
+    # 短信：mock（仅开发）| tencent
+    sms_provider: str = "mock"
+    tencent_sms_sdk_app_id: str = ""
+    tencent_sms_sign_name: str = ""
+    tencent_sms_template_id: str = ""
+    tencent_sms_region: str = "ap-guangzhou"
+    sms_code_ttl_minutes: int = 5
+    sms_send_cooldown_seconds: int = 60
+    sms_daily_limit_per_phone: int = 10
+
+    # 微信支付 Native（API v3）
+    wechat_pay_mch_id: str = ""
+    wechat_pay_app_id: str = ""
+    wechat_pay_api_v3_key: str = ""
+    wechat_pay_serial_no: str = ""
+    wechat_pay_private_key_path: str = "./certs/apiclient_key.pem"
+    wechat_pay_notify_url: str = ""
 
     # 逗号分隔的管理员账号（与 users.username 匹配）
     admin_usernames: str = "admin@ai-h5.com"

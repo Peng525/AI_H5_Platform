@@ -14,7 +14,7 @@
             p.recommended ? 'border-primary border-2 scale-[1.02]' : 'border-outline-variant',
             selected?.id === p.id ? 'ring-2 ring-primary/30' : '',
           ]"
-          @click="selected = p"
+          @click="selectPlan(p)"
         >
           <span v-if="p.recommended" class="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-on-primary text-xs px-3 py-1 rounded-full font-medium">
             推荐
@@ -25,74 +25,49 @@
           <button
             class="mt-6 w-full py-2.5 rounded-lg text-sm font-medium transition"
             :class="p.recommended ? 'bg-primary text-on-primary' : 'border border-outline-variant hover:bg-surface-container-low'"
-            @click.stop="selected = p"
+            @click.stop="selectPlan(p)"
           >
             选择套餐
           </button>
         </article>
       </div>
 
-      <div v-if="selected" class="mt-12 bg-white rounded-2xl border border-outline-variant p-8 shadow-card">
+      <div v-if="selected" class="mt-12 bg-white rounded-2xl border border-outline-variant p-8 shadow-card max-w-md mx-auto">
         <p class="font-medium text-center mb-2">已选择「{{ selected.name }}」</p>
         <p class="text-center text-2xl font-bold text-primary mb-6">应付 ¥{{ selected.price }}</p>
 
-        <div class="flex flex-col md:flex-row justify-center items-start gap-10">
-          <div class="text-center mx-auto md:mx-0">
-            <button
-              class="px-8 py-3 rounded-lg text-white font-medium flex items-center gap-2 mx-auto disabled:opacity-50"
-              style="background: #07C160"
-              :disabled="paying"
-              @click="startWechatPay"
-            >
-              <span class="material-symbols-outlined">qr_code_2</span>
-              微信扫码支付
-            </button>
-            <div v-if="activeOrder" class="mt-4 space-y-3">
-              <div class="w-44 h-44 mx-auto border rounded-xl overflow-hidden bg-white p-2">
-                <img :src="activeOrder.qr_code_url" alt="微信收款码" class="w-full h-full object-contain" @error="onQrError" />
-              </div>
-              <p class="text-xs text-on-surface-variant max-w-[200px] mx-auto">
-                订单号 #{{ activeOrder.order_id }} · 请支付 <strong class="text-primary">¥{{ activeOrder.amount.toFixed(2) }}</strong>
-              </p>
-              <p v-if="activeOrder.status === 'pending'" class="text-xs text-amber-700">扫码转账后，点击下方「我已支付」</p>
-              <p v-else-if="activeOrder.status === 'claimed'" class="text-xs text-secondary">已提交，等待管理员确认（请留意微信到账提醒）</p>
-              <p v-else-if="activeOrder.status === 'paid'" class="text-xs text-secondary">支付已确认，套餐已开通</p>
-              <label v-if="activeOrder.status === 'pending'" class="block text-left text-xs max-w-[220px] mx-auto">
-                <span class="font-medium">付款备注（选填）</span>
-                <input v-model="payRemark" class="mt-1 w-full border rounded-lg px-2 py-1.5" placeholder="如微信昵称后四位" />
-              </label>
-              <button
-                v-if="activeOrder.status === 'pending'"
-                type="button"
-                class="w-full max-w-[220px] py-2 rounded-lg bg-primary text-on-primary text-sm font-medium"
-                :disabled="claiming"
-                @click="claimPaid"
-              >
-                我已支付
-              </button>
-            </div>
-          </div>
-
-          <div class="flex-1 max-w-sm text-sm text-on-surface-variant space-y-2 border-t md:border-t-0 md:border-l border-outline-variant pt-6 md:pt-0 md:pl-8">
-            <p class="font-medium text-on-surface">如何确保收到款？</p>
-            <ol class="list-decimal list-inside space-y-1.5">
-              <li>用户扫码支付后点击「我已支付」</li>
-              <li>您的微信会收到到账通知</li>
-              <li>管理员在控制台核对金额与订单号后「确认收款」</li>
-              <li>确认后用户套餐自动开通</li>
-            </ol>
-            <p class="text-xs pt-2">管理员收到微信提醒后，请同时检查「中转 API 额度」是否需充值。</p>
-          </div>
-        </div>
-
-        <div class="mt-8 text-center border-t border-outline-variant pt-6">
+        <div class="text-center">
           <button
-            class="px-6 py-2.5 rounded-lg border-2 border-dashed border-outline-variant text-on-surface-variant text-sm hover:bg-surface-container-low disabled:opacity-50"
+            v-if="!activeOrder || activeOrder.status === 'rejected'"
+            class="px-8 py-3 rounded-lg text-white font-medium inline-flex items-center gap-2 disabled:opacity-50"
+            style="background: #07C160"
             :disabled="paying"
-            @click="pay('demo')"
+            @click="startWechatPay"
           >
-            演示：跳过支付（开发测试）
+            <span class="material-symbols-outlined">qr_code_2</span>
+            微信扫码支付
           </button>
+
+          <div v-if="activeOrder" class="mt-4 space-y-3">
+            <div v-if="showQr" class="w-48 h-48 mx-auto border rounded-xl overflow-hidden bg-white p-2 flex items-center justify-center">
+              <img v-if="qrImageSrc" :src="qrImageSrc" alt="微信收款码" class="w-full h-full object-contain" @error="onQrError" />
+            </div>
+            <p v-if="showQr" class="text-sm text-on-surface-variant">
+              订单号 <strong class="text-on-surface font-mono">#{{ activeOrder.order_id }}</strong>
+            </p>
+            <p v-if="showQr" class="text-lg font-bold text-primary">
+              请支付 ¥{{ Number(activeOrder.amount).toFixed(2) }}
+            </p>
+            <p v-if="showQr" class="text-xs text-on-surface-variant">
+              请使用微信扫码转账对应金额，确认收款后套餐将自动开通
+            </p>
+            <p v-else-if="activeOrder.status === 'paid'" class="text-sm text-secondary font-medium">
+              支付已确认，套餐已开通
+            </p>
+            <p v-else-if="activeOrder.status === 'rejected'" class="text-sm text-red-600">
+              订单未通过，请重新发起支付
+            </p>
+          </div>
         </div>
       </div>
 
@@ -102,7 +77,8 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import QRCode from 'qrcode'
 import { api } from '../api/client'
 import { useAuth } from '../composables/useAuth'
 import AppShell from '../components/AppShell.vue'
@@ -113,9 +89,40 @@ const selected = ref(null)
 const payMsg = ref('')
 const payOk = ref(false)
 const paying = ref(false)
-const claiming = ref(false)
 const activeOrder = ref(null)
-const payRemark = ref('')
+const qrImageSrc = ref('')
+let pollTimer = null
+
+const showQr = computed(() => {
+  const s = activeOrder.value?.status
+  return s === 'pending' || s === 'claimed'
+})
+
+function selectPlan(plan) {
+  if (selected.value?.id !== plan.id) {
+    activeOrder.value = null
+    qrImageSrc.value = ''
+    payMsg.value = ''
+    stopPoll()
+  }
+  selected.value = plan
+}
+
+async function renderQr(order) {
+  qrImageSrc.value = ''
+  if (!order?.qr_code_url) return
+  const url = order.qr_code_url
+  if (url.startsWith('weixin://')) {
+    try {
+      qrImageSrc.value = await QRCode.toDataURL(url, { width: 192, margin: 1 })
+    } catch {
+      payMsg.value = '二维码生成失败'
+    }
+    return
+  }
+  const bust = url.includes('?') ? '&' : '?'
+  qrImageSrc.value = `${url}${bust}t=${Date.now()}`
+}
 
 onMounted(async () => {
   const res = await api.getPlans()
@@ -123,8 +130,51 @@ onMounted(async () => {
   selected.value = res.items.find((p) => p.recommended) || res.items[0]
 })
 
+onUnmounted(() => {
+  stopPoll()
+})
+
+watch(activeOrder, (order) => {
+  if (order) renderQr(order)
+  if (order?.status === 'pending' || order?.status === 'claimed') {
+    startPoll()
+  } else {
+    stopPoll()
+  }
+})
+
+function stopPoll() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+function startPoll() {
+  stopPoll()
+  pollTimer = setInterval(refreshOrderStatus, 5000)
+}
+
+async function refreshOrderStatus() {
+  if (!activeOrder.value?.order_id) return
+  try {
+    const order = await api.getOrder(activeOrder.value.order_id)
+    activeOrder.value = { ...activeOrder.value, status: order.status, amount: order.amount }
+    if (order.status === 'paid') {
+      payOk.value = true
+      payMsg.value = '套餐已开通，感谢支持！'
+      const me = await api.getMe()
+      updateUser(me)
+      stopPoll()
+    }
+  } catch {
+    /* 忽略轮询失败 */
+  }
+}
+
 function onQrError() {
-  payMsg.value = '收款码图片加载失败，请将微信收款码放到 backend/static/wechat-pay-qr.png'
+  payMsg.value =
+    '收款码加载失败：请将 wechat-pay-qr.png 放到 backend/pay_assets/ 目录，然后重启服务（Docker 需重建或挂载该目录）'
   payOk.value = false
 }
 
@@ -136,53 +186,9 @@ async function startWechatPay() {
   try {
     const res = await api.createOrder({
       plan_id: selected.value.id,
-      payment_channel: 'wechat',
+      payment_channel: 'wechat_qr',
     })
     activeOrder.value = res
-    payRemark.value = ''
-  } catch (e) {
-    payOk.value = false
-    payMsg.value = e.message
-  } finally {
-    paying.value = false
-  }
-}
-
-async function claimPaid() {
-  if (!activeOrder.value || claiming.value) return
-  claiming.value = true
-  payMsg.value = ''
-  try {
-    const order = await api.claimOrderPaid(activeOrder.value.order_id, payRemark.value)
-    activeOrder.value = { ...activeOrder.value, status: order.status }
-    payOk.value = true
-    payMsg.value = '已提交付款申报，请等待管理员在微信到账后确认'
-  } catch (e) {
-    payOk.value = false
-    payMsg.value = e.message
-  } finally {
-    claiming.value = false
-  }
-}
-
-async function pay(channel) {
-  if (!selected.value || paying.value) return
-  paying.value = true
-  payMsg.value = ''
-  payOk.value = false
-  try {
-    const res = await api.createOrder({
-      plan_id: selected.value.id,
-      payment_channel: channel,
-    })
-    updateUser({
-      tier: res.tier,
-      quota_total: res.quota_total,
-      quota_remaining: res.quota_remaining,
-    })
-    payOk.value = true
-    payMsg.value = res.message
-    activeOrder.value = null
   } catch (e) {
     payOk.value = false
     payMsg.value = e.message

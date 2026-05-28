@@ -3,10 +3,11 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models import Order, User
 from app.services.payment import get_payment_provider
-from app.services.payment.base import PaymentError
+from app.services.payment.base import PaymentError, PaymentNotConfigured
 from app.services.quota import PLAN_CATALOG, apply_plan_to_user, quota_remaining, quota_total
 
 
@@ -16,6 +17,14 @@ class OrderServiceError(Exception):
 
 class LocalPaymentRequired(OrderServiceError):
     """本地部署不支持该扫码渠道。"""
+
+
+WECHAT_CHANNELS = frozenset({"wechat", "wechat_qr"})
+ADMIN_CONFIRM_STATUSES = frozenset({"pending", "claimed"})
+
+
+def _is_wechat_order(order: Order) -> bool:
+    return order.payment_channel in WECHAT_CHANNELS
 
 
 async def create_order(
@@ -49,6 +58,10 @@ async def create_order(
 
     try:
         result = await provider.create_payment(order, user)
+    except PaymentNotConfigured as exc:
+        order.status = "failed"
+        await db.flush()
+        raise LocalPaymentRequired(str(exc)) from exc
     except PaymentError as exc:
         order.status = "failed"
         await db.flush()
@@ -83,8 +96,10 @@ async def confirm_order_payment(
     order: Order,
     admin_remark: str = "",
 ) -> Order:
-    if order.status != "claimed":
-        raise OrderServiceError("仅「待确认」订单可确认收款")
+    if order.status not in ADMIN_CONFIRM_STATUSES:
+        raise OrderServiceError("该订单状态不可确认收款")
+    if not _is_wechat_order(order):
+        raise OrderServiceError("仅微信收款码订单支持人工确认")
     user = await db.get(User, order.user_id)
     if not user:
         raise OrderServiceError("订单用户不存在")
@@ -101,10 +116,49 @@ async def reject_order_payment(
     order: Order,
     admin_remark: str = "",
 ) -> Order:
-    if order.status != "claimed":
-        raise OrderServiceError("仅「待确认」订单可拒绝")
+    if order.status not in ADMIN_CONFIRM_STATUSES:
+        raise OrderServiceError("该订单状态不可拒绝")
+    if not _is_wechat_order(order):
+        raise OrderServiceError("仅微信收款码订单支持人工拒绝")
     order.status = "rejected"
     order.admin_remark = (admin_remark or "未收到款项")[:255]
+    await db.flush()
+    return order
+
+
+async def get_order_by_out_trade_no(db: AsyncSession, out_trade_no: str) -> Order | None:
+    result = await db.execute(select(Order).where(Order.out_trade_no == out_trade_no))
+    return result.scalar_one_or_none()
+
+
+async def complete_wechat_native_payment(
+    db: AsyncSession,
+    out_trade_no: str,
+    transaction_id: str,
+    notify_raw: str,
+) -> Order | None:
+    """微信支付回调幂等开通套餐。"""
+    order = await get_order_by_out_trade_no(db, out_trade_no)
+    if not order:
+        return None
+    if order.status == "paid":
+        return order
+    if order.payment_channel not in ("wechat", "wechat_native"):
+        return order
+
+    if transaction_id and order.transaction_id == transaction_id:
+        return order
+
+    user = await db.get(User, order.user_id)
+    if not user:
+        raise OrderServiceError("订单用户不存在")
+
+    order.status = "paid"
+    order.transaction_id = transaction_id
+    order.paid_at = datetime.now(timezone.utc)
+    order.notify_raw = notify_raw[:8000] if notify_raw else None
+    order.confirmed_at = order.paid_at
+    apply_plan_to_user(user, order.plan_id)
     await db.flush()
     return order
 
@@ -126,6 +180,21 @@ async def get_order_by_id(db: AsyncSession, order_id: int) -> Order | None:
 async def list_user_orders(db: AsyncSession, user: User, limit: int = 20) -> list[Order]:
     result = await db.execute(
         select(Order).where(Order.user_id == user.id).order_by(Order.created_at.desc()).limit(limit)
+    )
+    return list(result.scalars().all())
+
+
+async def list_pending_wechat_orders(db: AsyncSession, limit: int = 50) -> list[Order]:
+    """待管理员确认的微信个人收款码订单（含 pending 与历史 claimed）。"""
+    result = await db.execute(
+        select(Order)
+        .options(selectinload(Order.user))
+        .where(
+            Order.status.in_(tuple(ADMIN_CONFIRM_STATUSES)),
+            Order.payment_channel.in_(tuple(WECHAT_CHANNELS)),
+        )
+        .order_by(Order.created_at.desc())
+        .limit(limit)
     )
     return list(result.scalars().all())
 
