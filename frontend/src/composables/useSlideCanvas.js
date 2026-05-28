@@ -257,6 +257,13 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     }, 400)
   }
 
+  function replaceAllElements(newElements) {
+    if (!historyBatching) pushHistory()
+    elements.value = Array.isArray(newElements) ? newElements : []
+    selectedId.value = null
+    saveElements()
+  }
+
   function saveElements() {
     persistLocal()
     scheduleServerSave()
@@ -395,6 +402,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     selectedId,
     loadElements,
     saveElements,
+    replaceAllElements,
     flushCanvasSave,
     addElement,
     addImageFromAi,

@@ -20,6 +20,7 @@
         @save-slide="saveSlideFields"
         @sync-canvas="syncCanvasFromSlide"
         @add-material="addMaterial"
+        @apply-layout="applyLayoutBlock"
         @canvas-bg-change="onCanvasBgChange"
         @scroll-change="setScrollEffect"
         @preview-animation="onPreviewAnimation"
@@ -37,6 +38,7 @@
         :preview-animation="previewAnimation"
         :preview-animation-tick="previewAnimationTick"
         :canvas-background="canvasBackground"
+        :theme-id="settings.themeId || 'zjy-minimal'"
         @select="selectedId = $event"
         @deselect="selectedId = null"
         @update-element="updateElement"
@@ -47,6 +49,7 @@
         @duplicate="onDuplicate"
         @delete-selected="onDeleteSelected"
         @bring-front="onBringFront"
+        @center-element="onCenterElement"
         @viewport-change="setViewport"
         @batch-start="beginHistoryBatch"
         @batch-end="endHistoryBatch"
@@ -63,6 +66,12 @@
     </div>
 
     <EditorShortcutsHelp v-model:open="shortcutsHelpOpen" />
+    <LayoutPickerModal
+      :open="layoutPickerOpen"
+      @close="layoutPickerOpen = false"
+      @pick="onLayoutPickedForNewSlide"
+      @blank="onLayoutBlankForNewSlide"
+    />
   </div>
 </template>
 
@@ -79,6 +88,8 @@ import EditorPhoneCanvas from '../components/EditorPhoneCanvas.vue'
 import EditorToolbox from '../components/EditorToolbox.vue'
 import EditorTopBar from '../components/EditorTopBar.vue'
 import EditorShortcutsHelp from '../components/EditorShortcutsHelp.vue'
+import LayoutPickerModal from '../components/LayoutPickerModal.vue'
+import { buildBlock, getDefaultBlockBackground } from '../constants/layoutBlocks.js'
 
 const route = useRoute()
 const { user } = useAuth()
@@ -91,6 +102,8 @@ const quota = ref({ remaining: 5, total: 5 })
 const previewAnimation = ref('')
 const previewAnimationTick = ref(0)
 const shortcutsHelpOpen = ref(false)
+const layoutPickerOpen = ref(false)
+const pendingNewSlide = ref(null)
 
 const { settings, viewport, setViewport, setScrollEffect, getSlideBackground, setSlideBackground, applyFromServer, setBgm } = useProjectEditorSettings(projectId)
 
@@ -108,6 +121,7 @@ const {
   duplicateElement,
   bringToFront,
   syncFromSlide,
+  replaceAllElements,
   addImageFromAi,
   flushCanvasSave,
   undo,
@@ -163,12 +177,42 @@ async function addSlide() {
       animation: 'fade',
     })
     project.value.slides.push(slide)
-    current.value = slide
-    loadElements(slide.canvas_elements)
-    if (!elements.value.length) syncFromSlide(slide)
+    pendingNewSlide.value = slide
+    layoutPickerOpen.value = true
   } catch (e) {
     alert(e.message)
   }
+}
+
+function finishNewSlide(slide, blockId = null) {
+  current.value = slide
+  loadElements(slide.canvas_elements)
+  if (blockId) {
+    applyLayoutBlock(blockId, slide.id)
+  } else if (!elements.value.length) {
+    syncFromSlide(slide)
+  }
+  pendingNewSlide.value = null
+}
+
+function onLayoutPickedForNewSlide(blockId) {
+  if (pendingNewSlide.value) finishNewSlide(pendingNewSlide.value, blockId)
+}
+
+function onLayoutBlankForNewSlide() {
+  if (pendingNewSlide.value) finishNewSlide(pendingNewSlide.value, null)
+}
+
+function applyLayoutBlock(blockId, slideId = null) {
+  const sid = slideId ?? current.value?.id
+  if (!sid) return
+  if (slideId && slideId !== current.value?.id) {
+    current.value = project.value.slides.find((s) => s.id === slideId) || current.value
+    loadElements([])
+  }
+  const els = buildBlock(blockId, settings.value.viewportId, settings.value.themeId || 'zjy-minimal')
+  replaceAllElements(els)
+  setSlideBackground(sid, getDefaultBlockBackground(settings.value.themeId || 'zjy-minimal'))
 }
 
 async function removeSlide(slideId) {
@@ -287,6 +331,23 @@ function onDeleteSelected() {
 
 function onBringFront() {
   if (selectedId.value) bringToFront(selectedId.value)
+}
+
+function onCenterElement(axis) {
+  if (!selectedId.value) return
+  const el = elements.value.find((e) => e.id === selectedId.value)
+  if (!el) return
+  const vp = viewport.value
+  const chrome = vp.device === 'mobile' ? 28 : 32
+  const canvasH = vp.height - chrome
+  const patch = {}
+  if (axis === 'h' || axis === 'both') {
+    patch.x = Math.max(0, Math.round((vp.width - el.width) / 2))
+  }
+  if (axis === 'v' || axis === 'both') {
+    patch.y = Math.max(0, Math.round((canvasH - el.height) / 2))
+  }
+  updateElement(selectedId.value, patch)
 }
 
 function onKeyDown(e) {

@@ -1,0 +1,698 @@
+{
+  "id": "tech-launch-mobile",
+  "title": "极简科技产品发布",
+  "description": "极简风格，突出产品核心卖点。",
+  "category": "产品发布",
+  "device": "mobile",
+  "pages": 8,
+  "premium": false,
+  "featured": true,
+  "cover_gradient": "from-slate-50 to-teal-100",
+  "default_viewport": "mobile-375",
+  "settings_json": {
+    "viewportId": "mobile-375",
+    "scrollEffect": "page",
+    "themeId": "zjy-minimal",
+    "showScrollHint": false,
+    "defaultChatTapToContinue": true,
+    "bgm": {
+      "enabled": false,
+      "trackId": "",
+      "url": "",
+      "loop": true,
+      "volume": 0.35
+    }
+  },
+  "slides_json": [
+    {
+      "title": "发布",
+      "subtitle": "",
+      "layout": "cover",
+      "animation": "fade",
+      "canvas_background": "#FFFFFF",
+      "canvas_elements": [
+        {
+          "id": "bar_1",
+          "type": "shape",
+          "x": 147.5,
+          "y": 339,
+          "width": 80,
+          "height": 3,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#156082",
+            "borderRadius": 2
+          }
+        },
+        {
+          "id": "t_2",
+          "type": "text",
+          "x": 32,
+          "y": 251,
+          "width": 311,
+          "height": 64,
+          "zIndex": 2,
+          "content": "产品发布",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 36,
+            "fontWeight": "bold",
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "id": "s_3",
+          "type": "text",
+          "x": 32,
+          "y": 327,
+          "width": 311,
+          "height": 40,
+          "zIndex": 2,
+          "content": "极简科技 · 聚焦核心价值",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 16,
+            "color": "#44546A",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.5
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "痛点",
+      "subtitle": "",
+      "layout": "title",
+      "animation": "slide-up",
+      "canvas_background": "#FFFFFF",
+      "canvas_elements": [
+        {
+          "id": "bar_1",
+          "type": "shape",
+          "x": 32,
+          "y": 220,
+          "width": 4,
+          "height": 100,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#156082",
+            "borderRadius": 2
+          }
+        },
+        {
+          "id": "t_2",
+          "type": "text",
+          "x": 48,
+          "y": 220,
+          "width": 295,
+          "height": 48,
+          "zIndex": 2,
+          "content": "用户真正需要什么",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 28,
+            "fontWeight": "bold",
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "b_3",
+          "type": "text",
+          "x": 48,
+          "y": 276,
+          "width": 295,
+          "height": 72,
+          "zIndex": 2,
+          "content": "从场景出发，解决最关键的问题。",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 16,
+            "color": "#44546A",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.6
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "特性",
+      "subtitle": "",
+      "layout": "bullets",
+      "animation": "fade",
+      "canvas_background": "#FFFFFF",
+      "canvas_elements": [
+        {
+          "id": "h_1",
+          "type": "text",
+          "x": 32,
+          "y": 125,
+          "width": 311,
+          "height": 36,
+          "zIndex": 2,
+          "content": "三大特性",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "fontWeight": "600",
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "dot_2",
+          "type": "shape",
+          "x": 32,
+          "y": 181,
+          "width": 10,
+          "height": 10,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#156082",
+            "borderRadius": 999
+          }
+        },
+        {
+          "id": "b_3",
+          "type": "text",
+          "x": 54,
+          "y": 173,
+          "width": 283,
+          "height": 56,
+          "zIndex": 2,
+          "content": "更快：秒级响应",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 16,
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.5
+          }
+        },
+        {
+          "id": "dot_4",
+          "type": "shape",
+          "x": 32,
+          "y": 253,
+          "width": 10,
+          "height": 10,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#156082",
+            "borderRadius": 999
+          }
+        },
+        {
+          "id": "b_5",
+          "type": "text",
+          "x": 54,
+          "y": 245,
+          "width": 283,
+          "height": 56,
+          "zIndex": 2,
+          "content": "更稳：企业级可靠",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 16,
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.5
+          }
+        },
+        {
+          "id": "dot_6",
+          "type": "shape",
+          "x": 32,
+          "y": 325,
+          "width": 10,
+          "height": 10,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#156082",
+            "borderRadius": 999
+          }
+        },
+        {
+          "id": "b_7",
+          "type": "text",
+          "x": 54,
+          "y": 317,
+          "width": 283,
+          "height": 56,
+          "zIndex": 2,
+          "content": "更易用：零学习成本",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 16,
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.5
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "对比",
+      "subtitle": "",
+      "layout": "bullets",
+      "animation": "slide-up",
+      "canvas_background": "#FFFFFF",
+      "canvas_elements": [
+        {
+          "id": "l1_1",
+          "type": "text",
+          "x": 32,
+          "y": 188,
+          "width": 147,
+          "height": 32,
+          "zIndex": 2,
+          "content": "传统方案",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "fontWeight": "600",
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "l2_2",
+          "type": "text",
+          "x": 32,
+          "y": 228,
+          "width": 147,
+          "height": 100,
+          "zIndex": 2,
+          "content": "复杂、昂贵、部署周期长。",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 16,
+            "color": "#44546A",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.55
+          }
+        },
+        {
+          "id": "r1_3",
+          "type": "text",
+          "x": 195,
+          "y": 188,
+          "width": 147,
+          "height": 32,
+          "zIndex": 2,
+          "content": "我们的方案",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "fontWeight": "600",
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "r2_4",
+          "type": "text",
+          "x": 195,
+          "y": 228,
+          "width": 147,
+          "height": 100,
+          "zIndex": 2,
+          "content": "轻量、灵活、即开即用。",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 16,
+            "color": "#44546A",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.55
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "数据",
+      "subtitle": "",
+      "layout": "bullets",
+      "animation": "fade",
+      "canvas_background": "#FFFFFF",
+      "canvas_elements": [
+        {
+          "id": "n_1",
+          "type": "text",
+          "x": 32,
+          "y": 236,
+          "width": 311,
+          "height": 80,
+          "zIndex": 2,
+          "content": "10×",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 44,
+            "fontWeight": "bold",
+            "color": "#156082",
+            "fontFamily": "\"DengXian\", \"等线\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "d_2",
+          "type": "text",
+          "x": 32,
+          "y": 324,
+          "width": 311,
+          "height": 40,
+          "zIndex": 2,
+          "content": "效率提升（内测数据）",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 16,
+            "color": "#44546A",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.5
+          }
+        },
+        {
+          "id": "ln_3",
+          "type": "shape",
+          "x": 159.5,
+          "y": 376,
+          "width": 56,
+          "height": 2,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#E8E8E8",
+            "borderRadius": 1
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "流程",
+      "subtitle": "",
+      "layout": "bullets",
+      "animation": "slide-up",
+      "canvas_background": "#FFFFFF",
+      "canvas_elements": [
+        {
+          "id": "h_1",
+          "type": "text",
+          "x": 32,
+          "y": 199,
+          "width": 311,
+          "height": 32,
+          "zIndex": 2,
+          "content": "如何开始",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 22,
+            "fontWeight": "600",
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "c_2",
+          "type": "shape",
+          "x": 61.5,
+          "y": 251,
+          "width": 44,
+          "height": 44,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#156082",
+            "borderRadius": 999
+          }
+        },
+        {
+          "id": "n_3",
+          "type": "text",
+          "x": 32,
+          "y": 303,
+          "width": 103,
+          "height": 24,
+          "zIndex": 3,
+          "content": "1",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 16,
+            "color": "#FFFFFF",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "fontWeight": "bold"
+          }
+        },
+        {
+          "id": "l_4",
+          "type": "text",
+          "x": 32,
+          "y": 351,
+          "width": 103,
+          "height": 40,
+          "zIndex": 2,
+          "content": "注册账号",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 13,
+            "color": "#44546A",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.4
+          }
+        },
+        {
+          "id": "c_5",
+          "type": "shape",
+          "x": 164.5,
+          "y": 251,
+          "width": 44,
+          "height": 44,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#156082",
+            "borderRadius": 999
+          }
+        },
+        {
+          "id": "n_6",
+          "type": "text",
+          "x": 135,
+          "y": 303,
+          "width": 103,
+          "height": 24,
+          "zIndex": 3,
+          "content": "2",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 16,
+            "color": "#FFFFFF",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "fontWeight": "bold"
+          }
+        },
+        {
+          "id": "l_7",
+          "type": "text",
+          "x": 135,
+          "y": 351,
+          "width": 103,
+          "height": 40,
+          "zIndex": 2,
+          "content": "选择模板",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 13,
+            "color": "#44546A",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.4
+          }
+        },
+        {
+          "id": "c_8",
+          "type": "shape",
+          "x": 267.5,
+          "y": 251,
+          "width": 44,
+          "height": 44,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#156082",
+            "borderRadius": 999
+          }
+        },
+        {
+          "id": "n_9",
+          "type": "text",
+          "x": 238,
+          "y": 303,
+          "width": 103,
+          "height": 24,
+          "zIndex": 3,
+          "content": "3",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 16,
+            "color": "#FFFFFF",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "fontWeight": "bold"
+          }
+        },
+        {
+          "id": "l_10",
+          "type": "text",
+          "x": 238,
+          "y": 351,
+          "width": 103,
+          "height": 40,
+          "zIndex": 2,
+          "content": "一键发布",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 13,
+            "color": "#44546A",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.4
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "引用",
+      "subtitle": "",
+      "layout": "title",
+      "animation": "fade",
+      "canvas_background": "#FFFFFF",
+      "canvas_elements": [
+        {
+          "id": "q_1",
+          "type": "text",
+          "x": 32,
+          "y": 236,
+          "width": 311,
+          "height": 100,
+          "zIndex": 2,
+          "content": "「好的产品，让用户忘记产品本身。」",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 22,
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.5,
+            "fontWeight": "500"
+          }
+        },
+        {
+          "id": "a_2",
+          "type": "text",
+          "x": 32,
+          "y": 344,
+          "width": 311,
+          "height": 32,
+          "zIndex": 2,
+          "content": "— 产品理念",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 13,
+            "color": "#44546A",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif"
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "致谢",
+      "subtitle": "",
+      "layout": "cover",
+      "animation": "slide-up",
+      "canvas_background": "#FFFFFF",
+      "canvas_elements": [
+        {
+          "id": "t_1",
+          "type": "text",
+          "x": 32,
+          "y": 267,
+          "width": 311,
+          "height": 52,
+          "zIndex": 2,
+          "content": "立即体验",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 36,
+            "fontWeight": "bold",
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "c_2",
+          "type": "text",
+          "x": 32,
+          "y": 327,
+          "width": 311,
+          "height": 40,
+          "zIndex": 2,
+          "content": "www.example.com",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 16,
+            "color": "#156082",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "ln_3",
+          "type": "shape",
+          "x": 155.5,
+          "y": 379,
+          "width": 64,
+          "height": 2,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#156082",
+            "borderRadius": 1
+          }
+        }
+      ],
+      "bullets": []
+    }
+  ]
+}

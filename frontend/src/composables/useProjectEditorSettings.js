@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue'
 import { getViewportPreset } from '../constants/editorPresets'
+import { slideBackgroundCSSValue, slideBackgroundToStorage } from '../utils/slideBackground'
 import { api } from '../api/client'
 
 const PREFIX = 'ai_h5_project_settings_'
@@ -7,8 +8,10 @@ const PREFIX = 'ai_h5_project_settings_'
 const defaults = {
   viewportId: 'mobile-375',
   scrollEffect: 'page',
+  themeId: 'zjy-minimal',
+  showScrollHint: false,
   slideBackgrounds: {},
-  bgm: { enabled: false, url: '', loop: true, volume: 0.35 },
+  bgm: { enabled: false, trackId: '', url: '', loop: true, volume: 0.35 },
   defaultChatTapToContinue: true,
 }
 
@@ -58,6 +61,8 @@ export function useProjectEditorSettings(projectIdRef) {
         await api.updateProjectSettings(Number(id), {
           viewportId: settings.value.viewportId,
           scrollEffect: settings.value.scrollEffect,
+          themeId: settings.value.themeId,
+          showScrollHint: settings.value.showScrollHint,
           slideBackgrounds: settings.value.slideBackgrounds,
           bgm: settings.value.bgm,
           defaultChatTapToContinue: settings.value.defaultChatTapToContinue,
@@ -107,6 +112,13 @@ export function useProjectEditorSettings(projectIdRef) {
   }
 
   function getSlideBackground(slideId) {
+    if (!slideId) return slideBackgroundCSSValue(DEFAULT_CANVAS_BG)
+    const key = String(slideId)
+    const raw = settings.value.slideBackgrounds?.[key]
+    return slideBackgroundCSSValue(raw ?? DEFAULT_CANVAS_BG)
+  }
+
+  function getSlideBackgroundRaw(slideId) {
     if (!slideId) return DEFAULT_CANVAS_BG
     const key = String(slideId)
     return settings.value.slideBackgrounds?.[key] ?? DEFAULT_CANVAS_BG
@@ -117,8 +129,13 @@ export function useProjectEditorSettings(projectIdRef) {
     const key = String(slideId)
     settings.value = {
       ...settings.value,
-      slideBackgrounds: { ...settings.value.slideBackgrounds, [key]: color },
+      slideBackgrounds: { ...settings.value.slideBackgrounds, [key]: slideBackgroundToStorage(color) },
     }
+    save()
+  }
+
+  function setThemeId(themeId) {
+    settings.value = { ...settings.value, themeId }
     save()
   }
 
@@ -136,6 +153,8 @@ export function useProjectEditorSettings(projectIdRef) {
     setScrollEffect,
     setBgm,
     getSlideBackground,
+    getSlideBackgroundRaw,
     setSlideBackground,
+    setThemeId,
   }
 }

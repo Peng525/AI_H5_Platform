@@ -22,11 +22,12 @@
     <div class="flex-1 relative overflow-hidden min-h-0" :style="{ background: canvasBackground }">
       <div class="absolute inset-0" :class="animClass">
         <CanvasElement
-          v-for="el in sortedElements"
+          v-for="(el, idx) in sortedElements"
           :key="el.id"
           :element="el"
           :readonly="true"
           :selected="false"
+          :stagger-index="enableStagger ? idx : -1"
         />
         <div
           v-if="!elements.length && slide"
@@ -57,6 +58,7 @@ const props = defineProps({
   slideIndex: { type: Number, default: 0 },
   slideTotal: { type: Number, default: 1 },
   animation: { type: String, default: '' },
+  enableStagger: { type: Boolean, default: false },
 })
 
 const frameClass = computed(() =>
@@ -74,3 +76,20 @@ const animClass = computed(() => {
   return animationEnterClass(id)
 })
 </script>
+
+<style scoped>
+:deep(.canvas-stagger-in) {
+  animation: canvasStaggerFade 0.45s ease both;
+}
+
+@keyframes canvasStaggerFade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>

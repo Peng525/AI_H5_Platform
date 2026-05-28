@@ -7,7 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import admin, auth, commerce, projects, settings, templates_catalog
+from app.api import admin, auth, bgm, commerce, projects, settings, templates_catalog
+from app.services.bgm_service import resolve_bgm_dir
 from app.config import settings as app_settings
 from app.database import init_db
 from app.seed import seed_demo_user
@@ -57,6 +58,7 @@ app.include_router(admin.router)
 app.include_router(templates_catalog.router)
 app.include_router(projects.router)
 app.include_router(settings.router)
+app.include_router(bgm.router)
 
 
 @app.get("/api/v1/健康", tags=["系统"])
@@ -79,10 +81,8 @@ if STATIC_DIR.exists():
             raise HTTPException(status_code=404, detail="收款码图片未配置")
         return FileResponse(path, media_type="image/png")
 
-    bgm_dir = MEDIA_DIR / "bgm"
-    if not bgm_dir.is_dir():
-        bgm_dir = STATIC_DIR / "bgm"
-    if bgm_dir.is_dir():
+    bgm_dir = resolve_bgm_dir()
+    if bgm_dir is not None:
         app.mount("/static/bgm", StaticFiles(directory=bgm_dir), name="static_bgm")
 
     @app.get("/", include_in_schema=False)

@@ -65,8 +65,10 @@
       <MaterialPanel
         v-else-if="activeTab === 'material'"
         :canvas-background="canvasBackground"
+        :theme-id="projectSettings?.themeId || 'zjy-minimal'"
         @add="$emit('add-material', $event)"
         @canvas-bg-change="$emit('canvas-bg-change', $event)"
+        @apply-layout="$emit('apply-layout', $event)"
       />
       <div v-else-if="activeTab === 'template'" class="p-4 text-sm">
         <p class="text-on-surface-variant mb-3">当前主题：{{ theme }}</p>
@@ -99,7 +101,7 @@ defineProps({
   liveElements: { type: Array, default: null },
 })
 
-defineEmits(['select-slide', 'add-slide', 'remove-slide', 'save-slide', 'sync-canvas', 'add-material', 'canvas-bg-change', 'scroll-change', 'preview-animation', 'open-help', 'bgm-change'])
+defineEmits(['select-slide', 'add-slide', 'remove-slide', 'save-slide', 'sync-canvas', 'add-material', 'apply-layout', 'canvas-bg-change', 'scroll-change', 'preview-animation', 'open-help', 'bgm-change'])
 
 const activeTab = ref('pages')
 const tabs = [

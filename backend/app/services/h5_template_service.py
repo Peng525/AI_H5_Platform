@@ -38,7 +38,7 @@ DEFAULT_CATALOG: list[dict[str, Any]] = [
         "device": "mobile",
         "pages": 8,
         "premium": False,
-        "cover_gradient": "from-slate-700 to-slate-900",
+        "cover_gradient": "from-slate-50 to-teal-100",
         "default_viewport": "mobile-375",
     },
     {
@@ -49,7 +49,7 @@ DEFAULT_CATALOG: list[dict[str, Any]] = [
         "device": "web",
         "pages": 8,
         "premium": False,
-        "cover_gradient": "from-slate-800 to-slate-950",
+        "cover_gradient": "from-slate-100 to-teal-200",
         "default_viewport": "web-1280",
     },
     {
@@ -98,7 +98,7 @@ DEFAULT_CATALOG: list[dict[str, Any]] = [
     },
 ]
 
-CATEGORIES = ["全部", "对话故事", "年度报告", "产品发布", "个人简历", "企业介绍"]
+CATEGORIES = ["全部", "对话故事", "简约商务", "叙事公益", "年度报告", "产品发布", "个人简历", "企业介绍"]
 DEVICES = [
     {"id": "全部", "label": "全部终端"},
     {"id": "mobile", "label": "移动端"},
@@ -123,7 +123,7 @@ def _to_dict(row: H5Template) -> dict[str, Any]:
             settings = {}
     except json.JSONDecodeError:
         settings = {}
-    featured = row.id in {"story-wechat-mobile", "story-wechat-mobile-v2"}
+    featured = len(slides) > 0
     return {
         "id": row.id,
         "title": row.title,
@@ -189,10 +189,10 @@ async def seed_default_templates(db: AsyncSession) -> None:
 
 
 async def sync_flagship_templates(db: AsyncSession) -> None:
-    from app.services.template_loader import load_all_flagship_templates
+    from app.services.template_loader import load_all_file_templates
 
     base_order = -100
-    for offset, data in enumerate(load_all_flagship_templates()):
+    for offset, data in enumerate(load_all_file_templates()):
         tid = data["id"]
         slides = data.get("slides_json") or []
         settings = data.get("settings_json") or {}

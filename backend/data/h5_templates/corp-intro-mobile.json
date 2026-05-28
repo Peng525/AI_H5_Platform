@@ -1,0 +1,690 @@
+{
+  "id": "corp-intro-mobile",
+  "title": "企业品牌介绍",
+  "description": "展示企业文化、业务与团队。",
+  "category": "企业介绍",
+  "device": "mobile",
+  "pages": 8,
+  "premium": false,
+  "featured": true,
+  "cover_gradient": "from-slate-50 to-teal-100",
+  "default_viewport": "mobile-375",
+  "settings_json": {
+    "viewportId": "mobile-375",
+    "scrollEffect": "page",
+    "themeId": "zjy-minimal",
+    "showScrollHint": false,
+    "defaultChatTapToContinue": true,
+    "bgm": {
+      "enabled": false,
+      "trackId": "",
+      "url": "",
+      "loop": true,
+      "volume": 0.35
+    }
+  },
+  "slides_json": [
+    {
+      "title": "封面",
+      "subtitle": "",
+      "layout": "cover",
+      "animation": "fade",
+      "canvas_background": "#FFFFFF",
+      "canvas_elements": [
+        {
+          "id": "bar_1",
+          "type": "shape",
+          "x": 147.5,
+          "y": 339,
+          "width": 80,
+          "height": 3,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#156082",
+            "borderRadius": 2
+          }
+        },
+        {
+          "id": "t_2",
+          "type": "text",
+          "x": 32,
+          "y": 251,
+          "width": 311,
+          "height": 64,
+          "zIndex": 2,
+          "content": "企业品牌介绍",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 36,
+            "fontWeight": "bold",
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.2
+          }
+        },
+        {
+          "id": "s_3",
+          "type": "text",
+          "x": 32,
+          "y": 327,
+          "width": 311,
+          "height": 40,
+          "zIndex": 2,
+          "content": "专业 · 可信 · 长期主义",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 16,
+            "color": "#44546A",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.5
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "关于",
+      "subtitle": "",
+      "layout": "title",
+      "animation": "slide-up",
+      "canvas_background": "#FFFFFF",
+      "canvas_elements": [
+        {
+          "id": "bar_1",
+          "type": "shape",
+          "x": 32,
+          "y": 220,
+          "width": 4,
+          "height": 100,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#156082",
+            "borderRadius": 2
+          }
+        },
+        {
+          "id": "t_2",
+          "type": "text",
+          "x": 48,
+          "y": 220,
+          "width": 295,
+          "height": 48,
+          "zIndex": 2,
+          "content": "我们是谁",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 28,
+            "fontWeight": "bold",
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "b_3",
+          "type": "text",
+          "x": 48,
+          "y": 276,
+          "width": 295,
+          "height": 72,
+          "zIndex": 2,
+          "content": "专注为客户创造可持续价值的团队。",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 16,
+            "color": "#44546A",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.6
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "业务",
+      "subtitle": "",
+      "layout": "bullets",
+      "animation": "fade",
+      "canvas_background": "#FFFFFF",
+      "canvas_elements": [
+        {
+          "id": "h_1",
+          "type": "text",
+          "x": 32,
+          "y": 125,
+          "width": 311,
+          "height": 36,
+          "zIndex": 2,
+          "content": "核心业务",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "fontWeight": "600",
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "dot_2",
+          "type": "shape",
+          "x": 32,
+          "y": 181,
+          "width": 10,
+          "height": 10,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#156082",
+            "borderRadius": 999
+          }
+        },
+        {
+          "id": "b_3",
+          "type": "text",
+          "x": 54,
+          "y": 173,
+          "width": 283,
+          "height": 56,
+          "zIndex": 2,
+          "content": "数字化解决方案",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 16,
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.5
+          }
+        },
+        {
+          "id": "dot_4",
+          "type": "shape",
+          "x": 32,
+          "y": 253,
+          "width": 10,
+          "height": 10,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#156082",
+            "borderRadius": 999
+          }
+        },
+        {
+          "id": "b_5",
+          "type": "text",
+          "x": 54,
+          "y": 245,
+          "width": 283,
+          "height": 56,
+          "zIndex": 2,
+          "content": "行业咨询与交付",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 16,
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.5
+          }
+        },
+        {
+          "id": "dot_6",
+          "type": "shape",
+          "x": 32,
+          "y": 325,
+          "width": 10,
+          "height": 10,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#156082",
+            "borderRadius": 999
+          }
+        },
+        {
+          "id": "b_7",
+          "type": "text",
+          "x": 54,
+          "y": 317,
+          "width": 283,
+          "height": 56,
+          "zIndex": 2,
+          "content": "持续运营支持",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 16,
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.5
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "优势",
+      "subtitle": "",
+      "layout": "bullets",
+      "animation": "slide-up",
+      "canvas_background": "#FFFFFF",
+      "canvas_elements": [
+        {
+          "id": "l1_1",
+          "type": "text",
+          "x": 32,
+          "y": 188,
+          "width": 147,
+          "height": 32,
+          "zIndex": 2,
+          "content": "我们的优势",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "fontWeight": "600",
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "l2_2",
+          "type": "text",
+          "x": 32,
+          "y": 228,
+          "width": 147,
+          "height": 100,
+          "zIndex": 2,
+          "content": "深度行业理解 + 成熟方法论。",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 16,
+            "color": "#44546A",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.55
+          }
+        },
+        {
+          "id": "r1_3",
+          "type": "text",
+          "x": 195,
+          "y": 188,
+          "width": 147,
+          "height": 32,
+          "zIndex": 2,
+          "content": "客户价值",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "fontWeight": "600",
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "r2_4",
+          "type": "text",
+          "x": 195,
+          "y": 228,
+          "width": 147,
+          "height": 100,
+          "zIndex": 2,
+          "content": "降本增效，提升品牌与体验。",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 16,
+            "color": "#44546A",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.55
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "数据",
+      "subtitle": "",
+      "layout": "bullets",
+      "animation": "fade",
+      "canvas_background": "#FFFFFF",
+      "canvas_elements": [
+        {
+          "id": "n_1",
+          "type": "text",
+          "x": 32,
+          "y": 236,
+          "width": 311,
+          "height": 80,
+          "zIndex": 2,
+          "content": "500+",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 44,
+            "fontWeight": "bold",
+            "color": "#156082",
+            "fontFamily": "\"DengXian\", \"等线\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "d_2",
+          "type": "text",
+          "x": 32,
+          "y": 324,
+          "width": 311,
+          "height": 40,
+          "zIndex": 2,
+          "content": "服务客户（示例数据）",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 16,
+            "color": "#44546A",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.5
+          }
+        },
+        {
+          "id": "ln_3",
+          "type": "shape",
+          "x": 159.5,
+          "y": 376,
+          "width": 56,
+          "height": 2,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#E8E8E8",
+            "borderRadius": 1
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "案例",
+      "subtitle": "",
+      "layout": "title",
+      "animation": "slide-up",
+      "canvas_background": "#FFFFFF",
+      "canvas_elements": [
+        {
+          "id": "card_1",
+          "type": "shape",
+          "x": 32,
+          "y": 173,
+          "width": 311,
+          "height": 240,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#E8E8E8",
+            "borderRadius": 16
+          }
+        },
+        {
+          "id": "t_2",
+          "type": "text",
+          "x": 56,
+          "y": 197,
+          "width": 263,
+          "height": 40,
+          "zIndex": 2,
+          "content": "标杆案例",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "fontWeight": "600",
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "b_3",
+          "type": "text",
+          "x": 56,
+          "y": 245,
+          "width": 263,
+          "height": 152,
+          "zIndex": 2,
+          "content": "助力某行业客户完成数字化升级，项目按期交付并获得持续合作。",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 16,
+            "color": "#44546A",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif",
+            "lineHeight": 1.6
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "文化",
+      "subtitle": "",
+      "layout": "bullets",
+      "animation": "fade",
+      "canvas_background": "#FFFFFF",
+      "canvas_elements": [
+        {
+          "id": "h_1",
+          "type": "text",
+          "x": 32,
+          "y": 223,
+          "width": 311,
+          "height": 32,
+          "zIndex": 2,
+          "content": "价值观",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 22,
+            "fontWeight": "600",
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "c_2",
+          "type": "shape",
+          "x": 48.5,
+          "y": 283,
+          "width": 44,
+          "height": 44,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#156082",
+            "borderRadius": 12
+          }
+        },
+        {
+          "id": "v_3",
+          "type": "text",
+          "x": 32,
+          "y": 339,
+          "width": 77,
+          "height": 32,
+          "zIndex": 2,
+          "content": "诚信",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 16,
+            "fontWeight": "600",
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "c_4",
+          "type": "shape",
+          "x": 125.5,
+          "y": 283,
+          "width": 44,
+          "height": 44,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#156082",
+            "borderRadius": 12
+          }
+        },
+        {
+          "id": "v_5",
+          "type": "text",
+          "x": 109,
+          "y": 339,
+          "width": 77,
+          "height": 32,
+          "zIndex": 2,
+          "content": "创新",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 16,
+            "fontWeight": "600",
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "c_6",
+          "type": "shape",
+          "x": 202.5,
+          "y": 283,
+          "width": 44,
+          "height": 44,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#156082",
+            "borderRadius": 12
+          }
+        },
+        {
+          "id": "v_7",
+          "type": "text",
+          "x": 186,
+          "y": 339,
+          "width": 77,
+          "height": 32,
+          "zIndex": 2,
+          "content": "协作",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 16,
+            "fontWeight": "600",
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "c_8",
+          "type": "shape",
+          "x": 279.5,
+          "y": 283,
+          "width": 44,
+          "height": 44,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#156082",
+            "borderRadius": 12
+          }
+        },
+        {
+          "id": "v_9",
+          "type": "text",
+          "x": 263,
+          "y": 339,
+          "width": 77,
+          "height": 32,
+          "zIndex": 2,
+          "content": "共赢",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 16,
+            "fontWeight": "600",
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif"
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "联系",
+      "subtitle": "",
+      "layout": "cover",
+      "animation": "slide-up",
+      "canvas_background": "#FFFFFF",
+      "canvas_elements": [
+        {
+          "id": "t_1",
+          "type": "text",
+          "x": 32,
+          "y": 267,
+          "width": 311,
+          "height": 52,
+          "zIndex": 2,
+          "content": "期待合作",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 36,
+            "fontWeight": "bold",
+            "color": "#0E2841",
+            "fontFamily": "\"DengXian\", \"等线\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "c_2",
+          "type": "text",
+          "x": 32,
+          "y": 327,
+          "width": 311,
+          "height": 40,
+          "zIndex": 2,
+          "content": "hello@company.com",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 16,
+            "color": "#156082",
+            "fontFamily": "\"DengXian\", \"等线 Light\", \"Microsoft YaHei\", sans-serif"
+          }
+        },
+        {
+          "id": "ln_3",
+          "type": "shape",
+          "x": 155.5,
+          "y": 379,
+          "width": 64,
+          "height": 2,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#156082",
+            "borderRadius": 1
+          }
+        }
+      ],
+      "bullets": []
+    }
+  ]
+}

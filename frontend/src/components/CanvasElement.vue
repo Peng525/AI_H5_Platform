@@ -4,6 +4,7 @@
     :class="[
       readonly ? 'pointer-events-none' : 'touch-none',
       selected && !readonly ? 'ring-2 ring-primary ring-offset-1 z-50' : '',
+      staggerClass,
     ]"
     :style="{
       left: element.x + 'px',
@@ -11,6 +12,7 @@
       width: element.width + 'px',
       height: element.height + 'px',
       zIndex: element.zIndex || 1,
+      animationDelay: staggerDelay,
     }"
     @mousedown.stop="onRootMouseDown"
   >
@@ -21,11 +23,11 @@
       :style="textStyle"
       @dblclick.stop="startEdit"
     >
-      <input
+      <textarea
         v-if="editing"
         ref="inputRef"
         v-model="editText"
-        class="w-full h-full bg-white/90 border border-primary outline-none text-inherit px-1"
+        class="w-full h-full bg-white/90 border border-primary outline-none text-inherit px-1 resize-none"
         :style="{
           fontSize: (element.style?.fontSize || 16) + 'px',
           color: element.style?.color || '#1b1b1c',
@@ -33,9 +35,10 @@
           fontFamily: element.style?.fontFamily || 'inherit',
           lineHeight: element.style?.lineHeight ?? 1.5,
           letterSpacing: (element.style?.letterSpacing ?? 0) + 'px',
+          textAlign: element.style?.textAlign || 'left',
         }"
         @blur="commitEdit"
-        @keydown.enter="commitEdit"
+        @mousedown.stop
       />
       <span v-else class="block w-full h-full whitespace-pre-wrap break-words">{{ element.content }}</span>
     </div>
@@ -138,6 +141,7 @@ const props = defineProps({
   selected: { type: Boolean, default: false },
   readonly: { type: Boolean, default: false },
   scale: { type: Number, default: 1 },
+  staggerIndex: { type: Number, default: -1 },
 })
 
 const emit = defineEmits(['select', 'update', 'remove', 'batch-start', 'batch-end'])
@@ -174,6 +178,13 @@ const iconStyle = computed(() => ({
 }))
 
 const iconSize = computed(() => Math.min(props.element.width, props.element.height) * 0.55)
+
+const staggerClass = computed(() =>
+  props.readonly && props.staggerIndex >= 0 ? 'canvas-stagger-in' : ''
+)
+const staggerDelay = computed(() =>
+  props.staggerIndex >= 0 ? `${props.staggerIndex * 80}ms` : undefined
+)
 
 const tableRows = computed(() => {
   const c = props.element.content
@@ -232,8 +243,11 @@ function onSelect(e) {
 function startEdit() {
   if (props.readonly) return
   editing.value = true
-  editText.value = props.element.content
-  nextTick(() => inputRef.value?.focus())
+  editText.value = props.element.content ?? ''
+  nextTick(() => {
+    inputRef.value?.focus()
+    if (inputRef.value?.select) inputRef.value.select()
+  })
 }
 
 function commitEdit() {

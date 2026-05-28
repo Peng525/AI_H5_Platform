@@ -54,14 +54,24 @@ class ProjectSettingsOut(BaseModel):
     scrollEffect: str = "page"
     slideBackgrounds: dict[str, str] = Field(default_factory=dict)
     bgm: dict[str, Any] = Field(
-        default_factory=lambda: {"enabled": False, "url": "", "loop": True, "volume": 0.35}
+        default_factory=lambda: {
+            "enabled": False,
+            "trackId": "",
+            "url": "",
+            "loop": True,
+            "volume": 0.35,
+        }
     )
     defaultChatTapToContinue: bool = True
+    themeId: str = "zjy-minimal"
+    showScrollHint: bool = False
 
 
 class ProjectSettingsUpdate(BaseModel):
     viewportId: str | None = None
     scrollEffect: str | None = None
+    themeId: str | None = None
+    showScrollHint: bool | None = None
     slideBackgrounds: dict[str, str] | None = None
     bgm: dict[str, Any] | None = None
     defaultChatTapToContinue: bool | None = None
@@ -86,11 +96,14 @@ def project_settings_out(project: Any) -> ProjectSettingsOut:
         slideBackgrounds=data.get("slideBackgrounds") or {},
         bgm={
             "enabled": bool(bg.get("enabled", False)),
+            "trackId": bg.get("trackId") or "",
             "url": bg.get("url") or "",
             "loop": bg.get("loop", True) if bg.get("loop") is not False else False,
             "volume": float(bg.get("volume", 0.35)),
         },
         defaultChatTapToContinue=data.get("defaultChatTapToContinue", True),
+        themeId=data.get("themeId", "zjy-minimal"),
+        showScrollHint=bool(data.get("showScrollHint", False)),
     )
 
 

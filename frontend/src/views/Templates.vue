@@ -73,7 +73,7 @@
               v-if="t.featured"
               class="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-white"
             >
-              对话演示
+              可试看
             </span>
           </div>
           <div class="p-4">
@@ -195,8 +195,10 @@ async function useTemplate(t) {
     JSON.stringify({
       viewportId: settings.viewportId || t.default_viewport || (t.device === 'web' ? 'web-1280' : 'mobile-375'),
       scrollEffect: settings.scrollEffect || 'vertical',
+      themeId: settings.themeId || 'zjy-minimal',
+      showScrollHint: settings.showScrollHint === true,
       slideBackgrounds: settings.slideBackgrounds || {},
-      bgm: settings.bgm || { enabled: false, url: '', loop: true, volume: 0.35 },
+      bgm: settings.bgm || { enabled: false, trackId: '', url: '', loop: true, volume: 0.35 },
       defaultChatTapToContinue: settings.defaultChatTapToContinue !== false,
     })
   )

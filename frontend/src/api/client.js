@@ -32,6 +32,7 @@ async function request(path, options = {}) {
 
 export const api = {
   health: () => request('/api/v1/健康'),
+  listBgmTracks: () => request('/api/v1/bgm/曲目'),
   getCaptchaConfig: () => request('/api/v1/认证/验证码/配置'),
   sendSmsCode: (body) =>
     request('/api/v1/认证/验证码/发送', { method: 'POST', body: JSON.stringify(body) }),

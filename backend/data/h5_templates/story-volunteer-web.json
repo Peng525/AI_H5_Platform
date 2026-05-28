@@ -1,0 +1,1077 @@
+{
+  "id": "story-volunteer-web",
+  "title": "志愿叙事 H5 · 网页版",
+  "description": "宽屏叙事模板，适合投屏展示志愿主题内容。",
+  "category": "叙事公益",
+  "device": "web",
+  "pages": 10,
+  "premium": false,
+  "featured": true,
+  "cover_gradient": "from-orange-100 to-teal-100",
+  "default_viewport": "web-1280",
+  "settings_json": {
+    "viewportId": "web-1280",
+    "scrollEffect": "vertical",
+    "themeId": "eqxiu-story",
+    "showScrollHint": true,
+    "defaultChatTapToContinue": true,
+    "bgm": {
+      "enabled": false,
+      "trackId": "",
+      "url": "",
+      "loop": true,
+      "volume": 0.32
+    }
+  },
+  "slides_json": [
+    {
+      "title": "封面",
+      "subtitle": "",
+      "layout": "cover",
+      "animation": "fade",
+      "canvas_background": "#FFF8F3",
+      "canvas_elements": [
+        {
+          "id": "blob_1",
+          "type": "shape",
+          "x": 1080,
+          "y": 40,
+          "width": 160,
+          "height": 160,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#FFE8D6",
+            "borderRadius": 999
+          }
+        },
+        {
+          "id": "blob2_2",
+          "type": "shape",
+          "x": 40,
+          "y": 512,
+          "width": 120,
+          "height": 120,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#FFE8D6",
+            "borderRadius": 999
+          }
+        },
+        {
+          "id": "t_3",
+          "type": "text",
+          "x": 72,
+          "y": 194,
+          "width": 1136,
+          "height": 100,
+          "zIndex": 2,
+          "content": "广州大学生志愿服务的烦恼",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 48,
+            "fontWeight": "bold",
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif",
+            "lineHeight": 1.25
+          }
+        },
+        {
+          "id": "s_4",
+          "type": "text",
+          "x": 72,
+          "y": 302,
+          "width": 1136,
+          "height": 48,
+          "zIndex": 2,
+          "content": "一份关于期待与现实的叙事",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 22,
+            "color": "#636E72",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif"
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "提问",
+      "subtitle": "",
+      "layout": "title",
+      "animation": "slide-up",
+      "canvas_background": "#FFF8F3",
+      "canvas_elements": [
+        {
+          "id": "q_1",
+          "type": "text",
+          "x": 72,
+          "y": 208,
+          "width": 1136,
+          "height": 140,
+          "zIndex": 2,
+          "content": "他们期待什么样的志愿服务？",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 36,
+            "fontWeight": "bold",
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif",
+            "lineHeight": 1.35
+          }
+        },
+        {
+          "id": "h_2",
+          "type": "text",
+          "x": 72,
+          "y": 356,
+          "width": 1136,
+          "height": 36,
+          "zIndex": 2,
+          "content": "点击继续 ↓",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 16,
+            "color": "#E17055",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif"
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "期待",
+      "subtitle": "",
+      "layout": "bullets",
+      "animation": "fade",
+      "canvas_background": "#FFF8F3",
+      "canvas_elements": [
+        {
+          "id": "h_1",
+          "type": "text",
+          "x": 72,
+          "y": 125,
+          "width": 1136,
+          "height": 40,
+          "zIndex": 2,
+          "content": "四项期待",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 26,
+            "fontWeight": "600",
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif"
+          }
+        },
+        {
+          "id": "bg_2",
+          "type": "shape",
+          "x": 72,
+          "y": 181,
+          "width": 1136,
+          "height": 88,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#FFE8D6",
+            "borderRadius": 12
+          }
+        },
+        {
+          "id": "ic_3",
+          "type": "icon",
+          "x": 88,
+          "y": 203,
+          "width": 48,
+          "height": 48,
+          "zIndex": 2,
+          "content": "school",
+          "style": {
+            "color": "#E17055",
+            "background": "transparent"
+          }
+        },
+        {
+          "id": "tx_4",
+          "type": "text",
+          "x": 152,
+          "y": 205,
+          "width": 1056,
+          "height": 48,
+          "zIndex": 2,
+          "content": "技能提升",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif",
+            "lineHeight": 1.4
+          }
+        },
+        {
+          "id": "bg_5",
+          "type": "shape",
+          "x": 72,
+          "y": 281,
+          "width": 1136,
+          "height": 88,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#FFE8D6",
+            "borderRadius": 12
+          }
+        },
+        {
+          "id": "ic_6",
+          "type": "icon",
+          "x": 88,
+          "y": 303,
+          "width": 48,
+          "height": 48,
+          "zIndex": 2,
+          "content": "favorite",
+          "style": {
+            "color": "#E17055",
+            "background": "transparent"
+          }
+        },
+        {
+          "id": "tx_7",
+          "type": "text",
+          "x": 152,
+          "y": 305,
+          "width": 1056,
+          "height": 48,
+          "zIndex": 2,
+          "content": "有意义的体验",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif",
+            "lineHeight": 1.4
+          }
+        },
+        {
+          "id": "bg_8",
+          "type": "shape",
+          "x": 72,
+          "y": 381,
+          "width": 1136,
+          "height": 88,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#FFE8D6",
+            "borderRadius": 12
+          }
+        },
+        {
+          "id": "ic_9",
+          "type": "icon",
+          "x": 88,
+          "y": 403,
+          "width": 48,
+          "height": 48,
+          "zIndex": 2,
+          "content": "emoji_objects",
+          "style": {
+            "color": "#E17055",
+            "background": "transparent"
+          }
+        },
+        {
+          "id": "tx_10",
+          "type": "text",
+          "x": 152,
+          "y": 405,
+          "width": 1056,
+          "height": 48,
+          "zIndex": 2,
+          "content": "有趣有挑战",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif",
+            "lineHeight": 1.4
+          }
+        },
+        {
+          "id": "bg_11",
+          "type": "shape",
+          "x": 72,
+          "y": 481,
+          "width": 1136,
+          "height": 88,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#FFE8D6",
+            "borderRadius": 12
+          }
+        },
+        {
+          "id": "ic_12",
+          "type": "icon",
+          "x": 88,
+          "y": 503,
+          "width": 48,
+          "height": 48,
+          "zIndex": 2,
+          "content": "groups",
+          "style": {
+            "color": "#E17055",
+            "background": "transparent"
+          }
+        },
+        {
+          "id": "tx_13",
+          "type": "text",
+          "x": 152,
+          "y": 505,
+          "width": 1056,
+          "height": 48,
+          "zIndex": 2,
+          "content": "组织靠谱、沟通顺畅",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif",
+            "lineHeight": 1.4
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "烦恼",
+      "subtitle": "",
+      "layout": "bullets",
+      "animation": "slide-up",
+      "canvas_background": "#FFF8F3",
+      "canvas_elements": [
+        {
+          "id": "h_1",
+          "type": "text",
+          "x": 72,
+          "y": 125,
+          "width": 1136,
+          "height": 40,
+          "zIndex": 2,
+          "content": "四项烦恼",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 26,
+            "fontWeight": "600",
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif"
+          }
+        },
+        {
+          "id": "bg_2",
+          "type": "shape",
+          "x": 72,
+          "y": 181,
+          "width": 1136,
+          "height": 88,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#FFE8D6",
+            "borderRadius": 12
+          }
+        },
+        {
+          "id": "ic_3",
+          "type": "icon",
+          "x": 88,
+          "y": 203,
+          "width": 48,
+          "height": 48,
+          "zIndex": 2,
+          "content": "schedule",
+          "style": {
+            "color": "#E17055",
+            "background": "transparent"
+          }
+        },
+        {
+          "id": "tx_4",
+          "type": "text",
+          "x": 152,
+          "y": 205,
+          "width": 1056,
+          "height": 48,
+          "zIndex": 2,
+          "content": "时间冲突难协调",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif",
+            "lineHeight": 1.4
+          }
+        },
+        {
+          "id": "bg_5",
+          "type": "shape",
+          "x": 72,
+          "y": 281,
+          "width": 1136,
+          "height": 88,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#FFE8D6",
+            "borderRadius": 12
+          }
+        },
+        {
+          "id": "ic_6",
+          "type": "icon",
+          "x": 88,
+          "y": 303,
+          "width": 48,
+          "height": 48,
+          "zIndex": 2,
+          "content": "help",
+          "style": {
+            "color": "#E17055",
+            "background": "transparent"
+          }
+        },
+        {
+          "id": "tx_7",
+          "type": "text",
+          "x": 152,
+          "y": 305,
+          "width": 1056,
+          "height": 48,
+          "zIndex": 2,
+          "content": "培训不足难上手",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif",
+            "lineHeight": 1.4
+          }
+        },
+        {
+          "id": "bg_8",
+          "type": "shape",
+          "x": 72,
+          "y": 381,
+          "width": 1136,
+          "height": 88,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#FFE8D6",
+            "borderRadius": 12
+          }
+        },
+        {
+          "id": "ic_9",
+          "type": "icon",
+          "x": 88,
+          "y": 403,
+          "width": 48,
+          "height": 48,
+          "zIndex": 2,
+          "content": "sentiment_dissatisfied",
+          "style": {
+            "color": "#E17055",
+            "background": "transparent"
+          }
+        },
+        {
+          "id": "tx_10",
+          "type": "text",
+          "x": 152,
+          "y": 405,
+          "width": 1056,
+          "height": 48,
+          "zIndex": 2,
+          "content": "活动形式单一",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif",
+            "lineHeight": 1.4
+          }
+        },
+        {
+          "id": "bg_11",
+          "type": "shape",
+          "x": 72,
+          "y": 481,
+          "width": 1136,
+          "height": 88,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#FFE8D6",
+            "borderRadius": 12
+          }
+        },
+        {
+          "id": "ic_12",
+          "type": "icon",
+          "x": 88,
+          "y": 503,
+          "width": 48,
+          "height": 48,
+          "zIndex": 2,
+          "content": "link_off",
+          "style": {
+            "color": "#E17055",
+            "background": "transparent"
+          }
+        },
+        {
+          "id": "tx_13",
+          "type": "text",
+          "x": 152,
+          "y": 505,
+          "width": 1056,
+          "height": 48,
+          "zIndex": 2,
+          "content": "反馈慢、体验差",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif",
+            "lineHeight": 1.4
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "数据",
+      "subtitle": "",
+      "layout": "bullets",
+      "animation": "fade",
+      "canvas_background": "#FFF8F3",
+      "canvas_elements": [
+        {
+          "id": "n_1",
+          "type": "text",
+          "x": 72,
+          "y": 194,
+          "width": 1136,
+          "height": 120,
+          "zIndex": 2,
+          "content": "73%",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 72,
+            "fontWeight": "bold",
+            "color": "#E17055",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif"
+          }
+        },
+        {
+          "id": "d_2",
+          "type": "text",
+          "x": 72,
+          "y": 322,
+          "width": 1136,
+          "height": 80,
+          "zIndex": 2,
+          "content": "大学生希望志愿服务带来真实成长",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 22,
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif",
+            "lineHeight": 1.55
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "案例",
+      "subtitle": "",
+      "layout": "title",
+      "animation": "slide-up",
+      "canvas_background": "#FFF8F3",
+      "canvas_elements": [
+        {
+          "id": "card_1",
+          "type": "shape",
+          "x": 72,
+          "y": 152,
+          "width": 1136,
+          "height": 280,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#FFE8D6",
+            "borderRadius": 16
+          }
+        },
+        {
+          "id": "t_2",
+          "type": "text",
+          "x": 96,
+          "y": 176,
+          "width": 1088,
+          "height": 48,
+          "zIndex": 2,
+          "content": "案例：校园志愿周",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 26,
+            "fontWeight": "600",
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif"
+          }
+        },
+        {
+          "id": "b_3",
+          "type": "text",
+          "x": 96,
+          "y": 240,
+          "width": 1088,
+          "height": 180,
+          "zIndex": 2,
+          "content": "通过线上招募与分层培训，参与人数提升 2 倍，满意度显著提高。",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "color": "#636E72",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif",
+            "lineHeight": 1.6
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "价值",
+      "subtitle": "",
+      "layout": "bullets",
+      "animation": "fade",
+      "canvas_background": "#FFF8F3",
+      "canvas_elements": [
+        {
+          "id": "h_1",
+          "type": "text",
+          "x": 72,
+          "y": 177,
+          "width": 1136,
+          "height": 40,
+          "zIndex": 2,
+          "content": "志愿精神",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 26,
+            "fontWeight": "600",
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif"
+          }
+        },
+        {
+          "id": "c_2",
+          "type": "shape",
+          "x": 186,
+          "y": 249,
+          "width": 56,
+          "height": 56,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#E17055",
+            "borderRadius": 12
+          }
+        },
+        {
+          "id": "v_3",
+          "type": "text",
+          "x": 72,
+          "y": 317,
+          "width": 284,
+          "height": 36,
+          "zIndex": 2,
+          "content": "奉献",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 22,
+            "fontWeight": "600",
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif"
+          }
+        },
+        {
+          "id": "c_4",
+          "type": "shape",
+          "x": 470,
+          "y": 249,
+          "width": 56,
+          "height": 56,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#E17055",
+            "borderRadius": 12
+          }
+        },
+        {
+          "id": "v_5",
+          "type": "text",
+          "x": 356,
+          "y": 317,
+          "width": 284,
+          "height": 36,
+          "zIndex": 2,
+          "content": "友爱",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 22,
+            "fontWeight": "600",
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif"
+          }
+        },
+        {
+          "id": "c_6",
+          "type": "shape",
+          "x": 754,
+          "y": 249,
+          "width": 56,
+          "height": 56,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#E17055",
+            "borderRadius": 12
+          }
+        },
+        {
+          "id": "v_7",
+          "type": "text",
+          "x": 640,
+          "y": 317,
+          "width": 284,
+          "height": 36,
+          "zIndex": 2,
+          "content": "互助",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 22,
+            "fontWeight": "600",
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif"
+          }
+        },
+        {
+          "id": "c_8",
+          "type": "shape",
+          "x": 1038,
+          "y": 249,
+          "width": 56,
+          "height": 56,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#E17055",
+            "borderRadius": 12
+          }
+        },
+        {
+          "id": "v_9",
+          "type": "text",
+          "x": 924,
+          "y": 317,
+          "width": 284,
+          "height": 36,
+          "zIndex": 2,
+          "content": "进步",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 22,
+            "fontWeight": "600",
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif"
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "小结",
+      "subtitle": "",
+      "layout": "title",
+      "animation": "slide-up",
+      "canvas_background": "#FFF8F3",
+      "canvas_elements": [
+        {
+          "id": "bar_1",
+          "type": "shape",
+          "x": 72,
+          "y": 194,
+          "width": 4,
+          "height": 120,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#E17055",
+            "borderRadius": 2
+          }
+        },
+        {
+          "id": "t_2",
+          "type": "text",
+          "x": 88,
+          "y": 194,
+          "width": 1120,
+          "height": 56,
+          "zIndex": 2,
+          "content": "我们可以做什么",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 36,
+            "fontWeight": "bold",
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif"
+          }
+        },
+        {
+          "id": "b_3",
+          "type": "text",
+          "x": 88,
+          "y": 262,
+          "width": 1120,
+          "height": 80,
+          "zIndex": 2,
+          "content": "从组织方、高校与学生三方协同，改善志愿体验。",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "color": "#636E72",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif",
+            "lineHeight": 1.6
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "行动",
+      "subtitle": "",
+      "layout": "bullets",
+      "animation": "fade",
+      "canvas_background": "#FFF8F3",
+      "canvas_elements": [
+        {
+          "id": "h_1",
+          "type": "text",
+          "x": 72,
+          "y": 96,
+          "width": 1136,
+          "height": 44,
+          "zIndex": 2,
+          "content": "三条建议",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 26,
+            "fontWeight": "600",
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif"
+          }
+        },
+        {
+          "id": "dot_2",
+          "type": "shape",
+          "x": 72,
+          "y": 160,
+          "width": 12,
+          "height": 12,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#E17055",
+            "borderRadius": 999
+          }
+        },
+        {
+          "id": "b_3",
+          "type": "text",
+          "x": 100,
+          "y": 152,
+          "width": 1108,
+          "height": 64,
+          "zIndex": 2,
+          "content": "设计有挑战的任务包",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif",
+            "lineHeight": 1.5
+          }
+        },
+        {
+          "id": "dot_4",
+          "type": "shape",
+          "x": 72,
+          "y": 248,
+          "width": 12,
+          "height": 12,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#E17055",
+            "borderRadius": 999
+          }
+        },
+        {
+          "id": "b_5",
+          "type": "text",
+          "x": 100,
+          "y": 240,
+          "width": 1108,
+          "height": 64,
+          "zIndex": 2,
+          "content": "建立透明沟通机制",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif",
+            "lineHeight": 1.5
+          }
+        },
+        {
+          "id": "dot_6",
+          "type": "shape",
+          "x": 72,
+          "y": 336,
+          "width": 12,
+          "height": 12,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#E17055",
+            "borderRadius": 999
+          }
+        },
+        {
+          "id": "b_7",
+          "type": "text",
+          "x": 100,
+          "y": 328,
+          "width": 1108,
+          "height": 64,
+          "zIndex": 2,
+          "content": "用数据衡量活动成效",
+          "style": {
+            "background": "transparent",
+            "textAlign": "left",
+            "fontSize": 22,
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif",
+            "lineHeight": 1.5
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "致谢",
+      "subtitle": "",
+      "layout": "cover",
+      "animation": "slide-up",
+      "canvas_background": "#FFF8F3",
+      "canvas_elements": [
+        {
+          "id": "t_1",
+          "type": "text",
+          "x": 72,
+          "y": 235,
+          "width": 1136,
+          "height": 64,
+          "zIndex": 2,
+          "content": "谢谢观看",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 48,
+            "fontWeight": "bold",
+            "color": "#2D3436",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif"
+          }
+        },
+        {
+          "id": "c_2",
+          "type": "text",
+          "x": 72,
+          "y": 311,
+          "width": 1136,
+          "height": 48,
+          "zIndex": 2,
+          "content": "欢迎加入志愿者行列",
+          "style": {
+            "background": "transparent",
+            "textAlign": "center",
+            "fontSize": 22,
+            "color": "#E17055",
+            "fontFamily": "\"Microsoft YaHei\", \"PingFang SC\", sans-serif"
+          }
+        },
+        {
+          "id": "ln_3",
+          "type": "shape",
+          "x": 592,
+          "y": 375,
+          "width": 96,
+          "height": 2,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#E17055",
+            "borderRadius": 1
+          }
+        }
+      ],
+      "bullets": []
+    }
+  ]
+}

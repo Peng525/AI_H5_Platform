@@ -15,6 +15,7 @@
     "defaultChatTapToContinue": true,
     "bgm": {
       "enabled": true,
+      "trackId": "happier-sakura",
       "url": "/static/bgm/happier-sakura-girl.mp3",
       "loop": true,
       "volume": 0.3

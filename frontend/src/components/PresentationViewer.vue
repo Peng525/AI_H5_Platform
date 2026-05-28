@@ -22,6 +22,13 @@
         点击屏幕开启背景音乐
       </div>
 
+      <div
+        v-if="scrollHintVisible && !embedded"
+        class="absolute bottom-24 left-1/2 -translate-x-1/2 z-40 text-xs text-white bg-black/60 px-4 py-2 rounded-full pointer-events-none animate-bounce"
+      >
+        上滑继续 ↓
+      </div>
+
       <div v-if="!embedded" class="absolute top-4 left-4 z-10 max-w-[240px] pointer-events-none">
         <p class="text-sm text-white font-semibold drop-shadow-md">{{ scrollModeInfo.label }}</p>
         <p class="text-xs text-white/85 mt-1 leading-relaxed drop-shadow">{{ scrollModeInfo.hint }}</p>
@@ -94,6 +101,7 @@
                 :slide="current"
                 :slide-index="index"
                 :slide-total="slides.length"
+                :enable-stagger="!embedded"
               />
               <ChatStoryOverlay
                 :script="slideChatScript(current)"
@@ -126,6 +134,7 @@
               :slide="s"
               :slide-index="i"
               :slide-total="slides.length"
+              :enable-stagger="!embedded && i === visibleIndex"
             />
             <ChatStoryOverlay
               v-if="i === visibleIndex"
@@ -158,6 +167,7 @@
               :slide="s"
               :slide-index="i"
               :slide-total="slides.length"
+              :enable-stagger="!embedded && i === visibleIndex"
             />
             <ChatStoryOverlay
               v-if="i === visibleIndex"
@@ -280,6 +290,13 @@ const {
 const bgmHintVisible = computed(
   () => bgmConfig.value.enabled && bgmConfig.value.url && !bgmUnlocked.value && !bgmMuted.value
 )
+
+const scrollHintVisible = computed(() => {
+  if (props.embedded) return false
+  if (!projectSettings.value?.showScrollHint) return false
+  if (scrollEffect.value !== 'vertical' && scrollEffect.value !== 'snap') return false
+  return visibleIndex.value === 0 && slides.value.length > 1
+})
 
 const scrollModeInfo = computed(() => {
   const m = SCROLL_EFFECTS.find((s) => s.id === scrollEffect.value)

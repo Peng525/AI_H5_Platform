@@ -64,6 +64,43 @@
             <span class="material-symbols-outlined text-[18px] font-bold">format_bold</span>
           </button>
 
+          <button
+            type="button"
+            class="p-1.5 rounded hover:bg-surface-container"
+            :class="textAlign === 'left' ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant'"
+            title="左对齐"
+            @click="onStyle({ textAlign: 'left' })"
+          >
+            <span class="material-symbols-outlined text-[18px]">format_align_left</span>
+          </button>
+          <button
+            type="button"
+            class="p-1.5 rounded hover:bg-surface-container"
+            :class="textAlign === 'center' ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant'"
+            title="居中"
+            @click="onStyle({ textAlign: 'center' })"
+          >
+            <span class="material-symbols-outlined text-[18px]">format_align_center</span>
+          </button>
+          <button
+            type="button"
+            class="p-1.5 rounded hover:bg-surface-container"
+            :class="textAlign === 'right' ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant'"
+            title="右对齐"
+            @click="onStyle({ textAlign: 'right' })"
+          >
+            <span class="material-symbols-outlined text-[18px]">format_align_right</span>
+          </button>
+
+          <select
+            class="text-xs border border-outline-variant rounded px-1 py-1 max-w-[72px]"
+            title="主题样式"
+            @change="applyThemePreset($event.target.value)"
+          >
+            <option value="" disabled selected hidden>主题</option>
+            <option v-for="(p, key) in themePresets" :key="'th-' + key" :value="key">{{ p.label }}</option>
+          </select>
+
           <select
             class="text-xs border border-outline-variant rounded px-1 py-1 max-w-[72px]"
             title="样式"
@@ -113,6 +150,17 @@
             icon="format_color_fill"
             @change="onStyle({ background: $event })"
           />
+          <label class="text-[10px] text-on-surface-variant flex items-center gap-1">
+            圆角
+            <input
+              type="range"
+              min="0"
+              max="48"
+              :value="selected.style?.borderRadius ?? 8"
+              class="w-16"
+              @input="onStyle({ borderRadius: Number($event.target.value) })"
+            />
+          </label>
         </template>
         <!-- 表格：双击单元格编辑 -->
         <template v-else-if="selected.type === 'table'">
@@ -157,6 +205,12 @@
 
         <div class="w-px h-5 bg-outline-variant" />
 
+        <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="水平居中" @click="$emit('center-element', 'h')">
+          <span class="material-symbols-outlined text-[18px]">align_horizontal_center</span>
+        </button>
+        <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="垂直居中" @click="$emit('center-element', 'v')">
+          <span class="material-symbols-outlined text-[18px]">align_vertical_center</span>
+        </button>
         <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="复制" @click="$emit('duplicate')">
           <span class="material-symbols-outlined text-[18px]">content_copy</span>
         </button>
@@ -179,14 +233,17 @@ import {
   LETTER_SPACINGS,
   LINE_HEIGHTS,
   TEXT_PRESETS,
+  getThemeTextPresets,
 } from '../constants/textFormats'
 import WordColorPicker from './WordColorPicker.vue'
 
 const props = defineProps({
   selected: { type: Object, default: null },
+  themeId: { type: String, default: 'zjy-minimal' },
+  viewportId: { type: String, default: 'mobile-375' },
 })
 
-const emit = defineEmits(['add-text', 'add-shape', 'add-image', 'style-change', 'duplicate', 'delete', 'bring-front'])
+const emit = defineEmits(['add-text', 'add-shape', 'add-image', 'style-change', 'duplicate', 'delete', 'bring-front', 'center-element'])
 
 const addMenuOpen = ref(false)
 const addMenuRef = ref(null)
@@ -197,6 +254,10 @@ const isBold = computed(() => {
   const w = props.selected?.style?.fontWeight
   return w === 'bold' || w === '700' || w === 700
 })
+
+const textAlign = computed(() => props.selected?.style?.textAlign || 'left')
+
+const themePresets = computed(() => getThemeTextPresets(props.themeId, props.viewportId))
 
 const currentFontId = computed(() => {
   const ff = props.selected?.style?.fontFamily || ''
@@ -218,6 +279,11 @@ function toggleBold() {
 
 function applyPreset(key) {
   const preset = TEXT_PRESETS[key]
+  if (preset) onStyle({ ...preset.style })
+}
+
+function applyThemePreset(key) {
+  const preset = themePresets.value[key]
   if (preset) onStyle({ ...preset.style })
 }
 

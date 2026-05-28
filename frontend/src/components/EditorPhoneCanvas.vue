@@ -5,6 +5,8 @@
   >
     <EditorCanvasToolbar
       :selected="selectedElement"
+      :theme-id="themeId"
+      :viewport-id="viewportId"
       @add-text="$emit('add-text')"
       @add-shape="$emit('add-shape')"
       @add-image="$emit('add-image')"
@@ -12,6 +14,7 @@
       @duplicate="$emit('duplicate')"
       @delete="$emit('delete-selected')"
       @bring-front="$emit('bring-front')"
+      @center-element="$emit('center-element', $event)"
     />
 
     <!-- 分辨率选择 -->
@@ -166,6 +169,7 @@ const props = defineProps({
   previewAnimation: { type: String, default: '' },
   previewAnimationTick: { type: Number, default: 0 },
   canvasBackground: { type: String, default: '#005daa' },
+  themeId: { type: String, default: 'zjy-minimal' },
 })
 
 const emit = defineEmits([
@@ -179,6 +183,7 @@ const emit = defineEmits([
   'duplicate',
   'delete-selected',
   'bring-front',
+  'center-element',
   'viewport-change',
   'batch-start',
   'batch-end',

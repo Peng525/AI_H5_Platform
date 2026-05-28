@@ -1,30 +1,79 @@
 <template>
   <div class="p-3 flex flex-col gap-3 min-h-0">
-    <!-- 页面画布背景色 -->
     <div>
-      <p class="text-[11px] font-semibold text-on-surface-variant mb-1.5">页面背景色</p>
-      <div class="flex flex-wrap gap-1">
+      <p class="text-[11px] font-semibold text-on-surface-variant mb-1.5">页面背景</p>
+      <div class="flex flex-wrap gap-1 mb-2">
         <button
           v-for="c in quickColors"
-          :key="c"
+          :key="'c-' + c"
           type="button"
           class="w-5 h-5 rounded-sm border border-black/10 shrink-0 hover:scale-110 transition-transform"
-          :class="[c === '#FFFFFF' ? 'ring-1 ring-inset ring-gray-300' : '', canvasBackground === c ? 'ring-2 ring-primary ring-offset-1' : '']"
+          :class="[c === '#FFFFFF' ? 'ring-1 ring-inset ring-gray-300' : '', isActiveBg(c) ? 'ring-2 ring-primary ring-offset-1' : '']"
           :style="{ background: c }"
           :title="c"
           @click="pickCanvasBg(c)"
         />
         <input
-          :value="canvasBackground"
+          :value="solidPickerValue"
           type="color"
           class="w-5 h-5 border-0 cursor-pointer p-0 shrink-0"
-          title="自定义页面背景"
+          title="自定义纯色"
           @input="pickCanvasBg($event.target.value)"
         />
       </div>
+      <div v-if="themeGradients.length" class="flex flex-wrap gap-1">
+        <button
+          v-for="g in themeGradients"
+          :key="g.id"
+          type="button"
+          class="h-5 px-2 rounded-sm border text-[9px] shrink-0 hover:scale-105 transition-transform"
+          :class="isActiveBg(g.value) ? 'ring-2 ring-primary ring-offset-1 border-primary' : 'border-black/10'"
+          :style="{ background: g.value }"
+          :title="g.label"
+          @click="pickCanvasBg({ type: 'gradient', value: g.value })"
+        >
+          {{ g.label }}
+        </button>
+      </div>
     </div>
 
-    <p class="text-[11px] font-semibold text-on-surface-variant">点击添加到画布</p>
+    <div>
+      <p class="text-[11px] font-semibold text-on-surface-variant mb-1.5">商务版式</p>
+      <div class="material-grid">
+        <button
+          v-for="item in businessBlocks"
+          :key="item.id"
+          type="button"
+          class="material-card group"
+          @click="emitLayout(item.id)"
+        >
+          <div class="material-preview">
+            <span class="material-symbols-outlined text-xl text-primary">{{ item.icon }}</span>
+          </div>
+          <span class="material-label">{{ item.label }}</span>
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <p class="text-[11px] font-semibold text-on-surface-variant mb-1.5">叙事版式</p>
+      <div class="material-grid">
+        <button
+          v-for="item in storyBlocks"
+          :key="item.id"
+          type="button"
+          class="material-card group"
+          @click="emitLayout(item.id)"
+        >
+          <div class="material-preview">
+            <span class="material-symbols-outlined text-xl text-secondary">{{ item.icon }}</span>
+          </div>
+          <span class="material-label">{{ item.label }}</span>
+        </button>
+      </div>
+    </div>
+
+    <p class="text-[11px] font-semibold text-on-surface-variant">基础组件</p>
 
     <div class="material-grid">
       <button
@@ -75,15 +124,54 @@
 </template>
 
 <script setup>
-import { THEME_COLORS } from '../constants/textFormats'
+import { computed } from 'vue'
+import { getTheme, getThemeGradients } from '../constants/designThemes.js'
+import { BUSINESS_LAYOUT_BLOCKS, STORY_LAYOUT_BLOCKS } from '../constants/layoutBlocks.js'
+import { themePaletteColors } from '../constants/textFormats.js'
+import { normalizeSlideBackground, slideBackgroundCSSValue } from '../utils/slideBackground.js'
 
-defineProps({
+const props = defineProps({
   canvasBackground: { type: String, default: '#005daa' },
+  themeId: { type: String, default: 'zjy-minimal' },
 })
 
-const emit = defineEmits(['add', 'canvas-bg-change'])
+const emit = defineEmits(['add', 'canvas-bg-change', 'apply-layout'])
 
-const quickColors = ['#005daa', '#4472C4', '#70AD47', '#ED7D31', '#FFC000', '#FFFFFF', '#44546A', '#C00000', ...THEME_COLORS.filter((c, i, a) => a.indexOf(c) === i)].slice(0, 12)
+const themeGradients = computed(() => getThemeGradients(props.themeId))
+const businessBlocks = BUSINESS_LAYOUT_BLOCKS
+const storyBlocks = STORY_LAYOUT_BLOCKS
+
+const quickColors = computed(() => {
+  const theme = getTheme(props.themeId)
+  return [
+    theme.colors.bg,
+    theme.colors.bgMuted,
+    theme.colors.accent,
+    theme.colors.text,
+    '#FFFFFF',
+    ...themePaletteColors(props.themeId),
+  ].filter((c, i, a) => a.indexOf(c) === i).slice(0, 10)
+})
+
+const solidPickerValue = computed(() => {
+  const n = normalizeSlideBackground(props.canvasBackground)
+  if (n.type === 'solid' && n.value.startsWith('#')) return n.value
+  return '#ffffff'
+})
+
+function isActiveBg(value) {
+  const current = slideBackgroundCSSValue(props.canvasBackground)
+  const next = typeof value === 'string' ? value : value?.value
+  return current === next
+}
+
+function pickCanvasBg(color) {
+  emit('canvas-bg-change', color)
+}
+
+function emitLayout(blockId) {
+  emit('apply-layout', blockId)
+}
 
 const chartPreviewBars = [10, 18, 12, 22]
 
@@ -95,10 +183,6 @@ const presets = [
   { id: 'image', kind: 'image', label: '图片', type: 'image' },
   { id: 'chart', kind: 'chart', label: '图表', type: 'chart' },
 ]
-
-function pickCanvasBg(color) {
-  emit('canvas-bg-change', color)
-}
 </script>
 
 <style scoped>

@@ -1,5 +1,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 
+import { slideBackgroundCSSValue } from '../utils/slideBackground'
+
 /** 演示播放：对话门控 + BGM */
 export function usePresentationPlayback(options = {}) {
   const {
@@ -128,8 +130,10 @@ export function mergeProjectSettings(projectId, serverSettings) {
   const defaults = {
     viewportId: 'mobile-375',
     scrollEffect: 'page',
+    themeId: 'zjy-minimal',
+    showScrollHint: false,
     slideBackgrounds: {},
-    bgm: { enabled: false, url: '', loop: true, volume: 0.35 },
+    bgm: { enabled: false, trackId: '', url: '', loop: true, volume: 0.35 },
     defaultChatTapToContinue: true,
   }
   let local = {}
@@ -160,16 +164,17 @@ export function mergeProjectSettings(projectId, serverSettings) {
 
 export function resolveSlideBackground(projectId, slideId, settings) {
   const DEFAULT = '#005daa'
-  if (!slideId) return DEFAULT
+  if (!slideId) return slideBackgroundCSSValue(DEFAULT)
   const key = String(slideId)
   const fromSettings = settings?.slideBackgrounds?.[key]
-  if (fromSettings) return fromSettings
+  if (fromSettings) return slideBackgroundCSSValue(fromSettings)
   try {
     const raw = localStorage.getItem(`ai_h5_project_settings_${projectId}`)
     if (raw) {
       const s = JSON.parse(raw)
-      return s.slideBackgrounds?.[key] ?? DEFAULT
+      const v = s.slideBackgrounds?.[key]
+      if (v) return slideBackgroundCSSValue(v)
     }
   } catch { /* ignore */ }
-  return DEFAULT
+  return slideBackgroundCSSValue(DEFAULT)
 }

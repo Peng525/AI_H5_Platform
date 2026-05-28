@@ -9,6 +9,7 @@
 | `模板.mp4` | 3～5 | 封面排版、对话页气泡色、页间过渡 |
 | `模板2.mp4` | 3～5 | 进阶版配色、对话密度 |
 | `演示.mp4` | 3～5 | 预览/分享整体体验、BGM 提示、逐句点击 |
+| 易企秀 5P8N3mJ7 | 3～5 | 叙事纵向滑动、暖色排版（见 `eqxiu-volunteer-story.md`） |
 
 ## 文件命名
 
@@ -18,7 +19,16 @@ reference-frames/
   template-a-chat.png
   template-b-cover.png
   demo-preview-full.png
+  eqxiu-volunteer-cover.png
+  eqxiu-volunteer-hook.png
 ```
+
+规范文档：
+
+- [zjy-style-guide.md](./zjy-style-guide.md)
+- [eqxiu-volunteer-story.md](./eqxiu-volunteer-story.md)
+
+重新生成模板 JSON：`node scripts/generate-h5-templates.mjs`
 
 ## 当前实现对照
 

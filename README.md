@@ -37,6 +37,8 @@
 
 - 项目管理、页面编辑、全屏 H5 预览
 - **探索模板**：按模板类型 + 终端（移动端 / 网页版）筛选；主页不含 AI 面板
+- **简约模板体系**：ZJY 商务 + 易企秀叙事双主题，14 种页面版式块，10 套完整 JSON 模板（见下文）
+- **背景音乐（BGM）**：编辑器可选开关 / 选曲 / 音量；预览与分享页同步播放
 - 画布内容自动保存至服务端，**预览与编辑器内容一致**
 - PPT 风格素材面板（文本框 / 矩形 / 表格 / 图标 / 图片 / 图表）与页面背景色
 - Word 风格文本格式工具栏
@@ -117,9 +119,59 @@ LLM_IMAGE_MODEL_PRO=gemini-3-pro-image-preview
 
 | 参数 | 说明 |
 |------|------|
-| `category` | 模板类型：全部 / 年度报告 / 产品发布 / … |
+| `category` | 模板类型：全部 / 简约商务 / 叙事公益 / 对话故事 / 年度报告 / 产品发布 / … |
 | `device` | 终端：`全部` / `mobile`（移动端）/ `web`（网页版） |
 | `q` | 关键词（支持「移动端」「网页版」等） |
+
+有完整 `slides_json` 的模板显示「可试看」，套用后可直接改字出片。
+
+### 简约模板体系
+
+双主题 + 版式块 + JSON 模板，参照 **zjy.pptx**（商务简约）与 **易企秀 5P8N3mJ7**（叙事 H5）。
+
+| 主题 ID | 风格 | 典型模板 |
+|---------|------|----------|
+| `zjy-minimal` | 白底、青蓝 `#156082`、商务汇报 | `minimal-zjy-mobile/web` |
+| `eqxiu-story` | 暖色叙事、纵向滑动 | `story-volunteer-mobile/web` |
+
+**模板 JSON 位置**：`backend/data/h5_templates/`（启动时全量 sync 至 SQLite）
+
+| 模板 ID | 页数 | 说明 |
+|---------|------|------|
+| `minimal-zjy-mobile` / `web` | 9 | ZJY 简约商务 |
+| `story-volunteer-mobile` / `web` | 10 | 志愿叙事（易企秀结构） |
+| `tech-launch-mobile` / `web` | 8 | 产品发布 |
+| `corp-intro-mobile` / `web` | 8 | 企业介绍 |
+| `story-wechat-mobile` / `v2` | 6~8 | 微信对话演示 |
+
+**重新生成模板 JSON**（修改版式块或文案种子后）：
+
+```bash
+node scripts/generate-h5-templates.mjs
+```
+
+**编辑器用法**：
+
+- 素材面板 → **商务版式 / 叙事版式** 一键套用
+- 新建页面 → 选择版式（可跳过为空白页）
+- 动效面板 → 浏览模式、页动效、**BGM**（可选）
+
+**视觉规范文档**：
+
+- [`docs/reference-frames/zjy-style-guide.md`](docs/reference-frames/zjy-style-guide.md)
+- [`docs/reference-frames/eqxiu-volunteer-story.md`](docs/reference-frames/eqxiu-volunteer-story.md)
+
+### 背景音乐（BGM）
+
+| 项 | 说明 |
+|----|------|
+| 音频目录 | `backend/media/bgm/`（推荐，构建不覆盖） |
+| 访问路径 | `/static/bgm/xxx.mp3` |
+| 曲目 API | `GET /api/v1/bgm/曲目` |
+| 安装测试曲 | `.\scripts\install-bgm.ps1` |
+| 编辑器配置 | 工具箱 → 动效 → 启用背景音乐（可选） |
+
+曲目元数据：`backend/data/bgm_catalog.json`
 
 ## 大模型 auto 模式
 
@@ -131,13 +183,24 @@ LLM_IMAGE_MODEL_PRO=gemini-3-pro-image-preview
 develop/
 ├── backend/          # FastAPI
 │   ├── app/
-│   ├── services/llm/image_provider.py  # AI 配图（images/generations + chat modalities）
-│   └── templates/    # 全量生成.yaml、单页改写.yaml
+│   ├── data/
+│   │   ├── h5_templates/   # H5 模板 JSON（启动 sync）
+│   │   └── bgm_catalog.json
+│   ├── media/bgm/          # 背景音乐 MP3（勿提交）
+│   └── services/llm/image_provider.py
 ├── frontend/         # Vue 3 + Vite + Tailwind
+│   └── src/constants/
+│       ├── designThemes.js   # zjy-minimal / eqxiu-story
+│       ├── layoutBlocks.js   # 14 种页面版式
+│       └── templateSeeds.js  # 模板生成种子
+├── scripts/
+│   ├── generate-h5-templates.mjs
+│   └── install-bgm.ps1
 ├── Dockerfile
 ├── docker-compose.yml
 └── docs/
-    ├── 需求清单.md          # 功能需求与完成状态
+    ├── 需求清单.md          # 功能需求与完成状态（含 TM-07~15）
+    ├── reference-frames/    # 视觉参照与截帧说明
     ├── Stitch原型对照.md
     └── 部署说明.md
 ```

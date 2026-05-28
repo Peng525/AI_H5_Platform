@@ -33,7 +33,7 @@
         class="p-1.5 text-center border-t border-outline-variant text-xs truncate"
         :class="currentId === s.id ? 'text-primary font-medium' : 'text-on-surface-variant'"
       >
-        {{ s.title || '未命名' }}
+        页面{{ i + 1 }}
       </div>
       <button
         v-if="slides.length > 1"
