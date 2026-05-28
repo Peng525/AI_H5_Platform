@@ -47,8 +47,12 @@ async def list_projects(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/项目", response_model=ProjectOut, summary="创建项目")
-async def create_project(body: ProjectCreate, db: AsyncSession = Depends(get_db)):
-    project = Project(title=body.title, theme=body.theme, share_slug=new_share_slug())
+async def create_project(
+    body: ProjectCreate,
+    user_id: int | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    project = Project(title=body.title, theme=body.theme, share_slug=new_share_slug(), user_id=user_id)
     db.add(project)
     db.add(
         Slide(
@@ -144,10 +148,15 @@ async def delete_slide(project_id: int, slide_id: int, db: AsyncSession = Depend
 
 
 @router.post("/项目/{project_id}/生成/全量", response_model=ProjectOut, summary="AI 全量生成")
-async def api_generate_full(project_id: int, body: GenerateFullRequest, db: AsyncSession = Depends(get_db)):
+async def api_generate_full(
+    project_id: int,
+    body: GenerateFullRequest,
+    user_id: int | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     await _get_project(db, project_id)
     try:
-        project = await generate_full_deck(db, project_id, body)
+        project = await generate_full_deck(db, project_id, body, user_id=user_id)
     except LlmError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except Exception as exc:

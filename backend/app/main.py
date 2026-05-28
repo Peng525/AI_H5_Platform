@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import projects, settings
+from app.api import auth, projects, settings, templates_catalog
 from app.config import settings as app_settings
 from app.database import init_db
 
@@ -36,6 +36,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
+app.include_router(templates_catalog.router)
 app.include_router(projects.router)
 app.include_router(settings.router)
 

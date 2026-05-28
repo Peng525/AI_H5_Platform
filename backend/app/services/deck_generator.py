@@ -19,7 +19,15 @@ async def generate_full_deck(
     db: AsyncSession,
     project_id: int,
     body: GenerateFullRequest,
+    user_id: int | None = None,
 ) -> Project:
+    from app.services.quota import QuotaExceeded, check_and_consume
+
+    try:
+        await check_and_consume(db, user_id, body.tier)
+    except QuotaExceeded as exc:
+        raise LlmError(str(exc)) from exc
+
     messages = render_template(
         "全量生成.yaml",
         {

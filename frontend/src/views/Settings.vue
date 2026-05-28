@@ -1,5 +1,9 @@
 <template>
-  <div class="max-w-2xl mx-auto p-6 md:p-10">
+  <div class="min-h-screen bg-background flex flex-col">
+    <header class="h-16 border-b flex items-center px-6">
+      <router-link to="/templates" class="text-primary font-bold">← 返回工作台</router-link>
+    </header>
+  <div class="max-w-2xl mx-auto p-6 md:p-10 flex-1 w-full">
     <h1 class="text-2xl font-bold mb-2">系统设置</h1>
     <p class="text-on-surface-variant text-sm mb-8">大模型通道配置由服务端环境变量管理（.env）</p>
 
@@ -67,6 +71,7 @@
         <p class="mt-2">推荐设置 <code>LLM_DEFAULT_CHANNEL=auto</code>。</p>
       </section>
     </div>
+  </div>
   </div>
 </template>
 

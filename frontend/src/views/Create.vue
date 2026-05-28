@@ -1,5 +1,7 @@
 <template>
-  <div class="max-w-2xl mx-auto p-6 md:p-10">
+  <div class="min-h-screen bg-background flex flex-col">
+    <EditorTopBar project-title="AI 创建演示" />
+  <div class="max-w-2xl mx-auto p-6 md:p-10 flex-1 w-full">
     <h1 class="text-2xl font-bold mb-2">AI 创建演示</h1>
     <p class="text-on-surface-variant text-sm mb-8">使用「全量生成」模板，一次性生成整套 H5 结构</p>
 
@@ -52,14 +54,18 @@
       </button>
     </form>
   </div>
+  </div>
 </template>
 
 <script setup>
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api/client'
+import { useAuth } from '../composables/useAuth'
+import EditorTopBar from '../components/EditorTopBar.vue'
 
 const router = useRouter()
+const { user } = useAuth()
 const loading = ref(false)
 const error = ref('')
 const form = reactive({
@@ -75,7 +81,8 @@ async function submit() {
   loading.value = true
   error.value = ''
   try {
-    const project = await api.createProject({ title: form.topic, theme: 'default' })
+    const uid = user.value?.user_id
+    const project = await api.createProject({ title: form.topic, theme: 'default' }, uid)
     const body = {
       topic: form.topic,
       audience: form.audience,
@@ -84,7 +91,7 @@ async function submit() {
       tier: form.tier,
     }
     if (form.channel) body.channel = form.channel
-    await api.generateFull(project.id, body)
+    await api.generateFull(project.id, body, uid)
     router.push(`/editor/${project.id}`)
   } catch (e) {
     error.value = e.message
