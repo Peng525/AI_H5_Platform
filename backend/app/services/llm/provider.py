@@ -21,13 +21,21 @@ def _official_ready() -> bool:
     return bool(settings.llm_official_api_key)
 
 
+def _normalize_openai_base_url(base_url: str) -> str:
+    """OpenAI 兼容接口需以 /v1 结尾（如 https://us.novaiapi.com/v1）。"""
+    base = base_url.rstrip("/")
+    if base.endswith("/v1") or base.endswith("/v1beta"):
+        return base
+    return base + "/v1"
+
+
 async def _chat_openai_compatible(
     base_url: str,
     api_key: str,
     model: str,
     messages: list[dict[str, str]],
 ) -> str:
-    url = base_url.rstrip("/") + "/chat/completions"
+    url = _normalize_openai_base_url(base_url) + "/chat/completions"
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {"model": model, "messages": messages, "temperature": 0.7}
     async with httpx.AsyncClient(timeout=settings.llm_timeout) as client:

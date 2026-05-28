@@ -17,17 +17,17 @@ class Settings(BaseSettings):
     llm_relay_base_url: str = ""
     llm_relay_api_key: str = ""
     # 未指定 tier 时的兜底（与免费档一致）
-    llm_relay_model: str = "gemini-3.1-flash"
+    llm_relay_model: str = "gemini-3.1-flash-image-preview"
 
     llm_official_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
     llm_official_api_key: str = ""
-    llm_official_model: str = "gemini-3.1-flash"
+    llm_official_model: str = "gemini-3.1-flash-image-preview"
 
-    # 会员档位模型：免费默认 Flash（含免费配图）；升级后 Pro
-    llm_model_free: str = "gemini-3.1-flash"
-    llm_model_pro: str = "gemini-3-pro"
-    llm_image_model_free: str = "gemini-3.1-flash"
-    llm_image_model_pro: str = "gemini-3-pro"
+    # 会员档位模型（NovAI 等中转常用 -image-preview 后缀）
+    llm_model_free: str = "gemini-3.1-flash-image-preview"
+    llm_model_pro: str = "gemini-3-pro-image-preview"
+    llm_image_model_free: str = "gemini-3.1-flash-image-preview"
+    llm_image_model_pro: str = "gemini-3-pro-image-preview"
 
     jwt_secret: str = "dev-change-me-in-production"
     jwt_algorithm: str = "HS256"
