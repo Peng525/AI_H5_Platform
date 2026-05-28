@@ -1,0 +1,25 @@
+# 依赖与构建
+node_modules/
+frontend/dist/
+__pycache__/
+*.py[cod]
+.Python
+*.egg-info/
+.eggs/
+
+# 环境与数据
+.env
+data/
+*.db
+
+# 原型临时目录
+_proto_web/
+_proto_mobile/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# 日志
+*.log
