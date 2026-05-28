@@ -79,6 +79,27 @@ class Slide(Base):
     project: Mapped["Project"] = relationship(back_populates="slides")
 
 
+class H5Template(Base):
+    __tablename__ = "h5_templates"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    title: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(Text, default="")
+    category: Mapped[str] = mapped_column(String(64), default="")
+    device: Mapped[str] = mapped_column(String(16), default="mobile")
+    pages: Mapped[int] = mapped_column(Integer, default=1)
+    premium: Mapped[int] = mapped_column(Integer, default=0)
+    cover_gradient: Mapped[str] = mapped_column(String(128), default="from-primary to-primary-container")
+    default_viewport: Mapped[str] = mapped_column(String(32), default="mobile-375")
+    slides_json: Mapped[str] = mapped_column(Text, default="[]")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    enabled: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class GenerationLog(Base):
     __tablename__ = "generation_logs"
 

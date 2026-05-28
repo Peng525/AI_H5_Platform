@@ -11,6 +11,14 @@ from app.api.auth import pwd_context
 from app.database import get_db
 from app.deps.auth import require_admin
 from app.models import Order, User
+from app.schemas import H5TemplateCreate, H5TemplateOut, H5TemplateUpdate
+from app.services.h5_template_service import (
+    H5TemplateError,
+    admin_list,
+    create_template,
+    delete_template,
+    update_template,
+)
 from app.services.quota import quota_remaining, quota_total
 from app.services.visits import visit_stats
 
@@ -198,3 +206,58 @@ async def update_user(
     await db.commit()
     await db.refresh(user)
     return _user_out(user)
+
+
+@router.get("/模板", response_model=list[H5TemplateOut], summary="H5 模板列表")
+async def admin_list_templates(
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    rows = await admin_list(db)
+    return [
+        H5TemplateOut(**{**r, "premium": bool(r.get("premium")), "enabled": bool(r.get("enabled"))})
+        for r in rows
+    ]
+
+
+@router.post("/模板", response_model=H5TemplateOut, summary="创建 H5 模板")
+async def admin_create_template(
+    body: H5TemplateCreate,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        row = await create_template(db, body.model_dump())
+        await db.commit()
+    except H5TemplateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return H5TemplateOut(**{**row, "premium": bool(row.get("premium")), "enabled": bool(row.get("enabled"))})
+
+
+@router.put("/模板/{template_id}", response_model=H5TemplateOut, summary="更新 H5 模板")
+async def admin_update_template(
+    template_id: str,
+    body: H5TemplateUpdate,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        row = await update_template(db, template_id, body.model_dump(exclude_unset=True))
+        await db.commit()
+    except H5TemplateError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return H5TemplateOut(**{**row, "premium": bool(row.get("premium")), "enabled": bool(row.get("enabled"))})
+
+
+@router.delete("/模板/{template_id}", summary="删除 H5 模板")
+async def admin_delete_template(
+    template_id: str,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        await delete_template(db, template_id)
+        await db.commit()
+    except H5TemplateError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"message": "已删除"}

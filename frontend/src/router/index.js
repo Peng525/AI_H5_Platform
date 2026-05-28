@@ -21,6 +21,8 @@ const routes = [
   { path: '/preview/:id', name: 'preview', component: () => import('../views/Preview.vue'), meta: { title: '演示预览', requiresAuth: true } },
   { path: '/admin', name: 'admin', component: () => import('../views/admin/AdminDashboard.vue'), meta: { title: '管理仪表盘', requiresAuth: true, admin: true } },
   { path: '/admin/users', name: 'admin-users', component: () => import('../views/admin/AdminUsers.vue'), meta: { title: '用户管理', requiresAuth: true, admin: true } },
+  { path: '/admin/templates', name: 'admin-templates', component: () => import('../views/admin/AdminTemplates.vue'), meta: { title: 'H5 模板管理', requiresAuth: true, admin: true } },
+  { path: '/admin/prompts', name: 'admin-prompts', component: () => import('../views/admin/AdminPrompts.vue'), meta: { title: '提示词模板', requiresAuth: true, admin: true } },
   { path: '/settings', name: 'settings', component: () => import('../views/Settings.vue'), meta: { title: '系统设置', requiresAuth: true, admin: true } },
   { path: '/s/:slug', name: 'share', component: () => import('../views/Share.vue'), meta: { title: '分享预览', public: true } },
   { path: '/:pathMatch(.*)*', redirect: { name: 'login' } },

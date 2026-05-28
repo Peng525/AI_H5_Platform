@@ -47,5 +47,16 @@ async def _migrate_sqlite_columns(conn) -> None:
         slide_names = {row[1] for row in slide_cols}
         if "canvas_json" not in slide_names:
             sync_conn.execute(text("ALTER TABLE slides ADD COLUMN canvas_json TEXT DEFAULT '[]'"))
+        orphan = sync_conn.execute(text("SELECT id FROM projects WHERE user_id IS NULL")).fetchall()
+        if orphan:
+            demo = sync_conn.execute(
+                text("SELECT id FROM users WHERE username = :u LIMIT 1"),
+                {"u": "demo@ai-h5.com"},
+            ).fetchone()
+            if demo:
+                sync_conn.execute(
+                    text("UPDATE projects SET user_id = :uid WHERE user_id IS NULL"),
+                    {"uid": demo[0]},
+                )
 
     await conn.run_sync(_run)

@@ -22,20 +22,6 @@
           <h3 class="font-bold text-lg">{{ p.name }}</h3>
           <p class="text-3xl font-bold mt-2 text-primary">¥{{ p.price }}</p>
           <p class="text-sm text-on-surface-variant mt-2">{{ p.desc }}</p>
-          <ul class="mt-4 space-y-2 text-sm text-on-surface-variant">
-            <li class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-secondary text-[16px]">check</span>
-              {{ p.quota === -1 ? '无限次' : p.quota + ' 次' }} AI 生成
-            </li>
-            <li class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-secondary text-[16px]">check</span>
-              Gemini 3 Pro 模型
-            </li>
-            <li class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-secondary text-[16px]">check</span>
-              官方 API 直连
-            </li>
-          </ul>
           <button
             class="mt-6 w-full py-2.5 rounded-lg text-sm font-medium transition"
             :class="p.recommended ? 'bg-primary text-on-primary' : 'border border-outline-variant hover:bg-surface-container-low'"
@@ -51,42 +37,45 @@
         <div class="flex flex-col md:flex-row justify-center items-center gap-8">
           <div class="text-center">
             <button
-              class="px-8 py-3 rounded-lg text-white font-medium flex items-center gap-2 mx-auto"
+              class="px-8 py-3 rounded-lg text-white font-medium flex items-center gap-2 mx-auto disabled:opacity-50"
               style="background: #07C160"
-              @click="mockPay('wechat')"
+              :disabled="paying"
+              @click="pay('wechat')"
             >
               <span class="material-symbols-outlined">qr_code_2</span>
               微信支付
             </button>
-            <div class="w-36 h-36 mt-4 mx-auto bg-surface-container-low border rounded-lg flex items-center justify-center">
-              <span class="text-xs text-on-surface-variant">微信扫码</span>
+            <div class="w-36 h-36 mt-4 mx-auto bg-surface-container-low border rounded-lg flex items-center justify-center p-2">
+              <span class="text-xs text-on-surface-variant text-center">本地部署请用演示支付</span>
             </div>
           </div>
           <div class="text-center">
             <button
-              class="px-8 py-3 rounded-lg bg-primary text-on-primary font-medium flex items-center gap-2 mx-auto"
-              @click="mockPay('alipay')"
+              class="px-8 py-3 rounded-lg bg-primary text-on-primary font-medium flex items-center gap-2 mx-auto disabled:opacity-50"
+              :disabled="paying"
+              @click="pay('alipay')"
             >
               <span class="material-symbols-outlined">payments</span>
               支付宝
             </button>
-            <div class="w-36 h-36 mt-4 mx-auto bg-surface-container-low border rounded-lg flex items-center justify-center">
-              <span class="text-xs text-on-surface-variant">支付宝扫码</span>
+            <div class="w-36 h-36 mt-4 mx-auto bg-surface-container-low border rounded-lg flex items-center justify-center p-2">
+              <span class="text-xs text-on-surface-variant text-center">本地部署请用演示支付</span>
             </div>
           </div>
         </div>
         <div class="mt-8 text-center">
           <button
-            class="px-6 py-2.5 rounded-lg border-2 border-dashed border-primary text-primary text-sm font-medium hover:bg-primary/5"
-            @click="mockPay('demo')"
+            class="px-6 py-2.5 rounded-lg border-2 border-dashed border-primary text-primary text-sm font-medium hover:bg-primary/5 disabled:opacity-50"
+            :disabled="paying"
+            @click="pay('demo')"
           >
             演示：模拟支付成功
           </button>
-          <p class="text-xs text-on-surface-variant mt-3">正式版将对接微信/支付宝支付回调</p>
+          <p class="text-xs text-on-surface-variant mt-3">本地环境使用演示支付完成套餐开通</p>
         </div>
       </div>
 
-      <p v-if="payMsg" class="mt-6 text-center text-secondary font-medium">{{ payMsg }}</p>
+      <p v-if="payMsg" class="mt-6 text-center font-medium" :class="payOk ? 'text-secondary' : 'text-red-600'">{{ payMsg }}</p>
     </div>
   </div>
 </template>
@@ -101,6 +90,8 @@ const { updateUser } = useAuth()
 const plans = ref([])
 const selected = ref(null)
 const payMsg = ref('')
+const payOk = ref(false)
+const paying = ref(false)
 
 onMounted(async () => {
   const res = await api.getPlans()
@@ -108,8 +99,11 @@ onMounted(async () => {
   selected.value = res.items.find((p) => p.recommended) || res.items[0]
 })
 
-async function mockPay(channel) {
-  if (!selected.value) return
+async function pay(channel) {
+  if (!selected.value || paying.value) return
+  paying.value = true
+  payMsg.value = ''
+  payOk.value = false
   try {
     const res = await api.createOrder({
       plan_id: selected.value.id,
@@ -120,10 +114,13 @@ async function mockPay(channel) {
       quota_total: res.quota_total,
       quota_remaining: res.quota_remaining,
     })
-    const names = { wechat: '微信', alipay: '支付宝', demo: '演示' }
-    payMsg.value = `${names[channel] || '演示'}：${res.message}`
+    payOk.value = true
+    payMsg.value = res.message
   } catch (e) {
+    payOk.value = false
     payMsg.value = e.message
+  } finally {
+    paying.value = false
   }
 }
 </script>

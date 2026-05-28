@@ -1,0 +1,13 @@
+---
+description: 后端开发必须解耦、保证健壮性并加强异常防护
+alwaysApply: true
+---
+
+# 后端工程规范：解耦 · 健壮性 · 异常防护
+
+详见 [`docs/后端工程规范.md`](../../docs/后端工程规范.md)。
+
+- API 层只做路由、校验、鉴权与 HTTP 映射
+- 业务逻辑放在 `services/`，第三方集成放在 `services/payment/`、`services/prompt_template_service.py` 等
+- 服务层抛领域异常，API 统一映射 4xx/502
+- 多步写操作同一事务；支付/订单幂等或明确错误提示

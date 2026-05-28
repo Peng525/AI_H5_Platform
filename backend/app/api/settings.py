@@ -4,11 +4,24 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.config import settings
 from app.deps.auth import require_admin
 from app.models import User
-from app.schemas import LlmSettingsAdminOut, LlmSettingsUpdate, LlmTestResult
+from app.schemas import (
+    LlmSettingsAdminOut,
+    LlmSettingsUpdate,
+    LlmTestResult,
+    PromptTemplateCreate,
+    PromptTemplateOut,
+    PromptTemplateUpdate,
+)
 from app.services.env_store import apply_settings_patch, mask_secret
 from app.services.llm.model_tier import resolve_text_model
 from app.services.llm.provider import LlmError, _official_ready, _relay_ready, chat_completion
-from app.services.template_engine import list_templates
+from app.services.prompt_template_service import (
+    PromptTemplateError,
+    delete_template as delete_prompt_template,
+    get_template as get_prompt_template,
+    list_templates,
+    save_template,
+)
 
 router = APIRouter(prefix="/api/v1/设置", tags=["设置"])
 
@@ -124,6 +137,49 @@ async def get_model_tiers(_admin: User = Depends(require_admin)):
     }
 
 
-@router.get("/模板列表", summary="提示词模板（设置页）")
+@router.get("/模板列表", summary="提示词模板列表")
 async def settings_templates(_admin: User = Depends(require_admin)):
     return {"items": list_templates()}
+
+
+@router.get("/提示词模板/{template_id}", response_model=PromptTemplateOut, summary="提示词模板详情")
+async def get_prompt_template_detail(template_id: str, _admin: User = Depends(require_admin)):
+    try:
+        row = get_prompt_template(template_id)
+    except PromptTemplateError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return PromptTemplateOut(**row)
+
+
+@router.post("/提示词模板", response_model=PromptTemplateOut, summary="新建提示词模板")
+async def create_prompt_template(body: PromptTemplateCreate, _admin: User = Depends(require_admin)):
+    try:
+        row = save_template(None, body.model_dump())
+    except PromptTemplateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return PromptTemplateOut(**row)
+
+
+@router.put("/提示词模板/{template_id}", response_model=PromptTemplateOut, summary="更新提示词模板")
+async def update_prompt_template(
+    template_id: str,
+    body: PromptTemplateUpdate,
+    _admin: User = Depends(require_admin),
+):
+    payload = body.model_dump(exclude_unset=True)
+    existing = get_prompt_template(template_id)
+    merged = {**existing, **payload}
+    try:
+        row = save_template(template_id, merged)
+    except PromptTemplateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return PromptTemplateOut(**row)
+
+
+@router.delete("/提示词模板/{template_id}", summary="删除提示词模板")
+async def remove_prompt_template(template_id: str, _admin: User = Depends(require_admin)):
+    try:
+        delete_prompt_template(template_id)
+    except PromptTemplateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"message": "已删除"}

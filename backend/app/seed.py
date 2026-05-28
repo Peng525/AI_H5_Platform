@@ -5,7 +5,8 @@ from sqlalchemy import select
 
 from app.api.auth import pwd_context
 from app.database import SessionLocal
-from app.models import Order, SiteVisitDaily, User
+from app.models import Order, Project, SiteVisitDaily, User
+from app.services.h5_template_service import seed_default_templates
 
 DEMO_ACCOUNT = "demo@ai-h5.com"
 DEMO_PASSWORD = "demo123456"
@@ -31,8 +32,20 @@ async def seed_demo_user() -> None:
     async with SessionLocal() as db:
         await _ensure_user(db, DEMO_ACCOUNT, DEMO_PASSWORD)
         await _ensure_user(db, ADMIN_ACCOUNT, ADMIN_PASSWORD)
+        await seed_default_templates(db)
+        await _assign_orphan_projects(db)
         await db.commit()
         await _seed_demo_orders()
+
+
+async def _assign_orphan_projects(db) -> None:
+    demo = await db.execute(select(User).where(User.username == DEMO_ACCOUNT))
+    user = demo.scalar_one_or_none()
+    if not user:
+        return
+    result = await db.execute(select(Project).where(Project.user_id.is_(None)))
+    for project in result.scalars().all():
+        project.user_id = user.id
 
 
 async def _seed_demo_orders() -> None:

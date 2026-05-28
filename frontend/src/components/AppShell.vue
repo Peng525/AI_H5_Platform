@@ -173,7 +173,7 @@ onMounted(async () => {
   document.addEventListener('click', onClickOutside)
   await refreshProfile()
   try {
-    const q = await api.getQuota(user.value?.user_id)
+    const q = await api.getQuota()
     quota.value = { remaining: q.quota_remaining, total: q.quota_total }
   } catch {
     /* 忽略配额加载失败 */

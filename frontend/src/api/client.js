@@ -34,7 +34,7 @@ export const api = {
   health: () => request('/api/v1/健康'),
   login: (body) => request('/api/v1/认证/登录', { method: 'POST', body: JSON.stringify(body) }),
   register: (body) => request('/api/v1/认证/注册', { method: 'POST', body: JSON.stringify(body) }),
-  getQuota: (userId) => request(`/api/v1/认证/配额?user_id=${userId || 1}`),
+  getQuota: () => request('/api/v1/认证/配额'),
   getTemplateCategories: () => request('/api/v1/模板库/分类'),
   listTemplates: (category = '全部', q = '', device = '全部') => {
     const params = new URLSearchParams()
@@ -45,8 +45,8 @@ export const api = {
   },
   getPlans: () => request('/api/v1/模板库/套餐'),
   listProjects: () => request('/api/v1/项目'),
-  createProject: (body, userId) =>
-    request(`/api/v1/项目${userId ? `?user_id=${userId}` : ''}`, {
+  createProject: (body) =>
+    request('/api/v1/项目', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
@@ -64,13 +64,13 @@ export const api = {
       body: JSON.stringify({ elements }),
     }),
   deleteProject: (id) => request(`/api/v1/项目/${id}`, { method: 'DELETE' }),
-  generateFull: (id, body, userId) =>
-    request(`/api/v1/项目/${id}/生成/全量${userId ? `?user_id=${userId}` : ''}`, {
+  generateFull: (id, body) =>
+    request(`/api/v1/项目/${id}/生成/全量`, {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  generatePage: (id, slideId, body, userId) =>
-    request(`/api/v1/项目/${id}/页面/${slideId}/生成/单页${userId ? `?user_id=${userId}` : ''}`, {
+  generatePage: (id, slideId, body) =>
+    request(`/api/v1/项目/${id}/页面/${slideId}/生成/单页`, {
       method: 'POST',
       body: JSON.stringify(body),
     }),
@@ -84,17 +84,35 @@ export const api = {
   deleteSlide: (projectId, slideId) =>
     request(`/api/v1/项目/${projectId}/页面/${slideId}`, { method: 'DELETE' }),
   getPromptTemplates: () => request('/api/v1/设置/模板列表'),
+  getPromptTemplate: (id) => request(`/api/v1/设置/提示词模板/${encodeURIComponent(id)}`),
+  createPromptTemplate: (body) =>
+    request('/api/v1/设置/提示词模板', { method: 'POST', body: JSON.stringify(body) }),
+  updatePromptTemplate: (id, body) =>
+    request(`/api/v1/设置/提示词模板/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+  deletePromptTemplate: (id) =>
+    request(`/api/v1/设置/提示词模板/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   getLlmSettings: () => request('/api/v1/设置/大模型'),
   updateLlmSettings: (body) =>
     request('/api/v1/设置/大模型', { method: 'PUT', body: JSON.stringify(body) }),
   getMe: () => request('/api/v1/认证/我'),
   recordVisit: () => request('/api/v1/统计/访问', { method: 'POST' }),
   createOrder: (body) => request('/api/v1/订单/创建', { method: 'POST', body: JSON.stringify(body) }),
+  getOrder: (id) => request(`/api/v1/订单/${id}`),
+  listOrders: () => request('/api/v1/订单'),
   getAdminDashboard: () => request('/api/v1/管理/仪表盘'),
   listAdminOrders: () => request('/api/v1/管理/订单'),
   listAdminUsers: (q = '') => request(`/api/v1/管理/用户?q=${encodeURIComponent(q)}`),
   createAdminUser: (body) => request('/api/v1/管理/用户', { method: 'POST', body: JSON.stringify(body) }),
   updateAdminUser: (id, body) => request(`/api/v1/管理/用户/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  listAdminTemplates: () => request('/api/v1/管理/模板'),
+  createAdminTemplate: (body) => request('/api/v1/管理/模板', { method: 'POST', body: JSON.stringify(body) }),
+  updateAdminTemplate: (id, body) =>
+    request(`/api/v1/管理/模板/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteAdminTemplate: (id) =>
+    request(`/api/v1/管理/模板/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   testLlm: (channel, tier = 'free') => {
     const q = new URLSearchParams()
     if (channel) q.set('channel', channel)

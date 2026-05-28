@@ -150,7 +150,11 @@ async function load() {
 }
 
 async function useTemplate(t) {
-  const p = await api.createProject({ title: t.title, theme: t.id }, user.value?.user_id)
+  const p = await api.createProject({
+    title: t.title,
+    theme: t.id,
+    template_id: t.id,
+  })
   const viewportId = t.default_viewport || (t.device === 'web' ? 'web-1280' : 'mobile-375')
   localStorage.setItem(
     `${SETTINGS_PREFIX}${p.id}`,

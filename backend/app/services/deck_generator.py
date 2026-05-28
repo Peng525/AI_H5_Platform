@@ -76,7 +76,15 @@ async def generate_single_page(
     project_id: int,
     slide_id: int,
     body: GeneratePageRequest,
+    user_id: int | None = None,
 ) -> Slide:
+    from app.services.quota import QuotaExceeded, check_and_consume
+
+    try:
+        await check_and_consume(db, user_id, body.tier)
+    except QuotaExceeded as exc:
+        raise LlmError(str(exc)) from exc
+
     result = await db.execute(
         select(Project).where(Project.id == project_id).options(selectinload(Project.slides))
     )

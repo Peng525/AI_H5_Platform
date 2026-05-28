@@ -102,15 +102,7 @@ async def get_me(user: User = Depends(get_current_user)):
 
 
 @router.get("/配额", response_model=QuotaOut, summary="当前用户 AI 配额")
-async def get_quota(user_id: int = 1, db: AsyncSession = Depends(get_db)):
-    """演示默认 user_id=1；正式版从 JWT 解析。"""
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if not user:
-        user = User(username="demo@local", password_hash=pwd_context.hash("demo123456"), tier="free")
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
+async def get_quota(user: User = Depends(get_current_user)):
     total = quota_total(user)
     return QuotaOut(
         tier=user.tier,

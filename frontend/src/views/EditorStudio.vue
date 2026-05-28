@@ -112,7 +112,7 @@ async function load() {
   current.value = project.value.slides?.[0] || null
   loadElements(current.value?.canvas_elements)
   if (current.value && !elements.value.length) syncFromSlide(current.value)
-  const q = await api.getQuota(user.value?.user_id)
+  const q = await api.getQuota()
   quota.value = { remaining: q.quota_remaining, total: q.quota_total }
 }
 
@@ -288,8 +288,7 @@ async function onGenerateText({ prompt, channelTier, channel }) {
     const updated = await api.generatePage(
       project.value.id,
       current.value.id,
-      { instruction: prompt, tier: channelTier, channel: channel || undefined },
-      user.value?.user_id
+      { instruction: prompt, tier: channelTier, channel: channel || undefined }
     )
     const idx = project.value.slides.findIndex((s) => s.id === updated.id)
     if (idx >= 0) project.value.slides[idx] = updated
@@ -304,7 +303,7 @@ async function onGenerateText({ prompt, channelTier, channel }) {
 }
 
 async function refreshQuota() {
-  const q = await api.getQuota(user.value?.user_id)
+  const q = await api.getQuota()
   quota.value = { remaining: q.quota_remaining, total: q.quota_total }
 }
 

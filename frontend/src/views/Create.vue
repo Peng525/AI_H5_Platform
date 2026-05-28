@@ -151,8 +151,7 @@ async function submit() {
   loading.value = true
   error.value = ''
   try {
-    const uid = user.value?.user_id
-    const project = await api.createProject({ title: form.topic, theme: 'default' }, uid)
+    const project = await api.createProject({ title: form.topic, theme: 'default' })
     const body = {
       topic: form.topic,
       audience: form.audience,
@@ -161,7 +160,7 @@ async function submit() {
       tier: form.tier,
     }
     if (form.channel) body.channel = form.channel
-    await api.generateFull(project.id, body, uid)
+    await api.generateFull(project.id, body)
     router.push(`/editor/${project.id}`)
   } catch (e) {
     error.value = e.message

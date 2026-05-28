@@ -86,6 +86,8 @@ const logoutOpen = ref(false)
 const navItems = [
   { label: '数据仪表盘', to: '/admin', match: '/admin', icon: 'dashboard' },
   { label: '用户管理', to: '/admin/users', match: '/admin/users', icon: 'group' },
+  { label: 'H5 模板', to: '/admin/templates', match: '/admin/templates', icon: 'dashboard_customize' },
+  { label: '提示词模板', to: '/admin/prompts', match: '/admin/prompts', icon: 'psychology' },
   { label: '系统设置', to: '/settings', match: '/settings', icon: 'settings' },
 ]
 

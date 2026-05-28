@@ -49,6 +49,86 @@ class ProjectOut(BaseModel):
 class ProjectCreate(BaseModel):
     title: str = "未命名演示"
     theme: str = "default"
+    template_id: str | None = Field(None, description="H5 探索模板 ID")
+
+
+class OrderOut(BaseModel):
+    id: int
+    plan_id: str
+    plan_name: str
+    amount: float
+    payment_channel: str
+    status: str
+    created_at: Any | None = None
+
+
+class H5TemplateOut(BaseModel):
+    id: str
+    title: str
+    description: str = ""
+    category: str = ""
+    device: str = "mobile"
+    pages: int = 1
+    premium: bool = False
+    cover_gradient: str = ""
+    default_viewport: str = "mobile-375"
+    slides_json: list[dict[str, Any]] = Field(default_factory=list)
+    sort_order: int = 0
+    enabled: bool = True
+
+
+class H5TemplateCreate(BaseModel):
+    id: str = Field(..., min_length=2, max_length=64)
+    title: str
+    description: str = ""
+    category: str = ""
+    device: str = "mobile"
+    pages: int = 1
+    premium: bool = False
+    cover_gradient: str = "from-primary to-primary-container"
+    default_viewport: str = "mobile-375"
+    slides_json: list[dict[str, Any]] = Field(default_factory=list)
+    sort_order: int = 0
+    enabled: bool = True
+
+
+class H5TemplateUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    category: str | None = None
+    device: str | None = None
+    pages: int | None = None
+    premium: bool | None = None
+    cover_gradient: str | None = None
+    default_viewport: str | None = None
+    slides_json: list[dict[str, Any]] | None = None
+    sort_order: int | None = None
+    enabled: bool | None = None
+
+
+class PromptTemplateOut(BaseModel):
+    id: str
+    name: str
+    description: str = ""
+    file: str = ""
+    system: str = ""
+    user: str = ""
+    builtin: bool = False
+
+
+class PromptTemplateCreate(BaseModel):
+    id: str = Field(..., min_length=2, max_length=64)
+    name: str
+    description: str = ""
+    system: str
+    user: str = ""
+
+
+class PromptTemplateUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    system: str | None = None
+    user: str | None = None
 
 
 class ProjectUpdate(BaseModel):
