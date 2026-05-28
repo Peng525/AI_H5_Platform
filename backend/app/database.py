@@ -51,6 +51,16 @@ async def _migrate_sqlite_columns(conn) -> None:
         slide_names = {row[1] for row in slide_cols}
         if "canvas_json" not in slide_names:
             sync_conn.execute(text("ALTER TABLE slides ADD COLUMN canvas_json TEXT DEFAULT '[]'"))
+        if "chat_script_json" not in slide_names:
+            sync_conn.execute(text("ALTER TABLE slides ADD COLUMN chat_script_json TEXT DEFAULT '{}'"))
+        proj_cols = sync_conn.execute(text("PRAGMA table_info(projects)")).fetchall()
+        proj_names = {row[1] for row in proj_cols}
+        if "settings_json" not in proj_names:
+            sync_conn.execute(text("ALTER TABLE projects ADD COLUMN settings_json TEXT DEFAULT '{}'"))
+        tpl_cols = sync_conn.execute(text("PRAGMA table_info(h5_templates)")).fetchall()
+        tpl_names = {row[1] for row in tpl_cols}
+        if tpl_names and "settings_json" not in tpl_names:
+            sync_conn.execute(text("ALTER TABLE h5_templates ADD COLUMN settings_json TEXT DEFAULT '{}'"))
         order_cols = sync_conn.execute(text("PRAGMA table_info(orders)")).fetchall()
         order_names = {row[1] for row in order_cols}
         if "user_remark" not in order_names:

@@ -12,6 +12,11 @@ __pycache__/
 data/
 *.db
 
+# 旗舰 H5 模板 JSON（需纳入版本库）
+!backend/data/
+!backend/data/h5_templates/
+!backend/data/h5_templates/**
+
 # 微信个人收款码（勿提交仓库）
 backend/static/wechat-pay-qr.png
 backend/pay_assets/wechat-pay-qr.png

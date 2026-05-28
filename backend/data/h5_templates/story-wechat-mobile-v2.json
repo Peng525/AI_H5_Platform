@@ -1,0 +1,389 @@
+{
+  "id": "story-wechat-mobile-v2",
+  "title": "微信对话故事 · 进阶版",
+  "description": "更多对话轮次与场景页，紫粉渐变视觉，适合活动推广与深度讲解。",
+  "category": "对话故事",
+  "device": "mobile",
+  "pages": 8,
+  "premium": false,
+  "featured": true,
+  "cover_gradient": "from-violet-600 to-fuchsia-600",
+  "default_viewport": "mobile-375",
+  "settings_json": {
+    "viewportId": "mobile-375",
+    "scrollEffect": "vertical",
+    "defaultChatTapToContinue": true,
+    "bgm": {
+      "enabled": true,
+      "url": "/static/bgm/demo-loop.mp3",
+      "loop": true,
+      "volume": 0.3
+    }
+  },
+  "slides_json": [
+    {
+      "title": "品牌活动季",
+      "subtitle": "对话式 H5 推广",
+      "layout": "cover",
+      "animation": "fade",
+      "canvas_background": "#5b21b6",
+      "canvas_elements": [
+        {
+          "id": "b1_t",
+          "type": "text",
+          "x": 20,
+          "y": 300,
+          "width": 335,
+          "height": 72,
+          "zIndex": 2,
+          "content": "品牌活动季",
+          "style": {
+            "fontSize": 34,
+            "color": "#ffffff",
+            "fontWeight": "bold",
+            "textAlign": "center",
+            "background": "transparent"
+          }
+        },
+        {
+          "id": "b1_s",
+          "type": "text",
+          "x": 32,
+          "y": 380,
+          "width": 311,
+          "height": 40,
+          "zIndex": 2,
+          "content": "用聊天讲活动，用故事促转化",
+          "style": {
+            "fontSize": 15,
+            "color": "#f5d0fe",
+            "textAlign": "center",
+            "background": "transparent"
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "活动概览",
+      "layout": "bullets",
+      "animation": "slide-left",
+      "canvas_background": "#1e1b4b",
+      "canvas_elements": [
+        {
+          "id": "b2_h",
+          "type": "text",
+          "x": 24,
+          "y": 56,
+          "width": 327,
+          "height": 36,
+          "zIndex": 2,
+          "content": "本次活动亮点",
+          "style": {
+            "fontSize": 22,
+            "color": "#ffffff",
+            "fontWeight": "bold",
+            "background": "transparent"
+          }
+        },
+        {
+          "id": "b2_i1",
+          "type": "icon",
+          "x": 24,
+          "y": 120,
+          "width": 48,
+          "height": 48,
+          "zIndex": 2,
+          "content": "celebration",
+          "style": {
+            "background": "#7c3aed",
+            "color": "#ffffff",
+            "borderRadius": 12
+          }
+        },
+        {
+          "id": "b2_t1",
+          "type": "text",
+          "x": 84,
+          "y": 124,
+          "width": 260,
+          "height": 40,
+          "zIndex": 2,
+          "content": "限时福利 · 老用户专属礼包",
+          "style": {
+            "fontSize": 15,
+            "color": "#e9d5ff",
+            "background": "transparent"
+          }
+        }
+      ],
+      "bullets": ["限时福利", "专属礼包", "对话引导"]
+    },
+    {
+      "title": "对话 · 开场",
+      "layout": "chat",
+      "animation": "fade",
+      "canvas_background": "#ededed",
+      "canvas_elements": [],
+      "chat_script": {
+        "enabled": true,
+        "autoAdvanceMs": 0,
+        "messages": [
+          {
+            "id": "b_m1",
+            "side": "left",
+            "avatar": "",
+            "name": "品牌官",
+            "text": "嗨～欢迎参加本次品牌活动季！"
+          },
+          {
+            "id": "b_m2",
+            "side": "right",
+            "avatar": "",
+            "name": "我",
+            "text": "有什么优惠吗？"
+          },
+          {
+            "id": "b_m3",
+            "side": "left",
+            "avatar": "",
+            "name": "品牌官",
+            "text": "当然有！接下来我会逐条为你介绍～点击屏幕继续。"
+          }
+        ]
+      },
+      "bullets": []
+    },
+    {
+      "title": "福利详情",
+      "layout": "bullets",
+      "animation": "slide-up",
+      "canvas_background": "#831843",
+      "canvas_elements": [
+        {
+          "id": "b4_t",
+          "type": "text",
+          "x": 24,
+          "y": 80,
+          "width": 327,
+          "height": 48,
+          "zIndex": 2,
+          "content": "三重福利",
+          "style": {
+            "fontSize": 26,
+            "color": "#ffffff",
+            "fontWeight": "bold",
+            "background": "transparent"
+          }
+        },
+        {
+          "id": "b4_l1",
+          "type": "text",
+          "x": 24,
+          "y": 150,
+          "width": 327,
+          "height": 40,
+          "zIndex": 2,
+          "content": "① 新用户立减券",
+          "style": {
+            "fontSize": 16,
+            "color": "#fce7f3",
+            "background": "transparent"
+          }
+        },
+        {
+          "id": "b4_l2",
+          "type": "text",
+          "x": 24,
+          "y": 200,
+          "width": 327,
+          "height": 40,
+          "zIndex": 2,
+          "content": "② 分享好友再得次数",
+          "style": {
+            "fontSize": 16,
+            "color": "#fce7f3",
+            "background": "transparent"
+          }
+        },
+        {
+          "id": "b4_l3",
+          "type": "text",
+          "x": 24,
+          "y": 250,
+          "width": 327,
+          "height": 40,
+          "zIndex": 2,
+          "content": "③ 包月通道尊享官方直连",
+          "style": {
+            "fontSize": 16,
+            "color": "#fce7f3",
+            "background": "transparent"
+          }
+        }
+      ],
+      "bullets": ["立减券", "分享奖励", "包月尊享"]
+    },
+    {
+      "title": "对话 · 答疑",
+      "layout": "chat",
+      "animation": "fade",
+      "canvas_background": "#ededed",
+      "canvas_elements": [],
+      "chat_script": {
+        "enabled": true,
+        "autoAdvanceMs": 0,
+        "messages": [
+          {
+            "id": "b_m4",
+            "side": "right",
+            "avatar": "",
+            "name": "我",
+            "text": "H5 分享出去效果和预览一样吗？"
+          },
+          {
+            "id": "b_m5",
+            "side": "left",
+            "avatar": "",
+            "name": "品牌官",
+            "text": "一样！分享页同样支持画布、对话逐句弹出和背景音乐。"
+          },
+          {
+            "id": "b_m6",
+            "side": "right",
+            "avatar": "",
+            "name": "我",
+            "text": "那我可以自己改对话内容吗？"
+          },
+          {
+            "id": "b_m7",
+            "side": "left",
+            "avatar": "",
+            "name": "品牌官",
+            "text": "可以，在编辑器「效果」面板里就能编辑每页的微信对话脚本。"
+          },
+          {
+            "id": "b_m8",
+            "side": "left",
+            "avatar": "",
+            "name": "品牌官",
+            "text": "改完预览一下，满意再分享链接～"
+          }
+        ]
+      },
+      "bullets": []
+    },
+    {
+      "title": "用户反馈",
+      "layout": "image-text",
+      "animation": "fade",
+      "canvas_background": "#312e81",
+      "canvas_elements": [
+        {
+          "id": "b6_q",
+          "type": "text",
+          "x": 32,
+          "y": 100,
+          "width": 311,
+          "height": 120,
+          "zIndex": 2,
+          "content": "「对话式 H5 让我们的活动说明更好读，分享打开率明显上来了。」",
+          "style": {
+            "fontSize": 17,
+            "color": "#ffffff",
+            "background": "rgba(255,255,255,0.1)",
+            "borderRadius": 16,
+            "lineHeight": 1.6
+          }
+        },
+        {
+          "id": "b6_a",
+          "type": "text",
+          "x": 32,
+          "y": 240,
+          "width": 311,
+          "height": 32,
+          "zIndex": 2,
+          "content": "—— 某品牌市场负责人",
+          "style": {
+            "fontSize": 13,
+            "color": "#c4b5fd",
+            "background": "transparent",
+            "textAlign": "right"
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "对话 · 收尾",
+      "layout": "chat",
+      "animation": "fade",
+      "canvas_background": "#ededed",
+      "canvas_elements": [],
+      "chat_script": {
+        "enabled": true,
+        "autoAdvanceMs": 0,
+        "messages": [
+          {
+            "id": "b_m9",
+            "side": "left",
+            "avatar": "",
+            "name": "品牌官",
+            "text": "准备好开始了吗？点击下方按钮或继续滑动查看行动页。"
+          },
+          {
+            "id": "b_m10",
+            "side": "right",
+            "avatar": "",
+            "name": "我",
+            "text": "这就去创建我的活动 H5！"
+          }
+        ]
+      },
+      "bullets": []
+    },
+    {
+      "title": "立即参与",
+      "layout": "cover",
+      "animation": "zoom",
+      "canvas_background": "#a21caf",
+      "canvas_elements": [
+        {
+          "id": "b8_t",
+          "type": "text",
+          "x": 24,
+          "y": 280,
+          "width": 327,
+          "height": 64,
+          "zIndex": 2,
+          "content": "立即参与活动",
+          "style": {
+            "fontSize": 28,
+            "color": "#ffffff",
+            "fontWeight": "bold",
+            "textAlign": "center",
+            "background": "transparent"
+          }
+        },
+        {
+          "id": "b8_s",
+          "type": "text",
+          "x": 40,
+          "y": 360,
+          "width": 295,
+          "height": 48,
+          "zIndex": 2,
+          "content": "长按识别 · 分享链接 · 即刻预览",
+          "style": {
+            "fontSize": 14,
+            "color": "#fae8ff",
+            "textAlign": "center",
+            "background": "transparent"
+          }
+        }
+      ],
+      "bullets": []
+    }
+  ]
+}

@@ -98,7 +98,7 @@ DEFAULT_CATALOG: list[dict[str, Any]] = [
     },
 ]
 
-CATEGORIES = ["全部", "年度报告", "产品发布", "个人简历", "企业介绍"]
+CATEGORIES = ["全部", "对话故事", "年度报告", "产品发布", "个人简历", "企业介绍"]
 DEVICES = [
     {"id": "全部", "label": "全部终端"},
     {"id": "mobile", "label": "移动端"},
@@ -117,6 +117,13 @@ def _to_dict(row: H5Template) -> dict[str, Any]:
             slides = []
     except json.JSONDecodeError:
         slides = []
+    try:
+        settings = json.loads(getattr(row, "settings_json", None) or "{}")
+        if not isinstance(settings, dict):
+            settings = {}
+    except json.JSONDecodeError:
+        settings = {}
+    featured = row.id in {"story-wechat-mobile", "story-wechat-mobile-v2"}
     return {
         "id": row.id,
         "title": row.title,
@@ -128,8 +135,10 @@ def _to_dict(row: H5Template) -> dict[str, Any]:
         "cover_gradient": row.cover_gradient,
         "default_viewport": row.default_viewport,
         "slides_json": slides,
+        "settings_json": settings,
         "sort_order": row.sort_order,
         "enabled": bool(row.enabled),
+        "featured": featured,
     }
 
 
@@ -156,25 +165,57 @@ def _filter_items(items: list[dict], category: str, device: str, q: str) -> list
 
 async def seed_default_templates(db: AsyncSession) -> None:
     result = await db.execute(select(H5Template).limit(1))
-    if result.scalar_one_or_none():
-        return
-    for idx, item in enumerate(DEFAULT_CATALOG):
-        db.add(
-            H5Template(
-                id=item["id"],
-                title=item["title"],
-                description=item["description"],
-                category=item["category"],
-                device=item["device"],
-                pages=item["pages"],
-                premium=1 if item.get("premium") else 0,
-                cover_gradient=item.get("cover_gradient", ""),
-                default_viewport=item.get("default_viewport", "mobile-375"),
-                slides_json="[]",
-                sort_order=idx,
-                enabled=1,
+    if not result.scalar_one_or_none():
+        for idx, item in enumerate(DEFAULT_CATALOG):
+            db.add(
+                H5Template(
+                    id=item["id"],
+                    title=item["title"],
+                    description=item["description"],
+                    category=item["category"],
+                    device=item["device"],
+                    pages=item["pages"],
+                    premium=1 if item.get("premium") else 0,
+                    cover_gradient=item.get("cover_gradient", ""),
+                    default_viewport=item.get("default_viewport", "mobile-375"),
+                    slides_json="[]",
+                    settings_json="{}",
+                    sort_order=idx,
+                    enabled=1,
+                )
             )
-        )
+        await db.flush()
+    await sync_flagship_templates(db)
+
+
+async def sync_flagship_templates(db: AsyncSession) -> None:
+    from app.services.template_loader import load_all_flagship_templates
+
+    base_order = -100
+    for offset, data in enumerate(load_all_flagship_templates()):
+        tid = data["id"]
+        slides = data.get("slides_json") or []
+        settings = data.get("settings_json") or {}
+        row = await db.get(H5Template, tid)
+        payload = {
+            "title": data["title"],
+            "description": data.get("description", ""),
+            "category": data.get("category", "对话故事"),
+            "device": data.get("device", "mobile"),
+            "pages": int(data.get("pages", len(slides) or 1)),
+            "premium": 1 if data.get("premium") else 0,
+            "cover_gradient": data.get("cover_gradient", "from-primary to-primary-container"),
+            "default_viewport": data.get("default_viewport", "mobile-375"),
+            "slides_json": json.dumps(slides, ensure_ascii=False),
+            "settings_json": json.dumps(settings, ensure_ascii=False),
+            "sort_order": base_order + offset,
+            "enabled": 1,
+        }
+        if row:
+            for key, val in payload.items():
+                setattr(row, key, val)
+        else:
+            db.add(H5Template(id=tid, **payload))
     await db.flush()
 
 
@@ -219,6 +260,7 @@ async def create_template(db: AsyncSession, data: dict[str, Any]) -> dict:
         cover_gradient=data.get("cover_gradient", "from-primary to-primary-container"),
         default_viewport=data.get("default_viewport", "mobile-375"),
         slides_json=json.dumps(slides_json, ensure_ascii=False),
+        settings_json=json.dumps(data.get("settings_json") or {}, ensure_ascii=False),
         sort_order=int(data.get("sort_order", 0)),
         enabled=1 if data.get("enabled", True) else 0,
     )
@@ -244,6 +286,8 @@ async def update_template(db: AsyncSession, template_id: str, data: dict[str, An
         row.sort_order = int(data["sort_order"])
     if "slides_json" in data and data["slides_json"] is not None:
         row.slides_json = json.dumps(data["slides_json"], ensure_ascii=False)
+    if "settings_json" in data and data["settings_json"] is not None:
+        row.settings_json = json.dumps(data["settings_json"], ensure_ascii=False)
     await db.flush()
     return _to_dict(row)
 

@@ -1,0 +1,351 @@
+{
+  "id": "story-wechat-mobile",
+  "title": "微信对话故事 · 移动端",
+  "description": "封面 + 多屏画布 + 微信聊天气泡逐句弹出，适合产品故事与品牌介绍。",
+  "category": "对话故事",
+  "device": "mobile",
+  "pages": 6,
+  "premium": false,
+  "featured": true,
+  "cover_gradient": "from-indigo-600 to-blue-800",
+  "default_viewport": "mobile-375",
+  "settings_json": {
+    "viewportId": "mobile-375",
+    "scrollEffect": "vertical",
+    "defaultChatTapToContinue": true,
+    "bgm": {
+      "enabled": true,
+      "url": "/static/bgm/demo-loop.mp3",
+      "loop": true,
+      "volume": 0.35
+    }
+  },
+  "slides_json": [
+    {
+      "title": "智创 H5 故事",
+      "subtitle": "一页式移动端演示",
+      "layout": "cover",
+      "animation": "fade",
+      "canvas_background": "#1e3a8a",
+      "canvas_elements": [
+        {
+          "id": "a1_title",
+          "type": "text",
+          "x": 20,
+          "y": 280,
+          "width": 335,
+          "height": 72,
+          "zIndex": 2,
+          "content": "智创 H5 故事",
+          "style": {
+            "fontSize": 32,
+            "color": "#ffffff",
+            "fontWeight": "bold",
+            "background": "transparent",
+            "textAlign": "center"
+          }
+        },
+        {
+          "id": "a1_sub",
+          "type": "text",
+          "x": 32,
+          "y": 360,
+          "width": 311,
+          "height": 48,
+          "zIndex": 2,
+          "content": "像聊天一样讲清你的产品",
+          "style": {
+            "fontSize": 16,
+            "color": "#dbeafe",
+            "background": "transparent",
+            "textAlign": "center"
+          }
+        },
+        {
+          "id": "a1_shape",
+          "type": "shape",
+          "x": 137,
+          "y": 120,
+          "width": 100,
+          "height": 100,
+          "zIndex": 1,
+          "content": "",
+          "style": {
+            "background": "#3b82f6",
+            "borderRadius": 24
+          }
+        }
+      ],
+      "bullets": []
+    },
+    {
+      "title": "三大亮点",
+      "subtitle": "移动端优先 · 画布自由 · 对话演示",
+      "layout": "bullets",
+      "animation": "slide-up",
+      "canvas_background": "#0f172a",
+      "canvas_elements": [
+        {
+          "id": "a2_h",
+          "type": "text",
+          "x": 24,
+          "y": 48,
+          "width": 327,
+          "height": 40,
+          "zIndex": 2,
+          "content": "产品亮点",
+          "style": {
+            "fontSize": 24,
+            "color": "#ffffff",
+            "fontWeight": "bold",
+            "background": "transparent"
+          }
+        },
+        {
+          "id": "a2_b1",
+          "type": "text",
+          "x": 24,
+          "y": 120,
+          "width": 327,
+          "height": 56,
+          "zIndex": 2,
+          "content": "📱 375 手机画布，纵向滚动无感翻页",
+          "style": {
+            "fontSize": 15,
+            "color": "#e2e8f0",
+            "background": "rgba(255,255,255,0.08)",
+            "borderRadius": 12,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "a2_b2",
+          "type": "text",
+          "x": 24,
+          "y": 190,
+          "width": 327,
+          "height": 56,
+          "zIndex": 2,
+          "content": "🎨 拖拽排版 + AI 生图，快速出稿",
+          "style": {
+            "fontSize": 15,
+            "color": "#e2e8f0",
+            "background": "rgba(255,255,255,0.08)",
+            "borderRadius": 12
+          }
+        },
+        {
+          "id": "a2_b3",
+          "type": "text",
+          "x": 24,
+          "y": 260,
+          "width": 327,
+          "height": 56,
+          "zIndex": 2,
+          "content": "💬 微信式对话，点击逐句讲故事",
+          "style": {
+            "fontSize": 15,
+            "color": "#e2e8f0",
+            "background": "rgba(255,255,255,0.08)",
+            "borderRadius": 12
+          }
+        }
+      ],
+      "bullets": ["移动端画布", "AI 生图", "对话演示"]
+    },
+    {
+      "title": "对话 · 了解需求",
+      "layout": "chat",
+      "animation": "fade",
+      "canvas_background": "#ededed",
+      "canvas_elements": [],
+      "chat_script": {
+        "enabled": true,
+        "autoAdvanceMs": 0,
+        "messages": [
+          {
+            "id": "m1",
+            "side": "left",
+            "avatar": "",
+            "name": "小智",
+            "text": "你好！想了解这款 H5 能帮你做什么吗？"
+          },
+          {
+            "id": "m2",
+            "side": "right",
+            "avatar": "",
+            "name": "我",
+            "text": "我想做一份能在微信里分享的产品介绍。"
+          },
+          {
+            "id": "m3",
+            "side": "left",
+            "avatar": "",
+            "name": "小智",
+            "text": "没问题～我们支持画布排版 + 聊天气泡逐句讲解，观众像看对话一样轻松读完。"
+          },
+          {
+            "id": "m4",
+            "side": "right",
+            "avatar": "",
+            "name": "我",
+            "text": "听起来很直观，继续说说数据展示？"
+          }
+        ]
+      },
+      "bullets": []
+    },
+    {
+      "title": "数据说话",
+      "layout": "bullets",
+      "animation": "zoom",
+      "canvas_background": "#005daa",
+      "canvas_elements": [
+        {
+          "id": "a4_t",
+          "type": "text",
+          "x": 24,
+          "y": 60,
+          "width": 327,
+          "height": 40,
+          "zIndex": 2,
+          "content": "核心数据",
+          "style": {
+            "fontSize": 26,
+            "color": "#ffffff",
+            "fontWeight": "bold",
+            "background": "transparent"
+          }
+        },
+        {
+          "id": "a4_c",
+          "type": "chart",
+          "x": 40,
+          "y": 140,
+          "width": 295,
+          "height": 180,
+          "zIndex": 2,
+          "content": {
+            "chartType": "bar",
+            "values": [42, 68, 55, 88, 72]
+          },
+          "style": {
+            "background": "#ffffff",
+            "chartColor": "#0075d5",
+            "borderRadius": 12
+          }
+        },
+        {
+          "id": "a4_n",
+          "type": "text",
+          "x": 24,
+          "y": 340,
+          "width": 327,
+          "height": 48,
+          "zIndex": 2,
+          "content": "平均阅读完成率提升 68%",
+          "style": {
+            "fontSize": 16,
+            "color": "#ffffff",
+            "background": "transparent",
+            "textAlign": "center"
+          }
+        }
+      ],
+      "bullets": ["完成率 +68%", "分享打开率更高"]
+    },
+    {
+      "title": "对话 · 引导行动",
+      "layout": "chat",
+      "animation": "fade",
+      "canvas_background": "#ededed",
+      "canvas_elements": [],
+      "chat_script": {
+        "enabled": true,
+        "autoAdvanceMs": 0,
+        "messages": [
+          {
+            "id": "m5",
+            "side": "left",
+            "avatar": "",
+            "name": "小智",
+            "text": "现在就可以用模板一键创建，画布和对话脚本都已配好。"
+          },
+          {
+            "id": "m6",
+            "side": "right",
+            "avatar": "",
+            "name": "我",
+            "text": "太好了，预览里还能加背景音乐吗？"
+          },
+          {
+            "id": "m7",
+            "side": "left",
+            "avatar": "",
+            "name": "小智",
+            "text": "当然！预览和分享页都支持循环 BGM，右上角可静音。"
+          }
+        ]
+      },
+      "bullets": []
+    },
+    {
+      "title": "立即开始",
+      "subtitle": "使用此模板创建你的故事",
+      "layout": "cover",
+      "animation": "slide-up",
+      "canvas_background": "#0075d5",
+      "canvas_elements": [
+        {
+          "id": "a6_t",
+          "type": "text",
+          "x": 24,
+          "y": 260,
+          "width": 327,
+          "height": 80,
+          "zIndex": 2,
+          "content": "开始创作你的 H5",
+          "style": {
+            "fontSize": 30,
+            "color": "#ffffff",
+            "fontWeight": "bold",
+            "textAlign": "center",
+            "background": "transparent"
+          }
+        },
+        {
+          "id": "a6_btn",
+          "type": "shape",
+          "x": 87,
+          "y": 380,
+          "width": 200,
+          "height": 48,
+          "zIndex": 2,
+          "content": "",
+          "style": {
+            "background": "#ffffff",
+            "borderRadius": 24
+          }
+        },
+        {
+          "id": "a6_lbl",
+          "type": "text",
+          "x": 87,
+          "y": 392,
+          "width": 200,
+          "height": 24,
+          "zIndex": 3,
+          "content": "分享链接 · 即刻预览",
+          "style": {
+            "fontSize": 14,
+            "color": "#005daa",
+            "fontWeight": "bold",
+            "textAlign": "center",
+            "background": "transparent"
+          }
+        }
+      ],
+      "bullets": []
+    }
+  ]
+}

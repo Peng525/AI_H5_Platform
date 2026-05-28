@@ -51,23 +51,75 @@
       {{ previewing ? '动效演示中…' : '预览当前页动效' }}
     </button>
     <p class="text-center text-[10px] text-on-surface-variant">可重复点击预览，演示期间请稍候</p>
+
+    <section class="border-t border-outline-variant pt-4">
+      <ChatScriptEditor :slide="slide" @save="$emit('save', $event)" />
+    </section>
+
+    <section v-if="showBgm" class="border-t border-outline-variant pt-4 space-y-2">
+      <h3 class="text-xs font-semibold text-on-surface-variant flex items-center gap-1">
+        <span class="material-symbols-outlined text-[16px]">music_note</span>
+        背景音乐
+      </h3>
+      <label class="flex items-center gap-2 text-xs">
+        <input type="checkbox" :checked="bgmEnabled" @change="onBgmToggle" />
+        预览时播放 BGM
+      </label>
+      <input
+        :value="bgmUrl"
+        class="w-full text-xs border rounded px-2 py-1.5"
+        placeholder="/static/bgm/demo-loop.mp3"
+        @change="onBgmUrl"
+      />
+      <label class="block text-[11px] text-on-surface-variant">
+        音量 {{ Math.round(bgmVolume * 100) }}%
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          :value="bgmVolume"
+          class="w-full"
+          @input="onBgmVolume"
+        />
+      </label>
+    </section>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import ChatScriptEditor from './ChatScriptEditor.vue'
 import { PAGE_ANIMATIONS, SCROLL_EFFECTS } from '../constants/editorPresets'
 
 const props = defineProps({
   slide: { type: Object, default: null },
   scrollEffect: { type: String, default: 'page' },
+  projectSettings: { type: Object, default: null },
+  showBgm: { type: Boolean, default: true },
 })
 
-const emit = defineEmits(['save', 'scroll-change', 'preview-animation'])
+const emit = defineEmits(['save', 'scroll-change', 'preview-animation', 'bgm-change'])
 
 const animation = ref('fade')
 const previewing = ref(false)
 let previewTimer = null
+
+const bgmEnabled = computed(() => !!props.projectSettings?.bgm?.enabled)
+const bgmUrl = computed(() => props.projectSettings?.bgm?.url || '')
+const bgmVolume = computed(() => Number(props.projectSettings?.bgm?.volume ?? 0.35))
+
+function onBgmToggle(e) {
+  emit('bgm-change', { enabled: e.target.checked })
+}
+
+function onBgmUrl(e) {
+  emit('bgm-change', { url: e.target.value })
+}
+
+function onBgmVolume(e) {
+  emit('bgm-change', { volume: Number(e.target.value) })
+}
 
 const PREVIEW_MS = 700
 

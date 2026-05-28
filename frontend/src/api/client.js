@@ -46,6 +46,7 @@ export const api = {
     if (device) params.set('device', device)
     return request(`/api/v1/模板库?${params.toString()}`)
   },
+  previewTemplate: (id) => request(`/api/v1/模板库/${encodeURIComponent(id)}/预览`),
   getPlans: () => request('/api/v1/模板库/套餐'),
   quotePack: (quota) => request(`/api/v1/模板库/套餐/计价?quota=${quota}`),
   listProjects: () => request('/api/v1/项目'),
@@ -55,6 +56,8 @@ export const api = {
       body: JSON.stringify(body),
     }),
   getProject: (id) => request(`/api/v1/项目/${id}`),
+  updateProjectSettings: (id, body) =>
+    request(`/api/v1/项目/${id}/设置`, { method: 'PUT', body: JSON.stringify(body) }),
   updateProject: (id, body) =>
     request(`/api/v1/项目/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   updateSlide: (projectId, slideId, body) =>

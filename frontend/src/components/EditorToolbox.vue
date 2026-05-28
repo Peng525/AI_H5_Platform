@@ -51,9 +51,11 @@
         v-else-if="activeTab === 'effect'"
         :slide="currentSlide"
         :scroll-effect="scrollEffect"
+        :project-settings="projectSettings"
         @save="$emit('save-slide', $event)"
         @scroll-change="$emit('scroll-change', $event)"
         @preview-animation="$emit('preview-animation', $event)"
+        @bgm-change="$emit('bgm-change', $event)"
       />
       <MaterialPanel
         v-else-if="activeTab === 'material'"
@@ -85,9 +87,10 @@ defineProps({
   theme: { type: String, default: 'default' },
   scrollEffect: { type: String, default: 'page' },
   canvasBackground: { type: String, default: '#005daa' },
+  projectSettings: { type: Object, default: null },
 })
 
-defineEmits(['select-slide', 'add-slide', 'remove-slide', 'save-slide', 'sync-canvas', 'add-material', 'canvas-bg-change', 'scroll-change', 'preview-animation', 'open-help'])
+defineEmits(['select-slide', 'add-slide', 'remove-slide', 'save-slide', 'sync-canvas', 'add-material', 'canvas-bg-change', 'scroll-change', 'preview-animation', 'open-help', 'bgm-change'])
 
 const activeTab = ref('pages')
 const tabs = [

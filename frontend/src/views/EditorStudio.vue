@@ -9,6 +9,7 @@
         :theme="project?.theme"
         :scroll-effect="settings.scrollEffect"
         :canvas-background="canvasBackground"
+        :project-settings="settings"
         @select-slide="selectSlide"
         @add-slide="addSlide"
         @remove-slide="removeSlide"
@@ -19,6 +20,7 @@
         @scroll-change="setScrollEffect"
         @preview-animation="onPreviewAnimation"
         @open-help="shortcutsHelpOpen = true"
+        @bgm-change="onBgmChange"
       />
 
       <EditorPhoneCanvas
@@ -86,7 +88,7 @@ const previewAnimation = ref('')
 const previewAnimationTick = ref(0)
 const shortcutsHelpOpen = ref(false)
 
-const { settings, viewport, setViewport, setScrollEffect, getSlideBackground, setSlideBackground } = useProjectEditorSettings(projectId)
+const { settings, viewport, setViewport, setScrollEffect, getSlideBackground, setSlideBackground, applyFromServer, setBgm } = useProjectEditorSettings(projectId)
 
 const canvasBackground = computed(() => getSlideBackground(current.value?.id))
 
@@ -117,11 +119,16 @@ const slideIndex = computed(() => {
 
 async function load() {
   project.value = await api.getProject(Number(projectId.value))
+  applyFromServer(project.value.settings)
   current.value = project.value.slides?.[0] || null
   loadElements(current.value?.canvas_elements)
   if (current.value && !elements.value.length) syncFromSlide(current.value)
   const q = await api.getQuota()
   quota.value = { remaining: q.quota_remaining, total: q.quota_total }
+}
+
+function onBgmChange(patch) {
+  setBgm(patch)
 }
 
 onMounted(() => {

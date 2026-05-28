@@ -77,6 +77,7 @@ class Project(Base):
     title: Mapped[str] = mapped_column(String(255), default="未命名演示")
     theme: Mapped[str] = mapped_column(String(64), default="default")
     share_slug: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    settings_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -99,6 +100,7 @@ class Slide(Base):
     speaker_notes: Mapped[str] = mapped_column(Text, default="")
     animation: Mapped[str] = mapped_column(String(32), default="fade")
     canvas_json: Mapped[str] = mapped_column(Text, default="[]")
+    chat_script_json: Mapped[str] = mapped_column(Text, default="{}")
 
     project: Mapped["Project"] = relationship(back_populates="slides")
 
@@ -116,6 +118,7 @@ class H5Template(Base):
     cover_gradient: Mapped[str] = mapped_column(String(128), default="from-primary to-primary-container")
     default_viewport: Mapped[str] = mapped_column(String(32), default="mobile-375")
     slides_json: Mapped[str] = mapped_column(Text, default="[]")
+    settings_json: Mapped[str] = mapped_column(Text, default="{}")
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     enabled: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

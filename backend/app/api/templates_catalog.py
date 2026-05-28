@@ -1,11 +1,11 @@
 """H5 模板库 API。"""
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.deps.auth import get_current_user
 from app.models import User
-from app.services.h5_template_service import CATEGORIES, DEVICES, list_for_user
+from app.services.h5_template_service import CATEGORIES, DEVICES, get_template, list_for_user
 from app.services.plan_pricing import (
     MONTHLY_QUOTA,
     PACK_QUOTA_MAX,
@@ -34,6 +34,18 @@ async def list_templates(
 ):
     items = await list_for_user(db, category, device, q)
     return {"items": items}
+
+
+@router.get("/{template_id}/预览", summary="模板试看（含完整 slides 与 settings）")
+async def preview_template(
+    template_id: str,
+    _user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    tpl = await get_template(db, template_id)
+    if not tpl:
+        raise HTTPException(status_code=404, detail="模板不存在")
+    return tpl
 
 
 @router.get("/套餐/计价", summary="按次包实时计价")

@@ -69,6 +69,12 @@
               <span class="material-symbols-outlined text-[12px]">{{ t.device === 'web' ? 'desktop_windows' : 'smartphone' }}</span>
               {{ t.device === 'web' ? '网页版' : '移动端' }}
             </span>
+            <span
+              v-if="t.featured"
+              class="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-white"
+            >
+              对话演示
+            </span>
           </div>
           <div class="p-4">
             <div class="flex items-start justify-between gap-2">
@@ -78,12 +84,20 @@
             <p class="text-xs text-on-surface-variant mt-1">{{ t.category }}</p>
             <p class="text-sm text-on-surface-variant mt-2 line-clamp-2">{{ t.description }}</p>
             <p class="text-xs text-on-surface-variant mt-2">{{ t.pages }} 页</p>
-            <button
-              class="mt-3 w-full py-2 bg-primary text-on-primary rounded-lg text-sm font-medium"
-              @click="useTemplate(t)"
-            >
-              使用此模板
-            </button>
+            <div class="mt-3 flex gap-2">
+              <button
+                class="flex-1 py-2 border border-outline-variant rounded-lg text-sm font-medium hover:bg-surface-container-low"
+                @click="openPreview(t)"
+              >
+                预览
+              </button>
+              <button
+                class="flex-1 py-2 bg-primary text-on-primary rounded-lg text-sm font-medium"
+                @click="useTemplate(t)"
+              >
+                使用
+              </button>
+            </div>
           </div>
         </article>
 
@@ -105,6 +119,13 @@
         </article>
       </div>
     </div>
+
+    <TemplatePreviewModal
+      :open="previewOpen"
+      :template="previewTemplate"
+      @close="previewOpen = false"
+      @use="useTemplate(previewTemplate)"
+    />
   </div>
 </template>
 
@@ -114,11 +135,13 @@ import { useRouter } from 'vue-router'
 import { api } from '../api/client'
 import { useAuth } from '../composables/useAuth'
 import AppShell from '../components/AppShell.vue'
+import TemplatePreviewModal from '../components/TemplatePreviewModal.vue'
 
 const SETTINGS_PREFIX = 'ai_h5_project_settings_'
+const CANVAS_PREFIX = 'ai_h5_canvas_'
 
 const router = useRouter()
-const { user, refreshProfile } = useAuth()
+const { refreshProfile } = useAuth()
 const categories = ref(['全部'])
 const devices = ref([
   { id: '全部', label: '全部终端' },
@@ -130,6 +153,8 @@ const device = ref('全部')
 const search = ref('')
 const templates = ref([])
 const loading = ref(false)
+const previewOpen = ref(false)
+const previewTemplate = ref(null)
 
 onMounted(async () => {
   await refreshProfile()
@@ -149,17 +174,35 @@ async function load() {
   }
 }
 
+function openPreview(t) {
+  previewTemplate.value = t
+  previewOpen.value = true
+}
+
 async function useTemplate(t) {
+  if (!t) return
+  previewOpen.value = false
   const p = await api.createProject({
     title: t.title,
     theme: t.id,
     template_id: t.id,
   })
-  const viewportId = t.default_viewport || (t.device === 'web' ? 'web-1280' : 'mobile-375')
+  const settings = p.settings || {}
   localStorage.setItem(
     `${SETTINGS_PREFIX}${p.id}`,
-    JSON.stringify({ viewportId, scrollEffect: 'page', slideBackgrounds: {} })
+    JSON.stringify({
+      viewportId: settings.viewportId || t.default_viewport || (t.device === 'web' ? 'web-1280' : 'mobile-375'),
+      scrollEffect: settings.scrollEffect || 'vertical',
+      slideBackgrounds: settings.slideBackgrounds || {},
+      bgm: settings.bgm || { enabled: false, url: '', loop: true, volume: 0.35 },
+      defaultChatTapToContinue: settings.defaultChatTapToContinue !== false,
+    })
   )
+  for (const slide of p.slides || []) {
+    if (slide.canvas_elements?.length) {
+      localStorage.setItem(`${CANVAS_PREFIX}${p.id}_${slide.id}`, JSON.stringify(slide.canvas_elements))
+    }
+  }
   router.push(`/editor/${p.id}`)
 }
 </script>

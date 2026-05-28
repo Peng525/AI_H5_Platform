@@ -15,11 +15,14 @@ from app.schemas import (
     GenerateImageResponse,
     ProjectCreate,
     ProjectOut,
+    ProjectSettingsUpdate,
     ProjectUpdate,
     SlideCreate,
     SlideCanvasUpdate,
     SlideOut,
     SlideUpdate,
+    parse_project_settings,
+    project_settings_out,
 )
 from app.services.deck_generator import new_share_slug
 from app.services.h5_template_service import get_template as get_h5_template
@@ -32,13 +35,27 @@ router = APIRouter(prefix="/api/v1", tags=["项目"])
 
 def _project_out(project: Project) -> ProjectOut:
     slides = sorted(project.slides, key=lambda s: s.sort_order)
+    settings = project_settings_out(project)
+    bg_map = settings.slideBackgrounds or {}
     return ProjectOut(
         id=project.id,
         title=project.title,
         theme=project.theme,
         share_slug=project.share_slug,
-        slides=[SlideOut.from_orm_slide(s) for s in slides],
+        settings=settings,
+        slides=[
+            SlideOut.from_orm_slide(s, canvas_background=bg_map.get(str(s.id)))
+            for s in slides
+        ],
     )
+
+
+def _merge_settings(project: Project, patch: dict) -> None:
+    current = parse_project_settings(project.settings_json)
+    for key, val in patch.items():
+        if val is not None:
+            current[key] = val
+    project.settings_json = json.dumps(current, ensure_ascii=False)
 
 
 @router.get("/模板", summary="列出提示词模板")
@@ -68,26 +85,32 @@ async def create_project(
 ):
     theme = body.theme
     slides_seed: list[dict] = []
+    template_settings: dict = {}
     if body.template_id:
         tpl = await get_h5_template(db, body.template_id)
         if not tpl:
             raise HTTPException(status_code=404, detail="模板不存在")
         theme = body.template_id
         slides_seed = tpl.get("slides_json") or []
+        template_settings = tpl.get("settings_json") or {}
 
     project = Project(
         title=body.title,
         theme=theme,
         share_slug=new_share_slug(),
         user_id=user.id,
+        settings_json=json.dumps(template_settings, ensure_ascii=False),
     )
     db.add(project)
+    await db.flush()
 
     if slides_seed:
         for idx, s in enumerate(slides_seed):
+            canvas_elements = s.get("canvas_elements") or []
+            chat_script = s.get("chat_script") or {}
             db.add(
                 Slide(
-                    project=project,
+                    project_id=project.id,
                     sort_order=idx,
                     layout=s.get("layout", "bullets"),
                     title=s.get("title", ""),
@@ -95,8 +118,20 @@ async def create_project(
                     bullets_json=json.dumps(s.get("bullets", []), ensure_ascii=False),
                     speaker_notes=s.get("speakerNotes", s.get("speaker_notes", "")),
                     animation=s.get("animation", "fade"),
+                    canvas_json=json.dumps(canvas_elements, ensure_ascii=False),
+                    chat_script_json=json.dumps(chat_script, ensure_ascii=False),
                 )
             )
+        await db.flush()
+        backgrounds: dict[str, str] = {}
+        sorted_slides = sorted(project.slides, key=lambda x: x.sort_order)
+        for slide, seed in zip(sorted_slides, slides_seed):
+            bg = seed.get("canvas_background")
+            if bg:
+                backgrounds[str(slide.id)] = bg
+        if backgrounds:
+            merged = {**template_settings, "slideBackgrounds": {**(template_settings.get("slideBackgrounds") or {}), **backgrounds}}
+            project.settings_json = json.dumps(merged, ensure_ascii=False)
     else:
         db.add(
             Slide(
@@ -131,6 +166,19 @@ async def update_project(
         project.title = body.title
     if body.theme is not None:
         project.theme = body.theme
+    await db.commit()
+    await db.refresh(project)
+    return _project_out(project)
+
+
+@router.put("/项目/{project_id}/设置", response_model=ProjectOut, summary="保存项目播放设置")
+async def update_project_settings(
+    body: ProjectSettingsUpdate,
+    project: Project = Depends(get_owned_project),
+    db: AsyncSession = Depends(get_db),
+):
+    patch = body.model_dump(exclude_unset=True)
+    _merge_settings(project, patch)
     await db.commit()
     await db.refresh(project)
     return _project_out(project)
@@ -185,6 +233,8 @@ async def update_slide(body: SlideUpdate, slide: Slide = Depends(get_owned_slide
         slide.animation = body.animation
     if body.sort_order is not None:
         slide.sort_order = body.sort_order
+    if body.chat_script is not None:
+        slide.chat_script_json = json.dumps(body.chat_script, ensure_ascii=False)
     await db.commit()
     await db.refresh(slide)
     return SlideOut.from_orm_slide(slide)

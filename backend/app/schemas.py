@@ -15,9 +15,11 @@ class SlideOut(BaseModel):
     speaker_notes: str
     animation: str
     canvas_elements: list[dict[str, Any]] = Field(default_factory=list)
+    chat_script: dict[str, Any] | None = None
+    canvas_background: str | None = None
 
     @classmethod
-    def from_orm_slide(cls, slide: Any) -> "SlideOut":
+    def from_orm_slide(cls, slide: Any, canvas_background: str | None = None) -> "SlideOut":
         bullets = json.loads(slide.bullets_json or "[]")
         try:
             canvas_elements = json.loads(getattr(slide, "canvas_json", None) or "[]")
@@ -25,6 +27,13 @@ class SlideOut(BaseModel):
                 canvas_elements = []
         except json.JSONDecodeError:
             canvas_elements = []
+        chat_script = None
+        try:
+            parsed = json.loads(getattr(slide, "chat_script_json", None) or "{}")
+            if isinstance(parsed, dict) and parsed.get("enabled"):
+                chat_script = parsed
+        except json.JSONDecodeError:
+            chat_script = None
         return cls(
             id=slide.id,
             sort_order=slide.sort_order,
@@ -35,7 +44,54 @@ class SlideOut(BaseModel):
             speaker_notes=slide.speaker_notes,
             animation=slide.animation,
             canvas_elements=canvas_elements,
+            chat_script=chat_script,
+            canvas_background=canvas_background,
         )
+
+
+class ProjectSettingsOut(BaseModel):
+    viewportId: str = "mobile-375"
+    scrollEffect: str = "page"
+    slideBackgrounds: dict[str, str] = Field(default_factory=dict)
+    bgm: dict[str, Any] = Field(
+        default_factory=lambda: {"enabled": False, "url": "", "loop": True, "volume": 0.35}
+    )
+    defaultChatTapToContinue: bool = True
+
+
+class ProjectSettingsUpdate(BaseModel):
+    viewportId: str | None = None
+    scrollEffect: str | None = None
+    slideBackgrounds: dict[str, str] | None = None
+    bgm: dict[str, Any] | None = None
+    defaultChatTapToContinue: bool | None = None
+
+
+def parse_project_settings(raw: str | None) -> dict[str, Any]:
+    try:
+        data = json.loads(raw or "{}")
+        if isinstance(data, dict):
+            return data
+    except json.JSONDecodeError:
+        pass
+    return {}
+
+
+def project_settings_out(project: Any) -> ProjectSettingsOut:
+    data = parse_project_settings(getattr(project, "settings_json", None))
+    bg = data.get("bgm") or {}
+    return ProjectSettingsOut(
+        viewportId=data.get("viewportId", "mobile-375"),
+        scrollEffect=data.get("scrollEffect", "page"),
+        slideBackgrounds=data.get("slideBackgrounds") or {},
+        bgm={
+            "enabled": bool(bg.get("enabled", False)),
+            "url": bg.get("url") or "",
+            "loop": bg.get("loop", True) if bg.get("loop") is not False else False,
+            "volume": float(bg.get("volume", 0.35)),
+        },
+        defaultChatTapToContinue=data.get("defaultChatTapToContinue", True),
+    )
 
 
 class ProjectOut(BaseModel):
@@ -43,6 +99,7 @@ class ProjectOut(BaseModel):
     title: str
     theme: str
     share_slug: str | None
+    settings: ProjectSettingsOut = Field(default_factory=ProjectSettingsOut)
     slides: list[SlideOut] = []
 
 
@@ -94,8 +151,10 @@ class H5TemplateOut(BaseModel):
     cover_gradient: str = ""
     default_viewport: str = "mobile-375"
     slides_json: list[dict[str, Any]] = Field(default_factory=list)
+    settings_json: dict[str, Any] = Field(default_factory=dict)
     sort_order: int = 0
     enabled: bool = True
+    featured: bool = False
 
 
 class H5TemplateCreate(BaseModel):
@@ -123,6 +182,7 @@ class H5TemplateUpdate(BaseModel):
     cover_gradient: str | None = None
     default_viewport: str | None = None
     slides_json: list[dict[str, Any]] | None = None
+    settings_json: dict[str, Any] | None = None
     sort_order: int | None = None
     enabled: bool | None = None
 
@@ -174,6 +234,7 @@ class SlideUpdate(BaseModel):
     speaker_notes: str | None = None
     animation: str | None = None
     sort_order: int | None = None
+    chat_script: dict[str, Any] | None = None
 
 
 class SlideCanvasUpdate(BaseModel):

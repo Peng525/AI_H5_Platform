@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue'
 import { getViewportPreset } from '../constants/editorPresets'
+import { api } from '../api/client'
 
 const PREFIX = 'ai_h5_project_settings_'
 
@@ -7,23 +8,26 @@ const defaults = {
   viewportId: 'mobile-375',
   scrollEffect: 'page',
   slideBackgrounds: {},
+  bgm: { enabled: false, url: '', loop: true, volume: 0.35 },
+  defaultChatTapToContinue: true,
 }
 
 const DEFAULT_CANVAS_BG = '#005daa'
 
 export function useProjectEditorSettings(projectIdRef) {
   const settings = ref({ ...defaults })
+  let saveTimer = null
 
   function load() {
     const id = projectIdRef.value
     if (!id) {
-      settings.value = { ...defaults }
+      settings.value = { ...defaults, slideBackgrounds: {}, bgm: { ...defaults.bgm } }
       return
     }
     try {
       const raw = localStorage.getItem(`${PREFIX}${id}`)
       if (!raw) {
-        settings.value = { ...defaults }
+        settings.value = { ...defaults, slideBackgrounds: {}, bgm: { ...defaults.bgm } }
         return
       }
       const parsed = JSON.parse(raw)
@@ -31,9 +35,10 @@ export function useProjectEditorSettings(projectIdRef) {
         ...defaults,
         ...parsed,
         slideBackgrounds: { ...defaults.slideBackgrounds, ...(parsed.slideBackgrounds || {}) },
+        bgm: { ...defaults.bgm, ...(parsed.bgm || {}) },
       }
     } catch {
-      settings.value = { ...defaults }
+      settings.value = { ...defaults, slideBackgrounds: {}, bgm: { ...defaults.bgm } }
     }
   }
 
@@ -41,6 +46,46 @@ export function useProjectEditorSettings(projectIdRef) {
     const id = projectIdRef.value
     if (!id) return
     localStorage.setItem(`${PREFIX}${id}`, JSON.stringify(settings.value))
+    scheduleCloudSave()
+  }
+
+  function scheduleCloudSave() {
+    const id = projectIdRef.value
+    if (!id) return
+    clearTimeout(saveTimer)
+    saveTimer = setTimeout(async () => {
+      try {
+        await api.updateProjectSettings(Number(id), {
+          viewportId: settings.value.viewportId,
+          scrollEffect: settings.value.scrollEffect,
+          slideBackgrounds: settings.value.slideBackgrounds,
+          bgm: settings.value.bgm,
+          defaultChatTapToContinue: settings.value.defaultChatTapToContinue,
+        })
+      } catch (e) {
+        console.warn('保存项目设置失败', e)
+      }
+    }, 600)
+  }
+
+  function applyFromServer(serverSettings) {
+    if (!serverSettings) return
+    settings.value = {
+      ...defaults,
+      ...settings.value,
+      ...serverSettings,
+      slideBackgrounds: {
+        ...defaults.slideBackgrounds,
+        ...(settings.value.slideBackgrounds || {}),
+        ...(serverSettings.slideBackgrounds || {}),
+      },
+      bgm: {
+        ...defaults.bgm,
+        ...(settings.value.bgm || {}),
+        ...(serverSettings.bgm || {}),
+      },
+    }
+    save()
   }
 
   function setViewport(viewportId) {
@@ -50,6 +95,14 @@ export function useProjectEditorSettings(projectIdRef) {
 
   function setScrollEffect(scrollEffect) {
     settings.value = { ...settings.value, scrollEffect }
+    save()
+  }
+
+  function setBgm(patch) {
+    settings.value = {
+      ...settings.value,
+      bgm: { ...settings.value.bgm, ...patch },
+    }
     save()
   }
 
@@ -69,7 +122,6 @@ export function useProjectEditorSettings(projectIdRef) {
     save()
   }
 
-  /** 使用 computed，便于在模板中直接绑定 */
   const viewport = computed(() => getViewportPreset(settings.value.viewportId))
 
   watch(projectIdRef, load, { immediate: true })
@@ -79,8 +131,10 @@ export function useProjectEditorSettings(projectIdRef) {
     viewport,
     load,
     save,
+    applyFromServer,
     setViewport,
     setScrollEffect,
+    setBgm,
     getSlideBackground,
     setSlideBackground,
   }
