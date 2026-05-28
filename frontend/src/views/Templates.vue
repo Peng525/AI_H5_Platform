@@ -110,7 +110,8 @@ const quota = ref({ remaining: 5, total: 5 })
 
 const tools = [
   { id: 'tpl', label: '模板', icon: 'grid_view', to: '/templates', match: '/templates' },
-  { id: 'create', label: '页面', icon: 'layers', to: '/create', match: '/create' },
+  { id: 'dash', label: '项目', icon: 'folder', to: '/dashboard', match: '/dashboard' },
+  { id: 'create', label: '创建', icon: 'layers', to: '/create', match: '/create' },
   { id: 'settings', label: '设置', icon: 'settings', to: '/settings', match: '/settings' },
 ]
 

@@ -34,7 +34,7 @@
           <span class="material-symbols-outlined text-lg">arrow_back</span>
           返回编辑器
         </router-link>
-        <router-link to="/templates" class="text-primary flex items-center gap-1">
+        <router-link to="/dashboard" class="text-primary flex items-center gap-1">
           前往工作台
           <span class="material-symbols-outlined text-lg">dashboard</span>
         </router-link>
