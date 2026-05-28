@@ -17,7 +17,7 @@
         @add-material="addMaterial"
         @canvas-bg-change="onCanvasBgChange"
         @scroll-change="setScrollEffect"
-        @preview-animation="previewAnimation = $event"
+        @preview-animation="onPreviewAnimation"
       />
 
       <EditorPhoneCanvas
@@ -28,6 +28,7 @@
         :viewport="viewport"
         :viewport-id="settings.viewportId"
         :preview-animation="previewAnimation"
+        :preview-animation-tick="previewAnimationTick"
         :canvas-background="canvasBackground"
         @select="selectedId = $event"
         @deselect="selectedId = null"
@@ -79,6 +80,7 @@ const imageLoading = ref(false)
 const aiPanelRef = ref(null)
 const quota = ref({ remaining: 5, total: 5 })
 const previewAnimation = ref('')
+const previewAnimationTick = ref(0)
 
 const { settings, viewport, setViewport, setScrollEffect, getSlideBackground, setSlideBackground } = useProjectEditorSettings(projectId)
 
@@ -329,5 +331,10 @@ async function onGenerateImage({ prompt, channelTier, channel, style }) {
 function onAddImageToPage({ url, width, height, fitMode }) {
   if (!url) return
   addImageFromAi(url, fitMode || 'width', viewport.value, { width, height })
+}
+
+function onPreviewAnimation(anim) {
+  previewAnimation.value = anim
+  previewAnimationTick.value += 1
 }
 </script>

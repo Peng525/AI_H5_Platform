@@ -41,12 +41,13 @@
     </section>
 
     <button
-      class="w-full py-2 text-xs border border-dashed border-outline-variant rounded-lg hover:bg-white"
+      class="w-full py-2 text-xs border border-dashed border-outline-variant rounded-lg hover:bg-white disabled:opacity-60"
+      :disabled="previewing"
       @click="previewTransition"
     >
-      预览当前页动效
+      {{ previewing ? '动效演示中…' : '预览当前页动效' }}
     </button>
-    <p v-if="previewing" class="text-center text-xs text-primary">动效演示中…</p>
+    <p class="text-center text-[10px] text-on-surface-variant">可重复点击预览，演示期间请稍候</p>
   </div>
 </template>
 
@@ -63,6 +64,9 @@ const emit = defineEmits(['save', 'scroll-change', 'preview-animation'])
 
 const animation = ref('fade')
 const previewing = ref(false)
+let previewTimer = null
+
+const PREVIEW_MS = 700
 
 watch(
   () => props.slide,
@@ -75,11 +79,20 @@ watch(
 function pickAnimation(id) {
   animation.value = id
   emit('save', { animation: id })
+  playPreview(id)
 }
 
 function previewTransition() {
+  if (previewing.value) return
+  playPreview(animation.value)
+}
+
+function playPreview(id) {
+  clearTimeout(previewTimer)
   previewing.value = true
-  emit('preview-animation', animation.value)
-  setTimeout(() => { previewing.value = false }, 800)
+  emit('preview-animation', id)
+  previewTimer = setTimeout(() => {
+    previewing.value = false
+  }, PREVIEW_MS)
 }
 </script>

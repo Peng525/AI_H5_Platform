@@ -144,6 +144,7 @@ const props = defineProps({
   viewport: { type: Object, default: null },
   viewportId: { type: String, default: 'mobile-375' },
   previewAnimation: { type: String, default: '' },
+  previewAnimationTick: { type: Number, default: 0 },
   canvasBackground: { type: String, default: '#005daa' },
 })
 
@@ -221,10 +222,9 @@ const previewAnimClass = computed(() => {
 })
 
 watch(
-  () => props.previewAnimation,
-  (anim) => {
-    if (!anim) return
-    transitionKey.value += 1
+  () => props.previewAnimationTick,
+  () => {
+    if (props.previewAnimation) transitionKey.value += 1
   }
 )
 
