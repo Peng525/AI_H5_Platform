@@ -38,9 +38,19 @@
         @save="$emit('save-slide', $event)"
         @sync-canvas="$emit('sync-canvas')"
       />
+      <SlideEffectPanel
+        v-else-if="activeTab === 'effect'"
+        :slide="currentSlide"
+        :scroll-effect="scrollEffect"
+        @save="$emit('save-slide', $event)"
+        @scroll-change="$emit('scroll-change', $event)"
+        @preview-animation="$emit('preview-animation', $event)"
+      />
       <MaterialPanel
         v-else-if="activeTab === 'material'"
+        :canvas-background="canvasBackground"
         @add="$emit('add-material', $event)"
+        @canvas-bg-change="$emit('canvas-bg-change', $event)"
       />
       <div v-else-if="activeTab === 'template'" class="p-4 text-sm">
         <p class="text-on-surface-variant mb-3">当前主题：{{ theme }}</p>
@@ -56,6 +66,7 @@
 import { ref } from 'vue'
 import MaterialPanel from './MaterialPanel.vue'
 import SlideContentPanel from './SlideContentPanel.vue'
+import SlideEffectPanel from './SlideEffectPanel.vue'
 import SlideThumbList from './SlideThumbList.vue'
 
 defineProps({
@@ -63,15 +74,18 @@ defineProps({
   currentId: { type: Number, default: null },
   currentSlide: { type: Object, default: null },
   theme: { type: String, default: 'default' },
+  scrollEffect: { type: String, default: 'page' },
+  canvasBackground: { type: String, default: '#005daa' },
 })
 
-defineEmits(['select-slide', 'add-slide', 'remove-slide', 'save-slide', 'sync-canvas', 'add-material'])
+defineEmits(['select-slide', 'add-slide', 'remove-slide', 'save-slide', 'sync-canvas', 'add-material', 'canvas-bg-change', 'scroll-change', 'preview-animation'])
 
 const activeTab = ref('pages')
 const tabs = [
   { id: 'template', label: '模板', icon: 'dashboard' },
   { id: 'pages', label: '页面', icon: 'layers' },
   { id: 'text', label: '文本', icon: 'title' },
+  { id: 'effect', label: '动效', icon: 'animation' },
   { id: 'material', label: '素材', icon: 'cloud_upload' },
 ]
 </script>

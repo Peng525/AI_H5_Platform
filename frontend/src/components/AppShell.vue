@@ -83,11 +83,12 @@
             我的项目
           </router-link>
           <router-link
-            to="/settings"
+            v-if="isAdmin"
+            to="/admin"
             class="block px-3 py-2 text-sm hover:bg-surface-container-low lg:hidden"
             @click="menuOpen = false"
           >
-            系统设置
+            管理控制台
           </router-link>
           <button
             class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
@@ -115,16 +116,21 @@ defineProps({
 
 const route = useRoute()
 const router = useRouter()
-const { user, logout } = useAuth()
+const { user, logout, isAdmin, refreshProfile } = useAuth()
 const menuOpen = ref(false)
 const menuRef = ref(null)
 const quota = ref({ remaining: 5, total: 5 })
 
-const navLinks = [
-  { label: '探索模板', to: '/templates', match: '/templates' },
-  { label: '我的项目', to: '/dashboard', match: '/dashboard' },
-  { label: '系统设置', to: '/settings', match: '/settings' },
-]
+const navLinks = computed(() => {
+  const links = [
+    { label: '探索模板', to: '/templates', match: '/templates' },
+    { label: '我的项目', to: '/dashboard', match: '/dashboard' },
+  ]
+  if (isAdmin.value) {
+    links.push({ label: '管理控制台', to: '/admin', match: '/admin' })
+  }
+  return links
+})
 
 const avatarLetter = computed(() => {
   const name = user.value?.username || user.value?.email || 'U'
@@ -147,6 +153,7 @@ function onClickOutside(e) {
 
 onMounted(async () => {
   document.addEventListener('click', onClickOutside)
+  await refreshProfile()
   try {
     const q = await api.getQuota(user.value?.user_id)
     quota.value = { remaining: q.quota_remaining, total: q.quota_total }

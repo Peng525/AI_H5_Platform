@@ -10,23 +10,44 @@ function genId() {
   return `el_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 
+function defaultTableContent() {
+  return {
+    rows: [
+      ['标题 A', '标题 B', '标题 C'],
+      ['', '', ''],
+      ['', '', ''],
+    ],
+  }
+}
+
+function defaultChartContent() {
+  return { chartType: 'bar', values: [35, 65, 45, 80, 55] }
+}
+
 export function defaultElement(type, overrides = {}) {
   const base = {
     id: genId(),
     type,
     x: 24,
     y: 120,
-    width: type === 'shape' ? 80 : 200,
-    height: type === 'shape' ? 80 : type === 'image' ? 120 : 40,
+    height: type === 'shape' ? 80 : type === 'image' ? 120 : type === 'table' ? 100 : type === 'chart' ? 120 : type === 'icon' ? 64 : 48,
+    width: type === 'table' ? 220 : type === 'chart' ? 200 : type === 'icon' ? 64 : type === 'shape' ? 120 : 200,
     zIndex: 1,
-    content: type === 'text' ? '双击编辑文本' : type === 'image' ? '' : '',
+    content: type === 'text' ? '双击编辑文本' : type === 'icon' ? 'star' : type === 'table' ? defaultTableContent() : type === 'chart' ? defaultChartContent() : type === 'image' ? '' : '',
     style: {
       fontSize: 16,
       color: '#1b1b1c',
-      background: type === 'shape' ? '#005daa' : 'transparent',
-      borderRadius: type === 'shape' ? 8 : 0,
+      background: type === 'shape' ? '#005daa' : type === 'table' ? '#ffffff' : type === 'chart' ? '#ffffff' : type === 'icon' ? '#e8f0fe' : 'transparent',
+      borderRadius: type === 'shape' || type === 'icon' ? 8 : 0,
+      headerBackground: type === 'table' ? '#005daa' : undefined,
+      headerColor: type === 'table' ? '#ffffff' : undefined,
+      borderColor: type === 'table' ? '#c0c7d6' : undefined,
+      chartColor: type === 'chart' ? '#005daa' : undefined,
       fontWeight: 'normal',
       textAlign: 'left',
+      fontFamily: '"Microsoft YaHei", "PingFang SC", sans-serif',
+      lineHeight: 1.5,
+      letterSpacing: 0,
     },
   }
   return { ...base, ...overrides, style: { ...base.style, ...(overrides.style || {}) } }

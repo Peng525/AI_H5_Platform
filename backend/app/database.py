@@ -31,3 +31,17 @@ async def init_db() -> None:
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await _migrate_sqlite_columns(conn)
+
+
+async def _migrate_sqlite_columns(conn) -> None:
+    """SQLite 无 alter 自动迁移，按需补列。"""
+    from sqlalchemy import text
+
+    def _run(sync_conn):
+        cols = sync_conn.execute(text("PRAGMA table_info(users)")).fetchall()
+        names = {row[1] for row in cols}
+        if "quota_limit" not in names:
+            sync_conn.execute(text("ALTER TABLE users ADD COLUMN quota_limit INTEGER"))
+
+    await conn.run_sync(_run)

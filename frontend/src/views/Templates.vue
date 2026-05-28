@@ -104,23 +104,29 @@ import AiPanel from '../components/AiPanel.vue'
 import EditorTopBar from '../components/EditorTopBar.vue'
 
 const router = useRouter()
-const { user } = useAuth()
+const { user, refreshProfile } = useAuth()
 const categories = ref(['全部'])
 const category = ref('全部')
 const search = ref('')
 const templates = ref([])
 const quota = ref({ remaining: 5, total: 5 })
 
-const tools = [
-  { id: 'tpl', label: '模板', icon: 'grid_view', to: '/templates', match: '/templates' },
-  { id: 'dash', label: '项目', icon: 'folder', to: '/dashboard', match: '/dashboard' },
-  { id: 'create', label: '创建', icon: 'layers', to: '/create', match: '/create' },
-  { id: 'settings', label: '设置', icon: 'settings', to: '/settings', match: '/settings' },
-]
+const tools = computed(() => {
+  const items = [
+    { id: 'tpl', label: '模板', icon: 'grid_view', to: '/templates', match: '/templates' },
+    { id: 'dash', label: '项目', icon: 'folder', to: '/dashboard', match: '/dashboard' },
+    { id: 'create', label: '创建', icon: 'layers', to: '/create', match: '/create' },
+  ]
+  if (user.value?.is_admin) {
+    items.push({ id: 'admin', label: '管理', icon: 'admin_panel_settings', to: '/admin', match: '/admin' })
+  }
+  return items
+})
 
 const quotaPct = computed(() => (quota.value.remaining / quota.value.total) * 100)
 
 onMounted(async () => {
+  await refreshProfile()
   const [cats, q] = await Promise.all([
     api.getTemplateCategories(),
     api.getQuota(user.value?.user_id),

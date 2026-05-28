@@ -40,34 +40,63 @@
             <p class="text-sm text-on-surface-variant mt-1">主题 · {{ p.theme }}</p>
             <div class="flex gap-3 mt-4 pt-4 border-t border-outline-variant/50" @click.stop>
               <button
+                type="button"
                 class="text-sm text-primary font-medium hover:underline"
                 @click="$router.push(`/editor/${p.id}`)"
               >
                 编辑
               </button>
               <button
+                type="button"
                 class="text-sm text-on-surface-variant hover:text-primary"
                 @click="$router.push(`/preview/${p.id}`)"
               >
                 预览
               </button>
-              <button class="text-sm text-red-600 ml-auto hover:underline" @click="remove(p.id)">删除</button>
+              <button
+                type="button"
+                class="text-sm text-red-600 ml-auto hover:underline"
+                @click="askRemove(p)"
+              >
+                删除
+              </button>
             </div>
           </div>
         </article>
       </div>
     </div>
+
+    <ConfirmDialog
+      :open="deleteDialog.open"
+      title="删除演示项目"
+      :message="deleteDialog.message"
+      confirm-text="确认删除"
+      cancel-text="取消"
+      danger
+      :loading="deleteDialog.loading"
+      @confirm="confirmRemove"
+      @cancel="closeDeleteDialog"
+    />
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { api } from '../api/client'
 import AppShell from '../components/AppShell.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 
 const projects = ref([])
 const loading = ref(true)
 const error = ref('')
+
+const deleteDialog = reactive({
+  open: false,
+  loading: false,
+  id: null,
+  title: '',
+  message: '',
+})
 
 onMounted(async () => {
   try {
@@ -79,13 +108,31 @@ onMounted(async () => {
   }
 })
 
-async function remove(id) {
-  if (!confirm('确定删除该项目？此操作不可恢复。')) return
+function askRemove(project) {
+  deleteDialog.id = project.id
+  deleteDialog.title = project.title
+  deleteDialog.message = `确定要删除「${project.title}」吗？删除后无法恢复，请谨慎操作。`
+  deleteDialog.open = true
+}
+
+function closeDeleteDialog() {
+  if (deleteDialog.loading) return
+  deleteDialog.open = false
+  deleteDialog.id = null
+}
+
+async function confirmRemove() {
+  if (!deleteDialog.id) return
+  deleteDialog.loading = true
   try {
-    await api.deleteProject(id)
-    projects.value = projects.value.filter((p) => p.id !== id)
+    await api.deleteProject(deleteDialog.id)
+    projects.value = projects.value.filter((p) => p.id !== deleteDialog.id)
+    deleteDialog.open = false
+    deleteDialog.id = null
   } catch (e) {
-    alert(e.message)
+    error.value = e.message
+  } finally {
+    deleteDialog.loading = false
   }
 }
 </script>

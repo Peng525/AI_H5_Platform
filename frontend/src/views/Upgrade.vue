@@ -108,10 +108,22 @@ onMounted(async () => {
   selected.value = res.items.find((p) => p.recommended) || res.items[0]
 })
 
-function mockPay(channel) {
+async function mockPay(channel) {
   if (!selected.value) return
-  updateUser({ tier: 'pro', quota_total: 9999, quota_remaining: 9999 })
-  const names = { wechat: '微信', alipay: '支付宝', demo: '演示' }
-  payMsg.value = `已通过${names[channel] || '演示'}开通「${selected.value.name}」，Pro 模型已解锁！`
+  try {
+    const res = await api.createOrder({
+      plan_id: selected.value.id,
+      payment_channel: channel,
+    })
+    updateUser({
+      tier: res.tier,
+      quota_total: res.quota_total,
+      quota_remaining: res.quota_remaining,
+    })
+    const names = { wechat: '微信', alipay: '支付宝', demo: '演示' }
+    payMsg.value = `${names[channel] || '演示'}：${res.message}`
+  } catch (e) {
+    payMsg.value = e.message
+  }
 }
 </script>

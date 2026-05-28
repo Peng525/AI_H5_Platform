@@ -66,11 +66,12 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api/client'
 import { useAuth } from '../composables/useAuth'
 import PuzzleCaptcha from '../components/PuzzleCaptcha.vue'
 
+const route = useRoute()
 const router = useRouter()
 const { setSession } = useAuth()
 const account = ref('')
@@ -90,7 +91,12 @@ async function submit() {
     const body = { account: account.value, password: password.value, captcha_ok: captchaOk.value }
     const data = await api.login(body).catch(() => api.register(body))
     setSession(data)
-    router.push('/templates')
+    const redirect = route.query.redirect
+    if (data.is_admin) {
+      router.push(typeof redirect === 'string' && redirect.startsWith('/admin') ? redirect : '/admin')
+    } else {
+      router.push(typeof redirect === 'string' && !redirect.startsWith('/admin') ? redirect : '/templates')
+    }
   } catch (e) {
     error.value = e.message
   } finally {

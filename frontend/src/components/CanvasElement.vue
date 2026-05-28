@@ -22,7 +22,14 @@
         ref="inputRef"
         v-model="editText"
         class="w-full h-full bg-white/90 border border-primary outline-none text-inherit px-1"
-        :style="{ fontSize: element.style.fontSize + 'px', color: element.style.color }"
+        :style="{
+          fontSize: (element.style?.fontSize || 16) + 'px',
+          color: element.style?.color || '#1b1b1c',
+          fontWeight: element.style?.fontWeight || 'normal',
+          fontFamily: element.style?.fontFamily || 'inherit',
+          lineHeight: element.style?.lineHeight ?? 1.5,
+          letterSpacing: (element.style?.letterSpacing ?? 0) + 'px',
+        }"
         @blur="commitEdit"
         @keydown.enter="commitEdit"
       />
@@ -35,13 +42,60 @@
       :style="shapeStyle"
     />
 
-    <img
+    <div
+      v-else-if="element.type === 'icon'"
+      class="w-full h-full cursor-move flex items-center justify-center"
+      :style="iconStyle"
+    >
+      <span class="material-symbols-outlined select-none pointer-events-none" :style="{ fontSize: iconSize + 'px' }">{{ element.content || 'star' }}</span>
+    </div>
+
+    <table
+      v-else-if="element.type === 'table'"
+      class="w-full h-full border-collapse text-xs cursor-move table-fixed"
+      :style="{ borderColor: element.style?.borderColor || '#c0c7d6' }"
+    >
+      <tbody>
+        <tr v-for="(row, ri) in tableRows" :key="ri">
+          <td
+            v-for="(cell, ci) in row"
+            :key="ci"
+            class="border px-1 py-0.5 truncate"
+            :style="cellStyle(ri)"
+          >{{ cell }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div
+      v-else-if="element.type === 'chart'"
+      class="w-full h-full cursor-move flex flex-col p-2"
+      :style="{ background: element.style?.background || '#fff' }"
+    >
+      <div class="flex-1 flex items-end justify-around gap-1 min-h-0">
+        <div
+          v-for="(v, i) in chartValues"
+          :key="i"
+          class="flex-1 max-w-[20%] rounded-t-sm"
+          :style="{ height: barHeight(v) + '%', background: element.style?.chartColor || '#005daa', minHeight: '4px' }"
+        />
+      </div>
+    </div>
+
+    <div
       v-else-if="element.type === 'image'"
-      :src="element.content"
-      alt="素材"
-      class="w-full h-full object-cover cursor-move pointer-events-none"
-      draggable="false"
-    />
+      class="w-full h-full cursor-move flex items-center justify-center overflow-hidden"
+      :style="{ background: element.style?.background || '#f0f0f0' }"
+    >
+      <img
+        v-if="element.content"
+        :src="element.content"
+        alt="素材"
+        class="w-full h-full object-cover pointer-events-none"
+        draggable="false"
+      />
+      <span v-else class="material-symbols-outlined text-3xl text-on-surface-variant/50 pointer-events-none">image</span>
+    </div>
 
     <template v-if="selected">
       <div
@@ -74,12 +128,52 @@ const textStyle = computed(() => ({
   textAlign: props.element.style?.textAlign || 'left',
   background: props.element.style?.background || 'transparent',
   borderRadius: (props.element.style?.borderRadius || 0) + 'px',
+  border: props.element.style?.border || 'none',
+  fontFamily: props.element.style?.fontFamily || '"Microsoft YaHei", "PingFang SC", sans-serif',
+  lineHeight: props.element.style?.lineHeight ?? 1.5,
+  letterSpacing: (props.element.style?.letterSpacing ?? 0) + 'px',
 }))
 
 const shapeStyle = computed(() => ({
   background: props.element.style?.background || '#005daa',
   borderRadius: (props.element.style?.borderRadius || 8) + 'px',
 }))
+
+const iconStyle = computed(() => ({
+  background: props.element.style?.background || '#e8f0fe',
+  color: props.element.style?.color || '#005daa',
+  borderRadius: (props.element.style?.borderRadius || 8) + 'px',
+}))
+
+const iconSize = computed(() => Math.min(props.element.width, props.element.height) * 0.55)
+
+const tableRows = computed(() => {
+  const c = props.element.content
+  if (c?.rows?.length) return c.rows
+  return [['', '', ''], ['', '', ''], ['', '', '']]
+})
+
+const chartValues = computed(() => {
+  const c = props.element.content
+  return c?.values?.length ? c.values : [35, 65, 45, 80, 55]
+})
+
+function cellStyle(rowIndex) {
+  const isHeader = rowIndex === 0
+  return {
+    borderColor: props.element.style?.borderColor || '#c0c7d6',
+    background: isHeader
+      ? props.element.style?.headerBackground || '#005daa'
+      : props.element.style?.background || '#fff',
+    color: isHeader ? props.element.style?.headerColor || '#fff' : props.element.style?.color || '#1b1b1c',
+    fontWeight: isHeader ? '600' : 'normal',
+  }
+}
+
+function barHeight(v) {
+  const max = Math.max(...chartValues.value, 1)
+  return Math.max(8, (v / max) * 100)
+}
 
 function onSelect(e) {
   emit('select', props.element.id)

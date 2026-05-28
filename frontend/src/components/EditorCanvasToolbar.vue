@@ -1,60 +1,251 @@
 <template>
-  <div class="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-white shadow-card rounded-lg px-2 py-1 border border-outline-variant z-20 flex-wrap max-w-[90%]">
-    <div class="relative group">
-      <button class="p-2 hover:bg-surface-container rounded flex items-center gap-1 text-primary font-medium text-xs">
-        <span class="material-symbols-outlined text-[18px]">add_circle</span>
-        添加
-      </button>
-      <div class="hidden group-hover:block absolute top-full left-0 mt-1 w-44 bg-white border border-outline-variant rounded-lg shadow-lg py-1 z-50">
-        <button class="w-full text-left px-3 py-2 text-sm hover:bg-surface-container-low flex items-center gap-2" @click="$emit('add-text')">
-          <span class="material-symbols-outlined text-[16px] text-primary">text_fields</span>
-          文本框
-        </button>
-        <button class="w-full text-left px-3 py-2 text-sm hover:bg-surface-container-low flex items-center gap-2" @click="$emit('add-shape')">
-          <span class="material-symbols-outlined text-[16px] text-secondary">category</span>
-          形状
-        </button>
-      </div>
-    </div>
-
-    <div class="w-px h-5 bg-outline-variant" />
-
-    <template v-if="selected">
-      <label class="flex items-center gap-1 text-xs px-1">
-        <span class="material-symbols-outlined text-[16px] text-on-surface-variant">palette</span>
-        <input type="color" :value="selected.style?.background || '#005daa'" class="w-6 h-6 border-0 cursor-pointer" @input="onColor('background', $event.target.value)" />
-      </label>
-      <label class="flex items-center gap-1 text-xs px-1">
-        <span class="material-symbols-outlined text-[16px] text-on-surface-variant">text_format</span>
-        <select
-          :value="selected.style?.fontSize || 16"
-          class="text-xs border rounded px-1 py-0.5"
-          @change="onColor('fontSize', Number($event.target.value))"
+  <div class="absolute top-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 z-20 max-w-[98%]">
+    <div class="flex items-center gap-1 bg-white shadow-card rounded-lg px-2 py-1 border border-outline-variant flex-wrap">
+      <!-- 添加 -->
+      <div ref="addMenuRef" class="relative">
+        <button
+          type="button"
+          class="p-2 hover:bg-surface-container rounded flex items-center gap-1 text-primary font-medium text-xs"
+          :class="addMenuOpen ? 'bg-surface-container' : ''"
+          @click.stop="toggleAddMenu"
         >
-          <option v-for="s in [12, 14, 16, 18, 22, 28]" :key="s" :value="s">{{ s }}px</option>
-        </select>
-      </label>
-      <button class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="复制" @click="$emit('duplicate')">
-        <span class="material-symbols-outlined text-[18px]">content_copy</span>
-      </button>
-      <button class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="置顶" @click="$emit('bring-front')">
-        <span class="material-symbols-outlined text-[18px]">vertical_align_top</span>
-      </button>
-      <button class="p-1.5 hover:bg-red-50 rounded text-red-600" title="删除" @click="$emit('delete')">
-        <span class="material-symbols-outlined text-[18px]">delete</span>
-      </button>
-    </template>
+          <span class="material-symbols-outlined text-[18px]">add_circle</span>
+          添加
+          <span class="material-symbols-outlined text-[14px] text-on-surface-variant">{{ addMenuOpen ? 'expand_less' : 'expand_more' }}</span>
+        </button>
+        <div v-show="addMenuOpen" class="absolute left-0 top-[calc(100%-2px)] pt-2 w-44 z-[60]" @click.stop>
+          <div class="bg-white border border-outline-variant rounded-lg shadow-lg py-1">
+            <button type="button" class="w-full text-left px-3 py-2 text-sm hover:bg-surface-container-low flex items-center gap-2" @click.stop="pickAdd('text')">
+              <span class="material-symbols-outlined text-[16px] text-primary">text_fields</span>
+              文本框
+            </button>
+            <button type="button" class="w-full text-left px-3 py-2 text-sm hover:bg-surface-container-low flex items-center gap-2" @click.stop="pickAdd('shape')">
+              <span class="material-symbols-outlined text-[16px] text-secondary">category</span>
+              形状
+            </button>
+            <button type="button" class="w-full text-left px-3 py-2 text-sm hover:bg-surface-container-low flex items-center gap-2" @click.stop="pickAdd('image')">
+              <span class="material-symbols-outlined text-[16px] text-amber-600">image</span>
+              图片占位
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <template v-if="selected">
+        <div class="w-px h-5 bg-outline-variant" />
+
+        <!-- 文本格式（Word 风格） -->
+        <template v-if="isText">
+          <select
+            :value="currentFontId"
+            class="text-xs border border-outline-variant rounded px-1 py-1 max-w-[88px]"
+            title="字体"
+            @change="onStyle({ fontFamily: fontById($event.target.value) })"
+          >
+            <option v-for="f in FONT_FAMILIES" :key="f.id" :value="f.id">{{ f.label }}</option>
+          </select>
+
+          <select
+            :value="selected.style?.fontSize || 16"
+            class="text-xs border border-outline-variant rounded px-1 py-1 w-14"
+            title="字号"
+            @change="onStyle({ fontSize: Number($event.target.value) })"
+          >
+            <option v-for="s in FONT_SIZES" :key="s" :value="s">{{ s }}</option>
+          </select>
+
+          <button
+            type="button"
+            class="p-1.5 rounded hover:bg-surface-container"
+            :class="isBold ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant'"
+            title="加粗"
+            @click="toggleBold"
+          >
+            <span class="material-symbols-outlined text-[18px] font-bold">format_bold</span>
+          </button>
+
+          <select
+            class="text-xs border border-outline-variant rounded px-1 py-1 max-w-[72px]"
+            title="样式"
+            @change="applyPreset($event.target.value)"
+          >
+            <option value="" disabled selected hidden>样式</option>
+            <option v-for="(p, key) in TEXT_PRESETS" :key="key" :value="key">{{ p.label }}</option>
+          </select>
+
+          <select
+            :value="selected.style?.lineHeight ?? 1.5"
+            class="text-xs border border-outline-variant rounded px-1 py-1 max-w-[72px]"
+            title="行距"
+            @change="onStyle({ lineHeight: Number($event.target.value) })"
+          >
+            <option v-for="lh in LINE_HEIGHTS" :key="lh.value" :value="lh.value">行距 {{ lh.label }}</option>
+          </select>
+
+          <select
+            :value="selected.style?.letterSpacing ?? 0"
+            class="text-xs border border-outline-variant rounded px-1 py-1 max-w-[72px]"
+            title="字间距"
+            @change="onStyle({ letterSpacing: Number($event.target.value) })"
+          >
+            <option v-for="ls in LETTER_SPACINGS" :key="ls.value" :value="ls.value">间距 {{ ls.label }}</option>
+          </select>
+
+          <WordColorPicker
+            :model-value="selected.style?.color || '#1b1b1c'"
+            label="字体颜色"
+            icon="format_color_text"
+            @change="onStyle({ color: $event })"
+          />
+          <WordColorPicker
+            :model-value="selected.style?.background || '#ffffff'"
+            label="背景颜色"
+            icon="format_color_fill"
+            @change="onStyle({ background: $event })"
+          />
+        </template>
+
+        <!-- 形状 / 表格 / 图表 / 图标 填充色 -->
+        <template v-else-if="isShape">
+          <WordColorPicker
+            :model-value="selected.style?.background || '#005daa'"
+            label="填充颜色"
+            icon="format_color_fill"
+            @change="onStyle({ background: $event })"
+          />
+        </template>
+        <template v-else-if="selected.type === 'table'">
+          <WordColorPicker
+            :model-value="selected.style?.headerBackground || '#005daa'"
+            label="表头背景"
+            icon="format_color_fill"
+            @change="onStyle({ headerBackground: $event })"
+          />
+        </template>
+        <template v-else-if="selected.type === 'chart'">
+          <WordColorPicker
+            :model-value="selected.style?.chartColor || '#005daa'"
+            label="图表颜色"
+            icon="format_color_fill"
+            @change="onStyle({ chartColor: $event })"
+          />
+        </template>
+        <template v-else-if="selected.type === 'icon'">
+          <WordColorPicker
+            :model-value="selected.style?.color || '#005daa'"
+            label="图标颜色"
+            icon="format_color_text"
+            @change="onStyle({ color: $event })"
+          />
+          <WordColorPicker
+            :model-value="selected.style?.background || '#e8f0fe'"
+            label="背景颜色"
+            icon="format_color_fill"
+            @change="onStyle({ background: $event })"
+          />
+        </template>
+        <template v-else-if="selected.type === 'image'">
+          <WordColorPicker
+            :model-value="selected.style?.background || '#f0f0f0'"
+            label="背景颜色"
+            icon="format_color_fill"
+            @change="onStyle({ background: $event })"
+          />
+        </template>
+
+        <div class="w-px h-5 bg-outline-variant" />
+
+        <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="复制" @click="$emit('duplicate')">
+          <span class="material-symbols-outlined text-[18px]">content_copy</span>
+        </button>
+        <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="置顶" @click="$emit('bring-front')">
+          <span class="material-symbols-outlined text-[18px]">vertical_align_top</span>
+        </button>
+        <button type="button" class="p-1.5 hover:bg-red-50 rounded text-red-600" title="删除" @click="$emit('delete')">
+          <span class="material-symbols-outlined text-[18px]">delete</span>
+        </button>
+      </template>
+    </div>
   </div>
 </template>
 
 <script setup>
-defineProps({
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import {
+  FONT_FAMILIES,
+  FONT_SIZES,
+  LETTER_SPACINGS,
+  LINE_HEIGHTS,
+  TEXT_PRESETS,
+} from '../constants/textFormats'
+import WordColorPicker from './WordColorPicker.vue'
+
+const props = defineProps({
   selected: { type: Object, default: null },
 })
 
 const emit = defineEmits(['add-text', 'add-shape', 'add-image', 'style-change', 'duplicate', 'delete', 'bring-front'])
 
-function onColor(key, value) {
-  emit('style-change', { [key]: value })
+const addMenuOpen = ref(false)
+const addMenuRef = ref(null)
+
+const isText = computed(() => props.selected?.type === 'text')
+const isShape = computed(() => props.selected?.type === 'shape')
+const isBold = computed(() => {
+  const w = props.selected?.style?.fontWeight
+  return w === 'bold' || w === '700' || w === 700
+})
+
+const currentFontId = computed(() => {
+  const ff = props.selected?.style?.fontFamily || ''
+  const found = FONT_FAMILIES.find((f) => f.value === ff || ff.includes(f.label))
+  return found?.id || 'yahei'
+})
+
+function fontById(id) {
+  return FONT_FAMILIES.find((f) => f.id === id)?.value || FONT_FAMILIES[0].value
 }
+
+function onStyle(patch) {
+  emit('style-change', patch)
+}
+
+function toggleBold() {
+  onStyle({ fontWeight: isBold.value ? 'normal' : 'bold' })
+}
+
+function applyPreset(key) {
+  const preset = TEXT_PRESETS[key]
+  if (preset) onStyle({ ...preset.style })
+}
+
+function toggleAddMenu() {
+  addMenuOpen.value = !addMenuOpen.value
+}
+
+function pickAdd(type) {
+  addMenuOpen.value = false
+  if (type === 'text') emit('add-text')
+  else if (type === 'shape') emit('add-shape')
+  else emit('add-image')
+}
+
+function onDocPointerDown(e) {
+  if (!addMenuOpen.value) return
+  if (addMenuRef.value?.contains(e.target)) return
+  addMenuOpen.value = false
+}
+
+function onEsc(e) {
+  if (e.key === 'Escape') addMenuOpen.value = false
+}
+
+onMounted(() => {
+  document.addEventListener('mousedown', onDocPointerDown)
+  document.addEventListener('keydown', onEsc)
+})
+onUnmounted(() => {
+  document.removeEventListener('mousedown', onDocPointerDown)
+  document.removeEventListener('keydown', onEsc)
+})
 </script>

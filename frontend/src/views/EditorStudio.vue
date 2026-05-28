@@ -7,12 +7,17 @@
         :current-id="current?.id"
         :current-slide="current"
         :theme="project?.theme"
+        :scroll-effect="settings.scrollEffect"
+        :canvas-background="canvasBackground"
         @select-slide="selectSlide"
         @add-slide="addSlide"
         @remove-slide="removeSlide"
         @save-slide="saveSlideFields"
         @sync-canvas="syncCanvasFromSlide"
         @add-material="addMaterial"
+        @canvas-bg-change="onCanvasBgChange"
+        @scroll-change="setScrollEffect"
+        @preview-animation="previewAnimation = $event"
       />
 
       <EditorPhoneCanvas
@@ -20,15 +25,21 @@
         :selected-id="selectedId"
         :slide="current"
         :slide-index="slideIndex"
+        :viewport="viewport"
+        :viewport-id="settings.viewportId"
+        :preview-animation="previewAnimation"
+        :canvas-background="canvasBackground"
         @select="selectedId = $event"
         @deselect="selectedId = null"
         @update-element="updateElement"
         @add-text="addElement('text')"
         @add-shape="addElement('shape')"
+        @add-image="addImagePlaceholder"
         @style-change="onStyleChange"
         @duplicate="onDuplicate"
         @delete-selected="onDeleteSelected"
         @bring-front="onBringFront"
+        @viewport-change="setViewport"
       />
 
       <AiPanel
@@ -47,6 +58,7 @@ import { useRoute } from 'vue-router'
 import { api } from '../api/client'
 import { useAuth } from '../composables/useAuth'
 import { useSlideCanvas } from '../composables/useSlideCanvas'
+import { useProjectEditorSettings } from '../composables/useProjectEditorSettings'
 import AiPanel from '../components/AiPanel.vue'
 import EditorPhoneCanvas from '../components/EditorPhoneCanvas.vue'
 import EditorToolbox from '../components/EditorToolbox.vue'
@@ -59,6 +71,11 @@ const project = ref(null)
 const current = ref(null)
 const aiLoading = ref(false)
 const quota = ref({ remaining: 5, total: 5 })
+const previewAnimation = ref('')
+
+const { settings, viewport, setViewport, setScrollEffect, getSlideBackground, setSlideBackground } = useProjectEditorSettings(projectId)
+
+const canvasBackground = computed(() => getSlideBackground(current.value?.id))
 
 const slideIdRef = computed(() => current.value?.id ?? null)
 const {
@@ -105,6 +122,7 @@ async function addSlide() {
       subtitle: '',
       bullets: [],
       layout: 'bullets',
+      animation: 'fade',
     })
     project.value.slides.push(slide)
     current.value = slide
@@ -153,24 +171,71 @@ function syncCanvasFromSlide() {
 }
 
 function addMaterial(item) {
-  if (item.type === 'shape') {
+  if (item.type === 'text') {
+    addElement('text', {
+      content: '在此输入文字',
+      height: 56,
+      style: {
+        background: '#ffffff',
+        border: '1px solid #c0c7d6',
+        borderRadius: 2,
+      },
+    })
+  } else if (item.type === 'shape') {
     addElement('shape', {
-      style: { background: item.color, borderRadius: item.borderRadius || 8 },
+      style: { background: '#005daa', borderRadius: 0 },
+      width: 120,
+      height: 80,
+    })
+  } else if (item.type === 'table') {
+    addElement('table', {
+      style: {
+        background: '#ffffff',
+        headerBackground: '#005daa',
+        headerColor: '#ffffff',
+        borderColor: '#c0c7d6',
+      },
+    })
+  } else if (item.type === 'icon') {
+    addElement('icon', {
+      content: item.icon || 'emoji_objects',
+      style: {
+        background: '#e8f0fe',
+        color: '#005daa',
+        borderRadius: 8,
+      },
     })
   } else if (item.type === 'image') {
-    addElement('image', { content: item.content, width: 160, height: 100 })
+    addElement('image', {
+      content: 'https://placehold.co/200x120/005daa/white?text=Image',
+      width: 200,
+      height: 120,
+      style: { background: '#f0f0f0' },
+    })
+  } else if (item.type === 'chart') {
+    addElement('chart', {
+      style: { background: '#ffffff', chartColor: '#005daa' },
+    })
   }
+}
+
+function onCanvasBgChange(color) {
+  if (current.value?.id) setSlideBackground(current.value.id, color)
+}
+
+function addImagePlaceholder() {
+  addElement('image', {
+    content: 'https://placehold.co/200x120/005daa/white?text=Image',
+    width: 200,
+    height: 120,
+  })
 }
 
 function onStyleChange(patch) {
   if (!selectedId.value) return
   const el = elements.value.find((e) => e.id === selectedId.value)
   if (!el) return
-  if (patch.fontSize !== undefined) {
-    updateElement(selectedId.value, { style: { ...el.style, fontSize: patch.fontSize } })
-  } else {
-    updateElement(selectedId.value, { style: { ...el.style, ...patch } })
-  }
+  updateElement(selectedId.value, { style: { ...el.style, ...patch } })
 }
 
 function onDuplicate() {

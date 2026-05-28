@@ -1,8 +1,11 @@
-"""大模型设置 API。"""
-from fastapi import APIRouter, HTTPException, Query
+"""大模型设置 API（管理员）。"""
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.config import settings
-from app.schemas import LlmSettingsOut, LlmTestResult
+from app.deps.auth import require_admin
+from app.models import User
+from app.schemas import LlmSettingsAdminOut, LlmSettingsUpdate, LlmTestResult
+from app.services.env_store import apply_settings_patch, mask_secret
 from app.services.llm.model_tier import resolve_text_model
 from app.services.llm.provider import LlmError, _official_ready, _relay_ready, chat_completion
 from app.services.template_engine import list_templates
@@ -10,9 +13,8 @@ from app.services.template_engine import list_templates
 router = APIRouter(prefix="/api/v1/设置", tags=["设置"])
 
 
-@router.get("/大模型", response_model=LlmSettingsOut, summary="获取大模型配置状态")
-async def get_llm_settings():
-    return LlmSettingsOut(
+def _admin_settings_out() -> LlmSettingsAdminOut:
+    return LlmSettingsAdminOut(
         default_channel=settings.llm_default_channel,
         auto_order=settings.llm_auto_order,
         relay_configured=_relay_ready(),
@@ -23,13 +25,71 @@ async def get_llm_settings():
         image_model_pro=settings.llm_image_model_pro,
         relay_model=settings.llm_relay_model,
         official_model=settings.llm_official_model,
+        timeout=settings.llm_timeout,
+        free_quota_per_user=settings.free_quota_per_user,
+        relay_base_url=settings.llm_relay_base_url,
+        relay_api_key_masked=mask_secret(settings.llm_relay_api_key),
+        official_base_url=settings.llm_official_base_url,
+        official_api_key_masked=mask_secret(settings.llm_official_api_key),
     )
+
+
+def _should_skip_secret(value: str | None) -> bool:
+    if value is None:
+        return True
+    v = value.strip()
+    return not v or v.startswith("****")
+
+
+@router.get("/大模型", response_model=LlmSettingsAdminOut, summary="获取大模型配置（管理员）")
+async def get_llm_settings(_admin: User = Depends(require_admin)):
+    return _admin_settings_out()
+
+
+@router.put("/大模型", response_model=LlmSettingsAdminOut, summary="保存大模型配置到 .env")
+async def update_llm_settings(body: LlmSettingsUpdate, _admin: User = Depends(require_admin)):
+    field_map = {
+        "default_channel": "llm_default_channel",
+        "auto_order": "llm_auto_order",
+        "timeout": "llm_timeout",
+        "free_quota_per_user": "free_quota_per_user",
+        "relay_base_url": "llm_relay_base_url",
+        "relay_model": "llm_relay_model",
+        "official_base_url": "llm_official_base_url",
+        "official_model": "llm_official_model",
+        "model_free": "llm_model_free",
+        "model_pro": "llm_model_pro",
+        "image_model_free": "llm_image_model_free",
+        "image_model_pro": "llm_image_model_pro",
+    }
+    patch: dict[str, str | int | float] = {}
+
+    for field, attr in field_map.items():
+        val = getattr(body, field, None)
+        if val is not None:
+            patch[attr] = val
+
+    if not _should_skip_secret(body.relay_api_key):
+        patch["llm_relay_api_key"] = body.relay_api_key.strip()
+    if not _should_skip_secret(body.official_api_key):
+        patch["llm_official_api_key"] = body.official_api_key.strip()
+
+    if not patch:
+        return _admin_settings_out()
+
+    try:
+        apply_settings_patch(patch)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=f"写入 .env 失败：{exc}") from exc
+
+    return _admin_settings_out()
 
 
 @router.post("/大模型/测试", response_model=LlmTestResult, summary="测试大模型连通性")
 async def test_llm(
     channel: str | None = Query(None, description="relay | official | 留空为 auto"),
-    tier: str = Query("free", description="free 免费 gemini-3.1-flash | pro 升级 gemini-3-pro"),
+    tier: str = Query("free", description="free 免费 | pro 升级"),
+    _admin: User = Depends(require_admin),
 ):
     messages = [
         {"role": "system", "content": "你是助手，请用一句简体中文回复。"},
@@ -49,7 +109,7 @@ async def test_llm(
 
 
 @router.get("/大模型/档位", summary="查看免费/升级模型与配图模型")
-async def get_model_tiers():
+async def get_model_tiers(_admin: User = Depends(require_admin)):
     return {
         "免费档": {
             "文稿生成": settings.llm_model_free,
@@ -65,5 +125,5 @@ async def get_model_tiers():
 
 
 @router.get("/模板列表", summary="提示词模板（设置页）")
-async def settings_templates():
+async def settings_templates(_admin: User = Depends(require_admin)):
     return {"items": list_templates()}

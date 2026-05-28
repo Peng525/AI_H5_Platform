@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import auth, projects, settings, templates_catalog
+from app.api import admin, auth, commerce, projects, settings, templates_catalog
 from app.config import settings as app_settings
 from app.database import init_db
 from app.seed import seed_demo_user
@@ -39,6 +39,8 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(commerce.router)
+app.include_router(admin.router)
 app.include_router(templates_catalog.router)
 app.include_router(projects.router)
 app.include_router(settings.router)

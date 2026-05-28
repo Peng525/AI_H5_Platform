@@ -63,6 +63,16 @@ export const api = {
     request(`/api/v1/项目/${projectId}/页面/${slideId}`, { method: 'DELETE' }),
   getPromptTemplates: () => request('/api/v1/设置/模板列表'),
   getLlmSettings: () => request('/api/v1/设置/大模型'),
+  updateLlmSettings: (body) =>
+    request('/api/v1/设置/大模型', { method: 'PUT', body: JSON.stringify(body) }),
+  getMe: () => request('/api/v1/认证/我'),
+  recordVisit: () => request('/api/v1/统计/访问', { method: 'POST' }),
+  createOrder: (body) => request('/api/v1/订单/创建', { method: 'POST', body: JSON.stringify(body) }),
+  getAdminDashboard: () => request('/api/v1/管理/仪表盘'),
+  listAdminOrders: () => request('/api/v1/管理/订单'),
+  listAdminUsers: (q = '') => request(`/api/v1/管理/用户?q=${encodeURIComponent(q)}`),
+  createAdminUser: (body) => request('/api/v1/管理/用户', { method: 'POST', body: JSON.stringify(body) }),
+  updateAdminUser: (id, body) => request(`/api/v1/管理/用户/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   testLlm: (channel, tier = 'free') => {
     const q = new URLSearchParams()
     if (channel) q.set('channel', channel)

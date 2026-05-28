@@ -95,6 +95,32 @@ class LlmSettingsOut(BaseModel):
     official_model: str
 
 
+class LlmSettingsAdminOut(LlmSettingsOut):
+    timeout: float
+    free_quota_per_user: int
+    relay_base_url: str
+    relay_api_key_masked: str
+    official_base_url: str
+    official_api_key_masked: str
+
+
+class LlmSettingsUpdate(BaseModel):
+    default_channel: str | None = None
+    auto_order: str | None = None
+    timeout: float | None = None
+    free_quota_per_user: int | None = None
+    relay_base_url: str | None = None
+    relay_api_key: str | None = None
+    relay_model: str | None = None
+    official_base_url: str | None = None
+    official_api_key: str | None = None
+    official_model: str | None = None
+    model_free: str | None = None
+    model_pro: str | None = None
+    image_model_free: str | None = None
+    image_model_pro: str | None = None
+
+
 class LlmTestResult(BaseModel):
     success: bool
     channel: str

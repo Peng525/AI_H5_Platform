@@ -7,7 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
+from app.deps.auth import get_current_user, is_admin_user
 from app.models import User
+from app.services.quota import quota_remaining, quota_total
 
 router = APIRouter(prefix="/api/v1/认证", tags=["认证"])
 # pbkdf2 避免 Docker 内 bcrypt 与 passlib 版本冲突导致 500
@@ -25,6 +27,16 @@ class AuthResponse(BaseModel):
     user_id: int
     username: str
     tier: str
+    is_admin: bool = False
+    quota_remaining: int
+    quota_total: int
+
+
+class MeOut(BaseModel):
+    user_id: int
+    username: str
+    tier: str
+    is_admin: bool
     quota_remaining: int
     quota_total: int
 
@@ -42,12 +54,6 @@ def _token_for(user_id: int) -> str:
     from jose import jwt
 
     return jwt.encode({"sub": str(user_id)}, settings.jwt_secret, algorithm=settings.jwt_algorithm)
-
-
-def _quota_remaining(user: User) -> int:
-    if user.tier == "pro":
-        return 9999
-    return max(0, settings.free_quota_per_user - user.free_quota_used)
 
 
 @router.post("/注册", response_model=AuthResponse, summary="注册并登录")
@@ -76,8 +82,21 @@ async def login_or_register(body: AuthRequest, db: AsyncSession = Depends(get_db
         user_id=user.id,
         username=user.username,
         tier=user.tier,
-        quota_remaining=_quota_remaining(user),
-        quota_total=settings.free_quota_per_user if user.tier != "pro" else 9999,
+        is_admin=is_admin_user(user),
+        quota_remaining=quota_remaining(user),
+        quota_total=quota_total(user),
+    )
+
+
+@router.get("/我", response_model=MeOut, summary="当前登录用户")
+async def get_me(user: User = Depends(get_current_user)):
+    return MeOut(
+        user_id=user.id,
+        username=user.username,
+        tier=user.tier,
+        is_admin=is_admin_user(user),
+        quota_remaining=quota_remaining(user),
+        quota_total=quota_total(user),
     )
 
 
@@ -91,10 +110,10 @@ async def get_quota(user_id: int = 1, db: AsyncSession = Depends(get_db)):
         db.add(user)
         await db.commit()
         await db.refresh(user)
-    total = settings.free_quota_per_user if user.tier != "pro" else 9999
+    total = quota_total(user)
     return QuotaOut(
         tier=user.tier,
         quota_used=user.free_quota_used,
         quota_total=total,
-        quota_remaining=_quota_remaining(user),
+        quota_remaining=quota_remaining(user),
     )

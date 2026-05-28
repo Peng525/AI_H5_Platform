@@ -6,6 +6,9 @@ services:
       - "8080:8080"
     env_file:
       - .env
+    environment:
+      ENV_PERSIST_PATH: /app/.env
     volumes:
       - ./data:/app/backend/data
+      - ./.env:/app/.env
     restart: unless-stopped

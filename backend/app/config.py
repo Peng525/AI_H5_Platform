@@ -33,5 +33,10 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     free_quota_per_user: int = 5
 
+    # 逗号分隔的管理员账号（与 users.username 匹配）
+    admin_usernames: str = "admin@ai-h5.com"
+    # .env 持久化路径（Docker 内建议 /app/.env）
+    env_persist_path: str = "../.env"
+
 
 settings = Settings()

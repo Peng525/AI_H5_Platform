@@ -15,6 +15,7 @@ function loadUser() {
 
 export function useAuth() {
   const isLoggedIn = computed(() => !!user.value?.token)
+  const isAdmin = computed(() => !!user.value?.is_admin)
 
   function setSession(data) {
     user.value = data
@@ -39,5 +40,26 @@ export function useAuth() {
     return t ? { Authorization: `Bearer ${t}` } : {}
   }
 
-  return { user, isLoggedIn, setSession, logout, updateUser, authHeaders }
+  async function refreshProfile() {
+    const token = localStorage.getItem(TOKEN_KEY)
+    if (!token) return null
+    try {
+      const res = await fetch('/api/v1/认证/我', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return null
+      const me = await res.json()
+      updateUser({
+        user_id: me.user_id,
+        username: me.username,
+        tier: me.tier,
+        is_admin: me.is_admin,
+      })
+      return me
+    } catch {
+      return null
+    }
+  }
+
+  return { user, isLoggedIn, isAdmin, setSession, logout, updateUser, authHeaders, refreshProfile }
 }
