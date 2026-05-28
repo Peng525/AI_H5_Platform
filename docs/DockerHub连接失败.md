@@ -19,7 +19,9 @@ dial tcp [2a03:2880:...]:443: connectex: ... failed to respond
 docker compose -f docker-compose.yml -f docker-compose.cn.yml up -d --build
 ```
 
-会通过 `docker.m.daocloud.io` 拉取 `node` / `python` 基础镜像，并用 npmmirror / 清华 pip 加速依赖。
+会通过 `docker.1ms.run`（或 `docker.m.daocloud.io`）拉取 `node` / `python` 基础镜像
+
+若 `pip install` 失败：多为多阶段构建未传入 `PIP_INDEX`，请拉取最新代码后重建；日志含 `gcc` 相关错误时 Dockerfile 已包含编译依赖。，并用 npmmirror / 清华 pip 加速依赖。
 
 若 DaoCloud 也失败，可编辑 `docker-compose.cn.yml`，将镜像改为阿里云个人加速器地址（需登录阿里云容器镜像服务获取专属 URL）。
 
