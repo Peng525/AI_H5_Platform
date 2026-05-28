@@ -62,14 +62,20 @@ router.beforeEach(async (to) => {
     }
   }
 
-  if (to.name === 'login' && isLoggedIn.value) {
-    if (user.value?.is_admin === undefined) await refreshProfile()
-    if (user.value?.is_admin) return { name: 'admin' }
-    const redirect = to.query.redirect
-    if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('/admin')) {
-      return redirect
+  if (to.name === 'login') {
+    // 主动退出后必须停留在登录页，不自动跳走
+    if (to.query.from === 'logout') {
+      return
     }
-    return { name: 'templates' }
+    if (isLoggedIn.value) {
+      if (user.value?.is_admin === undefined) await refreshProfile()
+      if (user.value?.is_admin) return { name: 'admin' }
+      const redirect = to.query.redirect
+      if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('/admin')) {
+        return redirect
+      }
+      return { name: 'templates' }
+    }
   }
 
   if (to.meta.admin) {

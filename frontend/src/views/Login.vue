@@ -9,6 +9,10 @@
         <p class="text-sm text-on-surface-variant mt-1">请先登录后再使用编辑器等功能</p>
       </div>
 
+      <div v-if="fromLogout" class="mb-4 px-3 py-2.5 rounded-lg bg-primary/5 border border-primary/20 text-sm text-on-surface-variant">
+        您已安全退出。如需下次打开网站时<strong class="text-primary">自动登录</strong>，请勾选下方「记住密码」并完成拼图验证。
+      </div>
+
       <div v-if="autoLogging" class="text-center py-8 text-on-surface-variant text-sm">
         <span class="material-symbols-outlined animate-spin text-primary text-2xl mb-2">progress_activity</span>
         <p>正在使用已保存的账号登录…</p>
@@ -91,8 +95,25 @@ const captchaOk = ref(false)
 const loading = ref(false)
 const autoLogging = ref(false)
 const error = ref('')
+const fromLogout = ref(false)
 
 onMounted(async () => {
+  fromLogout.value = route.query.from === 'logout'
+
+  if (fromLogout.value) {
+    if (route.query.keep === '1') {
+      const saved = getRememberedCredentials()
+      if (saved) {
+        account.value = saved.account
+        password.value = saved.password
+        rememberMe.value = true
+      }
+    } else {
+      rememberMe.value = false
+    }
+    return
+  }
+
   if (isLoggedIn.value) {
     goAfterLogin(null)
     return

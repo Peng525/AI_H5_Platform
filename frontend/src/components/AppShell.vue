@@ -92,13 +92,19 @@
           </router-link>
           <button
             class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-            @click="onLogout"
+            @click="openLogout"
           >
             退出登录
           </button>
         </div>
       </div>
     </div>
+
+    <LogoutDialog
+      :open="logoutOpen"
+      @cancel="logoutOpen = false"
+      @confirm="onLogoutConfirm"
+    />
   </header>
 </template>
 
@@ -106,6 +112,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api/client'
+import LogoutDialog from './LogoutDialog.vue'
 import { useAuth } from '../composables/useAuth'
 
 defineProps({
@@ -116,8 +123,9 @@ defineProps({
 
 const route = useRoute()
 const router = useRouter()
-const { user, logout, isAdmin, refreshProfile } = useAuth()
+const { user, logout, isAdmin, refreshProfile, performLogout } = useAuth()
 const menuOpen = ref(false)
+const logoutOpen = ref(false)
 const menuRef = ref(null)
 const quota = ref({ remaining: 5, total: 5 })
 
@@ -141,10 +149,14 @@ function isActive(match) {
   return route.path.startsWith(match)
 }
 
-function onLogout() {
+function openLogout() {
   menuOpen.value = false
-  logout()
-  router.push('/login')
+  logoutOpen.value = true
+}
+
+function onLogoutConfirm(keepRemember) {
+  logoutOpen.value = false
+  performLogout(router, keepRemember)
 }
 
 function onClickOutside(e) {

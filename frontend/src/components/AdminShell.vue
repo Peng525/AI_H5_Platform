@@ -38,7 +38,7 @@
         <button
           type="button"
           class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50"
-          @click="onLogout"
+          @click="logoutOpen = true"
         >
           <span class="material-symbols-outlined text-[20px]">logout</span>
           退出登录
@@ -55,12 +55,19 @@
         <slot />
       </main>
     </div>
+
+    <LogoutDialog
+      :open="logoutOpen"
+      @cancel="logoutOpen = false"
+      @confirm="onLogoutConfirm"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import LogoutDialog from './LogoutDialog.vue'
 import { useAuth } from '../composables/useAuth'
 
 defineProps({
@@ -69,7 +76,8 @@ defineProps({
 
 const route = useRoute()
 const router = useRouter()
-const { user, logout } = useAuth()
+const { user, performLogout } = useAuth()
+const logoutOpen = ref(false)
 
 const navItems = [
   { label: '数据仪表盘', to: '/admin', match: '/admin', icon: 'dashboard' },
@@ -82,8 +90,8 @@ function isActive(match) {
   return route.path.startsWith(match)
 }
 
-function onLogout() {
-  logout()
-  router.push('/login')
+function onLogoutConfirm(keepRemember) {
+  logoutOpen.value = false
+  performLogout(router, keepRemember)
 }
 </script>

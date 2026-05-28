@@ -49,9 +49,24 @@ export function useAuth() {
     store.setItem(USER_KEY, JSON.stringify(data))
   }
 
-  function logout() {
+  function logout(options = {}) {
     user.value = null
     clearAllSession()
+    if (options.clearRemember) {
+      clearRememberCredentials()
+    }
+  }
+
+  /** 退出并跳转登录页（不触发自动登录） */
+  function performLogout(router, keepRemember = true) {
+    logout({ clearRemember: !keepRemember })
+    router.replace({
+      name: 'login',
+      query: {
+        from: 'logout',
+        keep: keepRemember ? '1' : '0',
+      },
+    })
   }
 
   function updateUser(patch) {
@@ -123,6 +138,7 @@ export function useAuth() {
     isAdmin,
     setSession,
     logout,
+    performLogout,
     updateUser,
     authHeaders,
     refreshProfile,
