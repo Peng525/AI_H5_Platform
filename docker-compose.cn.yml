@@ -1,0 +1,10 @@
+# 国内网络：使用 DaoCloud 等镜像站拉取基础镜像（无需改 Docker Hub 登录）
+# 用法：docker compose -f docker-compose.yml -f docker-compose.cn.yml up -d --build
+services:
+  app:
+    build:
+      args:
+        NODE_IMAGE: docker.m.daocloud.io/library/node:20-alpine
+        PYTHON_IMAGE: docker.m.daocloud.io/library/python:3.12-slim
+        NPM_REGISTRY: https://registry.npmmirror.com
+        PIP_INDEX: https://pypi.tuna.tsinghua.edu.cn/simple

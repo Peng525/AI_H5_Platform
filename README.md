@@ -29,6 +29,14 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
+**国内若无法连接 Docker Hub**，改用：
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.cn.yml up -d --build
+```
+
+或本地启动：`.\scripts\start-local.ps1`（见 `docs/DockerHub连接失败.md`）
+
 3. 浏览器打开：http://localhost:8080
 
 ## 本地开发（可选）
