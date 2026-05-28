@@ -37,23 +37,17 @@
           </div>
         </label>
 
-        <div class="p-3 bg-surface-container-low rounded-lg border border-outline-variant">
-          <p class="text-xs text-on-surface-variant mb-2">请向右滑动完成拼图</p>
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input v-model="captchaOk" type="checkbox" class="rounded" />
-            <span class="text-sm">我已完成验证</span>
-          </label>
-        </div>
+        <PuzzleCaptcha @verified="captchaOk = $event" />
 
         <p v-if="error" class="text-red-600 text-sm">{{ error }}</p>
 
         <div class="flex gap-2">
-          <button type="button" class="flex-1 py-2.5 border border-outline-variant rounded-lg text-sm" disabled>
+          <button type="button" class="flex-1 py-2.5 border border-outline-variant rounded-lg text-sm text-on-surface-variant" disabled>
             获取验证码
           </button>
           <button
             type="submit"
-            :disabled="loading"
+            :disabled="loading || !captchaOk"
             class="flex-[2] py-2.5 bg-primary text-on-primary rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-1"
           >
             注册 / 登录
@@ -75,6 +69,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api/client'
 import { useAuth } from '../composables/useAuth'
+import PuzzleCaptcha from '../components/PuzzleCaptcha.vue'
 
 const router = useRouter()
 const { setSession } = useAuth()
@@ -85,6 +80,10 @@ const loading = ref(false)
 const error = ref('')
 
 async function submit() {
+  if (!captchaOk.value) {
+    error.value = '请先完成拼图验证'
+    return
+  }
   loading.value = true
   error.value = ''
   try {
