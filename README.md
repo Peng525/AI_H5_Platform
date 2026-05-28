@@ -5,6 +5,23 @@
 - GitHub: [Peng525/AI_H5_Platform](https://github.com/Peng525/AI_H5_Platform)
 - 开发分支: `develop`
 
+## 数据存储位置
+
+| 内容 | 路径 |
+|------|------|
+| SQLite 数据库（用户、项目、页面、生成日志） | `develop/data/app.db` |
+| Docker 挂载 | 宿主机 `develop/data` → 容器 `/app/backend/data` |
+| 环境变量 / API Key | `develop/.env`（**勿提交 Git**） |
+| 登录态（浏览器） | `localStorage`：`ai_h5_token`、`ai_h5_user` |
+
+## 演示账号（进入主页 `/templates`）
+
+| 项 | 值 |
+|----|-----|
+| 账号 | `demo@ai-h5.com` |
+| 密码 | `demo123456` |
+| 说明 | 勾选「我已完成验证」后点击「注册/登录」 |
+
 ## 功能概览（P0）
 
 - 项目管理、页面编辑、全屏 H5 预览

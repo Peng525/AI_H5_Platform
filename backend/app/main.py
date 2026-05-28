@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api import auth, projects, settings, templates_catalog
 from app.config import settings as app_settings
 from app.database import init_db
+from app.seed import seed_demo_user
 
 # app/main.py -> parents[1] = backend 目录，静态资源在 backend/static
 STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
@@ -18,6 +19,7 @@ STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     await init_db()
+    await seed_demo_user()
     yield
 
 

@@ -10,7 +10,8 @@ from app.database import get_db
 from app.models import User
 
 router = APIRouter(prefix="/api/v1/认证", tags=["认证"])
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# pbkdf2 避免 Docker 内 bcrypt 与 passlib 版本冲突导致 500
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 # 演示用：验证码通过前端滑块后传 captcha_ok=true
 class AuthRequest(BaseModel):
