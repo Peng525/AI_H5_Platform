@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-background">
     <AppShell :show-quota="false" />
-    <div class="max-w-5xl mx-auto px-4 py-8 md:px-8 md:py-12">
+    <div class="max-w-6xl mx-auto px-4 py-8 md:px-8 md:py-12">
       <header class="mb-8 md:mb-10">
         <h1 class="text-2xl md:text-3xl font-bold">升级套餐</h1>
         <p class="mt-2 text-on-surface-variant text-sm md:text-base">
@@ -151,8 +151,8 @@
           </article>
         </section>
 
-        <!-- 结账侧栏 -->
-        <aside class="lg:col-span-2 mt-8 lg:mt-0">
+        <!-- 结账侧栏（略加宽以便展示大尺寸收款码） -->
+        <aside class="lg:col-span-2 xl:col-span-2 mt-8 lg:mt-0 min-w-0">
           <div class="lg:sticky lg:top-24 rounded-2xl border border-outline-variant bg-white p-6 shadow-card">
             <h3 class="font-bold text-base mb-4">订单摘要</h3>
 
@@ -185,12 +185,15 @@
               </button>
 
               <div v-if="activeOrder" class="mt-5 space-y-3">
-                <div v-if="showQr" class="mx-auto w-full max-w-[320px] rounded-xl border border-outline-variant bg-white p-3">
+                <div
+                  v-if="showQr"
+                  class="mx-auto w-full rounded-xl border border-outline-variant bg-white p-4 flex items-center justify-center"
+                >
                   <img
                     v-if="qrImageSrc"
                     :src="qrImageSrc"
                     alt="微信收款码"
-                    class="w-full h-auto block mx-auto select-none"
+                    class="qr-pay-image w-full h-auto block mx-auto select-none"
                     @error="onQrError"
                   />
                 </div>
@@ -425,7 +428,7 @@ async function renderQr(order) {
   const url = order.qr_code_url
   if (url.startsWith('weixin://')) {
     try {
-      qrImageSrc.value = await QRCode.toDataURL(url, { width: 220, margin: 1 })
+      qrImageSrc.value = await QRCode.toDataURL(url, { width: 512, margin: 2, errorCorrectionLevel: 'M' })
     } catch {
       payMsg.value = '二维码生成失败'
     }
@@ -531,3 +534,13 @@ async function startWechatPay() {
   }
 }
 </script>
+
+<style scoped>
+.qr-pay-image {
+  width: 100%;
+  max-width: 480px;
+  min-width: min(100%, 340px);
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+</style>
