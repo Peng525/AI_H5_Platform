@@ -54,36 +54,41 @@
       <span class="material-symbols-outlined select-none pointer-events-none" :style="{ fontSize: iconSize + 'px' }">{{ element.content || 'star' }}</span>
     </div>
 
-    <table
+    <div
       v-else-if="element.type === 'table'"
-      class="w-full h-full border-collapse text-xs cursor-move table-fixed"
-      :style="{ borderColor: element.style?.borderColor || '#c0c7d6' }"
+      class="w-full h-full cursor-move box-border overflow-hidden"
+      :style="tableWrapStyle"
       @dblclick.stop
     >
-      <tbody>
-        <tr v-for="(row, ri) in tableRows" :key="ri">
-          <td
-            v-for="(cell, ci) in row"
-            :key="ci"
-            class="border px-1 py-0.5 align-top"
-            :class="editingCell?.ri === ri && editingCell?.ci === ci ? 'p-0' : 'truncate'"
-            :style="cellStyle(ri)"
-            @dblclick.stop="startCellEdit(ri, ci)"
-          >
-            <input
-              v-if="editingCell?.ri === ri && editingCell?.ci === ci"
-              ref="cellInputRef"
-              v-model="editCellValue"
-              class="w-full h-full min-h-[22px] bg-white border border-primary outline-none px-1 text-inherit text-xs"
-              @blur="commitCellEdit"
-              @keydown.enter="commitCellEdit"
-              @mousedown.stop
-            />
-            <span v-else class="block min-h-[18px]">{{ cell }}</span>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+      <table class="w-full h-full table-fixed border-collapse text-xs">
+        <tbody>
+          <tr v-for="(row, ri) in tableRows" :key="ri">
+            <td
+              v-for="(cell, ci) in row"
+              :key="ci"
+              class="px-1 py-0.5 align-top"
+              :class="[
+                editingCell?.ri === ri && editingCell?.ci === ci ? 'p-0' : 'truncate',
+                cellBorderClass(ri, ci, row.length, tableRows.length),
+              ]"
+              :style="cellStyle(ri)"
+              @dblclick.stop="startCellEdit(ri, ci)"
+            >
+              <input
+                v-if="editingCell?.ri === ri && editingCell?.ci === ci"
+                ref="cellInputRef"
+                v-model="editCellValue"
+                class="w-full h-full min-h-[22px] bg-white border border-primary outline-none px-1 text-inherit text-xs"
+                @blur="commitCellEdit"
+                @keydown.enter="commitCellEdit"
+                @mousedown.stop
+              />
+              <span v-else class="block min-h-[18px]">{{ cell }}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
     <div
       v-else-if="element.type === 'chart'"
@@ -135,7 +140,7 @@ const props = defineProps({
   scale: { type: Number, default: 1 },
 })
 
-const emit = defineEmits(['select', 'update', 'remove'])
+const emit = defineEmits(['select', 'update', 'remove', 'batch-start', 'batch-end'])
 
 const editing = ref(false)
 const editText = ref('')
@@ -176,15 +181,25 @@ const tableRows = computed(() => {
   return [['', '', ''], ['', '', ''], ['', '', '']]
 })
 
-const chartValues = computed(() => {
-  const c = props.element.content
-  return c?.values?.length ? c.values : [35, 65, 45, 80, 55]
-})
+const tableBorderColor = computed(() => props.element.style?.borderColor || '#c0c7d6')
 
-function cellStyle(rowIndex) {
-  const isHeader = rowIndex === 0
+const tableWrapStyle = computed(() => ({
+  border: `1px solid ${tableBorderColor.value}`,
+  background: props.element.style?.background || '#fff',
+}))
+
+function cellBorderClass(ri, ci, colCount, rowCount) {
+  const parts = []
+  if (ci < colCount - 1) parts.push('border-r')
+  if (ri < rowCount - 1) parts.push('border-b')
+  return parts.join(' ')
+}
+
+function cellStyle(ri) {
+  const isHeader = ri === 0
+  const color = tableBorderColor.value
   return {
-    borderColor: props.element.style?.borderColor || '#c0c7d6',
+    borderColor: color,
     background: isHeader
       ? props.element.style?.headerBackground || '#005daa'
       : props.element.style?.background || '#fff',
@@ -192,6 +207,11 @@ function cellStyle(rowIndex) {
     fontWeight: isHeader ? '600' : 'normal',
   }
 }
+
+const chartValues = computed(() => {
+  const c = props.element.content
+  return c?.values?.length ? c.values : [35, 65, 45, 80, 55]
+})
 
 function barHeight(v) {
   const max = Math.max(...chartValues.value, 1)
@@ -238,6 +258,7 @@ function commitCellEdit() {
 }
 
 function startDrag(e) {
+  emit('batch-start')
   const startX = e.clientX
   const startY = e.clientY
   const origX = props.element.x
@@ -253,12 +274,14 @@ function startDrag(e) {
   function onUp() {
     window.removeEventListener('mousemove', onMove)
     window.removeEventListener('mouseup', onUp)
+    emit('batch-end')
   }
   window.addEventListener('mousemove', onMove)
   window.addEventListener('mouseup', onUp)
 }
 
 function startResize(e) {
+  emit('batch-start')
   const startX = e.clientX
   const startY = e.clientY
   const origW = props.element.width
@@ -274,6 +297,7 @@ function startResize(e) {
   function onUp() {
     window.removeEventListener('mousemove', onMove)
     window.removeEventListener('mouseup', onUp)
+    emit('batch-end')
   }
   window.addEventListener('mousemove', onMove)
   window.addEventListener('mouseup', onUp)

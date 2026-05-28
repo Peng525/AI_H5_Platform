@@ -145,6 +145,66 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
   const elements = ref([])
   const selectedId = ref(null)
   let saveTimer = null
+  const undoStack = []
+  const redoStack = []
+  const MAX_HISTORY = 50
+  let historyBatching = false
+
+  function snapshotState() {
+    return {
+      elements: JSON.parse(JSON.stringify(elements.value)),
+      selectedId: selectedId.value,
+    }
+  }
+
+  function pushHistory() {
+    undoStack.push(snapshotState())
+    if (undoStack.length > MAX_HISTORY) undoStack.shift()
+    redoStack.length = 0
+  }
+
+  function beginHistoryBatch() {
+    if (!historyBatching) {
+      pushHistory()
+      historyBatching = true
+    }
+  }
+
+  function endHistoryBatch() {
+    historyBatching = false
+  }
+
+  function undo() {
+    if (!undoStack.length) return false
+    redoStack.push(snapshotState())
+    const prev = undoStack.pop()
+    elements.value = prev.elements
+    selectedId.value = prev.selectedId
+    persistLocal()
+    scheduleServerSave()
+    return true
+  }
+
+  function redo() {
+    if (!redoStack.length) return false
+    undoStack.push(snapshotState())
+    const next = redoStack.pop()
+    elements.value = next.elements
+    selectedId.value = next.selectedId
+    persistLocal()
+    scheduleServerSave()
+    return true
+  }
+
+  function canUndo() {
+    return undoStack.length > 0
+  }
+
+  function clearHistory() {
+    undoStack.length = 0
+    redoStack.length = 0
+    historyBatching = false
+  }
 
   function loadElements(serverCanvas) {
     const pid = projectIdRef.value
@@ -168,6 +228,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
       elements.value = serverCanvas?.length ? serverCanvas : []
     }
     selectedId.value = null
+    clearHistory()
   }
 
   function persistLocal() {
@@ -215,6 +276,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
   }
 
   function addElement(type, overrides = {}) {
+    if (!historyBatching) pushHistory()
     const maxZ = elements.value.reduce((m, el) => Math.max(m, el.zIndex || 0), 0)
     const el = defaultElement(type, { ...overrides, zIndex: maxZ + 1 })
     elements.value.push(el)
@@ -226,6 +288,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
   function updateElement(id, patch) {
     const idx = elements.value.findIndex((el) => el.id === id)
     if (idx < 0) return
+    if (!historyBatching) pushHistory()
     const prev = elements.value[idx]
     elements.value[idx] = {
       ...prev,
@@ -236,6 +299,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
   }
 
   function removeElement(id) {
+    if (!historyBatching) pushHistory()
     elements.value = elements.value.filter((el) => el.id !== id)
     if (selectedId.value === id) selectedId.value = null
     saveElements()
@@ -244,6 +308,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
   function duplicateElement(id) {
     const src = elements.value.find((el) => el.id === id)
     if (!src) return
+    if (!historyBatching) pushHistory()
     const copy = {
       ...JSON.parse(JSON.stringify(src)),
       id: genId(),
@@ -258,8 +323,12 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
   }
 
   function bringToFront(id) {
+    if (!historyBatching) pushHistory()
     const maxZ = elements.value.reduce((m, el) => Math.max(m, el.zIndex || 0), 0)
-    updateElement(id, { zIndex: maxZ + 1 })
+    const idx = elements.value.findIndex((el) => el.id === id)
+    if (idx < 0) return
+    elements.value[idx] = { ...elements.value[idx], zIndex: maxZ + 1 }
+    saveElements()
   }
 
   function syncFromSlide(slide) {
@@ -310,6 +379,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
         objectFit: fit === 'fill' ? 'cover' : 'contain',
       },
     })
+    if (!historyBatching) pushHistory()
     if (fit === 'fill') {
       elements.value.unshift(el)
     } else {
@@ -333,5 +403,10 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     duplicateElement,
     bringToFront,
     syncFromSlide,
+    undo,
+    redo,
+    canUndo,
+    beginHistoryBatch,
+    endHistoryBatch,
   }
 }

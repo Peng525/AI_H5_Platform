@@ -18,6 +18,7 @@
         @canvas-bg-change="onCanvasBgChange"
         @scroll-change="setScrollEffect"
         @preview-animation="onPreviewAnimation"
+        @open-help="shortcutsHelpOpen = true"
       />
 
       <EditorPhoneCanvas
@@ -41,6 +42,8 @@
         @delete-selected="onDeleteSelected"
         @bring-front="onBringFront"
         @viewport-change="setViewport"
+        @batch-start="beginHistoryBatch"
+        @batch-end="endHistoryBatch"
       />
 
       <AiPanel
@@ -52,6 +55,8 @@
         @add-image-to-page="onAddImageToPage"
       />
     </div>
+
+    <EditorShortcutsHelp v-model:open="shortcutsHelpOpen" />
   </div>
 </template>
 
@@ -67,6 +72,7 @@ import AiPanel from '../components/AiPanel.vue'
 import EditorPhoneCanvas from '../components/EditorPhoneCanvas.vue'
 import EditorToolbox from '../components/EditorToolbox.vue'
 import EditorTopBar from '../components/EditorTopBar.vue'
+import EditorShortcutsHelp from '../components/EditorShortcutsHelp.vue'
 
 const route = useRoute()
 const { user } = useAuth()
@@ -78,6 +84,7 @@ const aiPanelRef = ref(null)
 const quota = ref({ remaining: 5, total: 5 })
 const previewAnimation = ref('')
 const previewAnimationTick = ref(0)
+const shortcutsHelpOpen = ref(false)
 
 const { settings, viewport, setViewport, setScrollEffect, getSlideBackground, setSlideBackground } = useProjectEditorSettings(projectId)
 
@@ -97,6 +104,10 @@ const {
   syncFromSlide,
   addImageFromAi,
   flushCanvasSave,
+  undo,
+  redo,
+  beginHistoryBatch,
+  endHistoryBatch,
 } = useSlideCanvas(projectId, slideIdRef)
 
 const slideIndex = computed(() => {
@@ -268,7 +279,31 @@ function onBringFront() {
 }
 
 function onKeyDown(e) {
-  if (e.key === 'Delete' && selectedId.value && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+  const editing = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)
+  if (e.key === 'F1') {
+    e.preventDefault()
+    shortcutsHelpOpen.value = !shortcutsHelpOpen.value
+    return
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === '/' && !editing) {
+    e.preventDefault()
+    shortcutsHelpOpen.value = true
+    return
+  }
+  if (shortcutsHelpOpen.value) return
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+    if (editing) return
+    e.preventDefault()
+    undo()
+    return
+  }
+  if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
+    if (editing) return
+    e.preventDefault()
+    redo()
+    return
+  }
+  if (e.key === 'Delete' && selectedId.value && !editing) {
     removeElement(selectedId.value)
   }
 }

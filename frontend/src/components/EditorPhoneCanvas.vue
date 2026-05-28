@@ -1,6 +1,6 @@
 <template>
   <section
-    class="flex-1 bg-surface-container-low flex items-center justify-center overflow-hidden relative"
+    class="flex-1 bg-surface-container-low overflow-hidden relative select-none"
     @wheel.prevent="onWheelZoom"
   >
     <EditorCanvasToolbar
@@ -15,7 +15,7 @@
     />
 
     <!-- 分辨率选择 -->
-    <div class="absolute top-4 right-4 z-20">
+    <div class="absolute top-4 right-4 z-20" data-editor-chrome>
       <select
         :value="viewportId"
         class="text-xs border border-outline-variant rounded-lg px-2 py-1.5 bg-white shadow-card max-w-[160px]"
@@ -30,7 +30,17 @@
       </select>
     </div>
 
-    <div class="absolute bottom-6 flex items-center gap-2 bg-white shadow-card rounded-full px-2 py-1 border border-outline-variant z-20">
+    <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white shadow-card rounded-full px-2 py-1 border border-outline-variant z-20" data-editor-chrome>
+      <button
+        type="button"
+        class="p-1.5 rounded-full transition-colors"
+        :class="panMode ? 'bg-primary text-on-primary' : 'hover:bg-surface-container text-on-surface-variant'"
+        title="手型工具 · 拖动画布 (H)"
+        @click="togglePanMode"
+      >
+        <span class="material-symbols-outlined text-[18px]">pan_tool</span>
+      </button>
+      <span class="w-px h-4 bg-outline-variant" />
       <button type="button" class="p-1.5 hover:bg-surface-container rounded-full" title="缩小" @click="zoomOut">
         <span class="material-symbols-outlined text-[18px]">remove</span>
       </button>
@@ -51,8 +61,9 @@
           v-else
           type="button"
           class="text-xs w-full hover:text-primary hover:bg-surface-container-low rounded py-0.5"
-          title="点击输入缩放比例"
+          title="点击输入缩放；双击重置视图"
           @click="startZoomEdit"
+          @dblclick.stop="resetView"
         >
           {{ zoomPercent }}%
         </button>
@@ -66,12 +77,19 @@
     </div>
 
     <div
-      class="relative transition-transform origin-center"
-      :style="{ transform: `scale(${displayScale})` }"
+      v-show="panActive"
+      class="absolute inset-0 z-[15]"
+      :class="isPanning ? 'cursor-grabbing' : 'cursor-grab'"
+      @mousedown="startPanDrag"
+    />
+
+    <div
+      class="absolute left-1/2 top-1/2 will-change-transform"
+      :style="canvasTransformStyle"
       @mousedown.self="$emit('deselect')"
     >
       <div
-        class="bg-white shadow-2xl overflow-hidden flex flex-col transition-all duration-300"
+        class="bg-white shadow-2xl overflow-hidden flex flex-col"
         :class="frameClass"
         :style="{ width: safeViewport.width + 'px', height: safeViewport.height + 'px' }"
       >
@@ -109,6 +127,8 @@
               :scale="1"
               @select="$emit('select', $event)"
               @update="(id, patch) => $emit('update-element', id, patch)"
+              @batch-start="$emit('batch-start')"
+              @batch-end="$emit('batch-end')"
             />
 
             <div
@@ -130,7 +150,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { VIEWPORT_PRESETS, getViewportPreset } from '../constants/editorPresets'
 import { animationEnterClass } from '../utils/slideAnimation'
 import CanvasElement from './CanvasElement.vue'
@@ -148,7 +168,7 @@ const props = defineProps({
   canvasBackground: { type: String, default: '#005daa' },
 })
 
-defineEmits([
+const emit = defineEmits([
   'select',
   'deselect',
   'update-element',
@@ -160,6 +180,8 @@ defineEmits([
   'delete-selected',
   'bring-front',
   'viewport-change',
+  'batch-start',
+  'batch-end',
 ])
 
 const DEFAULT_ZOOM = 90
@@ -173,6 +195,13 @@ const zoomInput = ref(String(DEFAULT_ZOOM))
 const zoomInputRef = ref(null)
 const transitionKey = ref(0)
 const canvasRef = ref(null)
+const panMode = ref(false)
+const spaceHeld = ref(false)
+const isPanning = ref(false)
+const panX = ref(0)
+const panY = ref(0)
+
+const panActive = computed(() => panMode.value || spaceHeld.value)
 
 const mobileViewports = VIEWPORT_PRESETS.filter((v) => v.device === 'mobile')
 const webViewports = VIEWPORT_PRESETS.filter((v) => v.device === 'web')
@@ -207,6 +236,65 @@ const displayScale = computed(() => {
   return Number.isFinite(s) && s > 0 ? s : autoScale.value
 })
 
+const canvasTransformStyle = computed(() => ({
+  transform: `translate3d(calc(-50% + ${panX.value}px), calc(-50% + ${panY.value}px), 0) scale(${displayScale.value})`,
+  transformOrigin: 'center center',
+}))
+
+function togglePanMode() {
+  panMode.value = !panMode.value
+}
+
+function resetView() {
+  resetZoom()
+  panX.value = 0
+  panY.value = 0
+}
+
+function startPanDrag(e) {
+  if (e.button !== 0) return
+  e.preventDefault()
+  e.stopPropagation()
+  isPanning.value = true
+  const startX = e.clientX
+  const startY = e.clientY
+  const origX = panX.value
+  const origY = panY.value
+
+  function onMove(ev) {
+    ev.preventDefault()
+    panX.value = origX + (ev.clientX - startX)
+    panY.value = origY + (ev.clientY - startY)
+  }
+  function onUp() {
+    isPanning.value = false
+    window.removeEventListener('mousemove', onMove)
+    window.removeEventListener('mouseup', onUp)
+  }
+  window.addEventListener('mousemove', onMove)
+  window.addEventListener('mouseup', onUp)
+}
+
+function onPanKeyDown(e) {
+  const editing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)
+  if (editing) return
+  if (e.code === 'Space' && !e.repeat) {
+    e.preventDefault()
+    spaceHeld.value = true
+  }
+  if (e.key.toLowerCase() === 'h' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault()
+    togglePanMode()
+  }
+}
+
+function onPanKeyUp(e) {
+  if (e.code === 'Space') {
+    spaceHeld.value = false
+    isPanning.value = false
+  }
+}
+
 function clampZoom(v) {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(v)))
 }
@@ -230,13 +318,23 @@ watch(
 
 watch(
   () => props.slide?.id,
-  () => resetZoom()
+  () => resetView()
 )
 
 watch(
   () => props.viewportId,
-  () => resetZoom()
+  () => resetView()
 )
+
+onMounted(() => {
+  window.addEventListener('keydown', onPanKeyDown)
+  window.addEventListener('keyup', onPanKeyUp)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onPanKeyDown)
+  window.removeEventListener('keyup', onPanKeyUp)
+})
 
 async function startZoomEdit() {
   zoomInput.value = String(zoomPercent.value)

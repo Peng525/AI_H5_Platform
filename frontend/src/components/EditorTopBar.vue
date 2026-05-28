@@ -1,5 +1,9 @@
 <template>
-  <AppShell :project-id="projectId" />
+  <AppShell :project-id="projectId">
+    <template #actions>
+      <slot name="actions" />
+    </template>
+  </AppShell>
 </template>
 
 <script setup>

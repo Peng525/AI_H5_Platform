@@ -1,13 +1,22 @@
 <template>
   <aside class="w-[240px] border-r border-outline-variant bg-surface-container-low flex flex-col shrink-0 overflow-hidden">
     <div class="p-3 border-b border-outline-variant flex items-center gap-2">
-      <div class="w-8 h-8 rounded bg-primary-container text-on-primary-container flex items-center justify-center">
+      <div class="w-8 h-8 rounded bg-primary-container text-on-primary-container flex items-center justify-center shrink-0">
         <span class="material-symbols-outlined text-[20px]">widgets</span>
       </div>
-      <div>
+      <div class="min-w-0 flex-1">
         <div class="text-sm font-bold">工具箱</div>
         <div class="text-[10px] text-on-surface-variant">编辑器</div>
       </div>
+      <button
+        type="button"
+        class="shrink-0 h-8 px-2.5 rounded-lg bg-primary text-on-primary text-xs font-medium inline-flex items-center gap-1 hover:bg-primary-container hover:text-on-primary-container transition-colors"
+        title="快捷键说明 (F1)"
+        @click="$emit('open-help')"
+      >
+        <span class="material-symbols-outlined text-[16px]">help</span>
+        帮助
+      </button>
     </div>
 
     <div class="flex border-b border-outline-variant">
@@ -78,7 +87,7 @@ defineProps({
   canvasBackground: { type: String, default: '#005daa' },
 })
 
-defineEmits(['select-slide', 'add-slide', 'remove-slide', 'save-slide', 'sync-canvas', 'add-material', 'canvas-bg-change', 'scroll-change', 'preview-animation'])
+defineEmits(['select-slide', 'add-slide', 'remove-slide', 'save-slide', 'sync-canvas', 'add-material', 'canvas-bg-change', 'scroll-change', 'preview-animation', 'open-help'])
 
 const activeTab = ref('pages')
 const tabs = [
