@@ -249,11 +249,16 @@ const previewScale = computed(() => {
   return Math.min(1, maxW / viewport.value.width, maxH / viewport.value.height)
 })
 
-const displayScale = computed(() => previewScale.value * (userZoom.value / 100))
+const displayScale = computed(() => {
+  const raw = previewScale.value * (userZoom.value / 100)
+  return Math.round(raw * 100) / 100
+})
 
 const scaledWrapStyle = computed(() => ({
   transform: `scale(${displayScale.value})`,
   transformOrigin: 'center center',
+  WebkitFontSmoothing: 'antialiased',
+  MozOsxFontSmoothing: 'grayscale',
 }))
 
 const outerFrameClass = computed(() => 'overflow-visible')
@@ -340,7 +345,7 @@ function trackFlowScroll(e) {
 }
 
 function onFlowWheel(e) {
-  if (scrollEffect.value !== 'vertical') return
+  if (scrollEffect.value !== 'vertical' && scrollEffect.value !== 'snap') return
   e.preventDefault()
   if (flowWheelLock.value) return
   const dir = e.deltaY > 0 ? 1 : e.deltaY < 0 ? -1 : 0
@@ -474,6 +479,7 @@ function onKey(e) {
   height: 100%;
   min-height: 100%;
   flex-shrink: 0;
+  scroll-snap-stop: always;
 }
 .preview-scroll-horizontal {
   scroll-behavior: smooth;

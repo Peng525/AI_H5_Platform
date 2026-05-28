@@ -53,14 +53,14 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
 
 <style scoped>
 .preview-select-trigger {
-  font-size: 13px;
-  line-height: 1.3;
-  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.35;
+  font-weight: 600;
   color: #fff;
-  background: rgba(20, 24, 32, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(20, 24, 32, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 9px 12px;
   backdrop-filter: blur(8px);
 }
 .preview-select-menu {
@@ -68,24 +68,24 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
   right: 0;
   top: calc(100% + 6px);
   min-width: 100%;
-  max-height: 240px;
+  max-height: 280px;
   overflow-y: auto;
-  background: #1c1f26;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: #141820;
+  border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 10px;
-  padding: 4px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  padding: 6px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
   z-index: 30;
 }
 .preview-select-option {
   display: block;
   width: 100%;
   text-align: left;
-  font-size: 13px;
-  line-height: 1.35;
-  font-weight: 500;
-  color: #f3f4f6;
-  padding: 8px 10px;
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: #f9fafb;
+  padding: 10px 12px;
   border-radius: 6px;
   white-space: nowrap;
 }
