@@ -36,6 +36,7 @@
 ## 功能概览（P0）
 
 - 项目管理、页面编辑、全屏 H5 预览
+- **探索模板**：按模板类型 + 终端（移动端 / 网页版）筛选；主页不含 AI 面板
 - PPT 风格素材面板（文本框 / 矩形 / 表格 / 图标 / 图片 / 图表）与页面背景色
 - Word 风格文本格式工具栏
 - AI 全量生成演示结构（模板：全量生成）
@@ -96,7 +97,7 @@ npm run dev
 | **免费（默认）** | `LLM_MODEL_FREE`（如 `gemini-3.1-flash-image-preview`） | `LLM_IMAGE_MODEL_FREE` |
 | **升级** | `LLM_MODEL_PRO`（如 `gemini-3-pro-image-preview`） | `LLM_IMAGE_MODEL_PRO` |
 
-可在 `.env` 中配置 `LLM_RELAY_BASE_URL`、`LLM_RELAY_API_KEY` 及上述模型名。编辑器右侧 **「生成配图」** 会调用 `POST /api/v1/项目/{id}/生成/配图`；**「仅生成文案」** 仍走单页改写接口。免费档按次扣减配额。
+可在 `.env` 中配置 `LLM_RELAY_BASE_URL`、`LLM_RELAY_API_KEY` 及上述模型名。**AI 智能面板仅在编辑器**（`/editor/:id`）右侧显示；探索模板主页只做模板浏览与筛选。
 
 ### 配图环境变量示例
 
@@ -108,6 +109,16 @@ LLM_RELAY_API_KEY=sk-...
 LLM_IMAGE_MODEL_FREE=gemini-3.1-flash-image-preview
 LLM_IMAGE_MODEL_PRO=gemini-3-pro-image-preview
 ```
+
+编辑器 **「生成配图」** → `POST /api/v1/项目/{id}/生成/配图`；**「仅生成文案」** → 单页改写接口。
+
+### 探索模板 API
+
+| 参数 | 说明 |
+|------|------|
+| `category` | 模板类型：全部 / 年度报告 / 产品发布 / … |
+| `device` | 终端：`全部` / `mobile`（移动端）/ `web`（网页版） |
+| `q` | 关键词（支持「移动端」「网页版」等） |
 
 ## 大模型 auto 模式
 

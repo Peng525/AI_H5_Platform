@@ -36,8 +36,13 @@ export const api = {
   register: (body) => request('/api/v1/认证/注册', { method: 'POST', body: JSON.stringify(body) }),
   getQuota: (userId) => request(`/api/v1/认证/配额?user_id=${userId || 1}`),
   getTemplateCategories: () => request('/api/v1/模板库/分类'),
-  listTemplates: (category = '全部', q = '') =>
-    request(`/api/v1/模板库?category=${encodeURIComponent(category)}&q=${encodeURIComponent(q)}`),
+  listTemplates: (category = '全部', q = '', device = '全部') => {
+    const params = new URLSearchParams()
+    params.set('category', category)
+    params.set('q', q)
+    if (device) params.set('device', device)
+    return request(`/api/v1/模板库?${params.toString()}`)
+  },
   getPlans: () => request('/api/v1/模板库/套餐'),
   listProjects: () => request('/api/v1/项目'),
   createProject: (body, userId) =>
