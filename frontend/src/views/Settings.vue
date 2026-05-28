@@ -1,8 +1,6 @@
 <template>
   <div class="min-h-screen bg-background flex flex-col">
-    <header class="h-16 border-b flex items-center px-6">
-      <router-link to="/templates" class="text-primary font-bold">← 返回工作台</router-link>
-    </header>
+    <AppShell page-title="系统设置" :show-quota="false" />
   <div class="max-w-2xl mx-auto p-6 md:p-10 flex-1 w-full">
     <h1 class="text-2xl font-bold mb-2">系统设置</h1>
     <p class="text-on-surface-variant text-sm mb-8">大模型通道配置由服务端环境变量管理（.env）</p>
@@ -78,6 +76,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { api } from '../api/client'
+import AppShell from '../components/AppShell.vue'
 
 const settings = ref({})
 const templates = ref([])
@@ -89,7 +88,7 @@ const testOk = ref(false)
 onMounted(async () => {
   try {
     settings.value = await api.getLlmSettings()
-    const t = await api.getTemplates()
+    const t = await api.getPromptTemplates()
     templates.value = t.items || []
   } finally {
     loading.value = false

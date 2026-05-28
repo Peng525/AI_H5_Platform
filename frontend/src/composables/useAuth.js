@@ -28,10 +28,16 @@ export function useAuth() {
     localStorage.removeItem(USER_KEY)
   }
 
+  function updateUser(patch) {
+    if (!user.value) return
+    user.value = { ...user.value, ...patch }
+    localStorage.setItem(USER_KEY, JSON.stringify(user.value))
+  }
+
   function authHeaders() {
     const t = localStorage.getItem(TOKEN_KEY)
     return t ? { Authorization: `Bearer ${t}` } : {}
   }
 
-  return { user, isLoggedIn, setSession, logout, authHeaders }
+  return { user, isLoggedIn, setSession, logout, updateUser, authHeaders }
 }

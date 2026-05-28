@@ -57,6 +57,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  addSlide: (projectId, body) =>
+    request(`/api/v1/项目/${projectId}/页面`, { method: 'POST', body: JSON.stringify(body) }),
+  deleteSlide: (projectId, slideId) =>
+    request(`/api/v1/项目/${projectId}/页面/${slideId}`, { method: 'DELETE' }),
+  getPromptTemplates: () => request('/api/v1/设置/模板列表'),
   getLlmSettings: () => request('/api/v1/设置/大模型'),
   testLlm: (channel, tier = 'free') => {
     const q = new URLSearchParams()
