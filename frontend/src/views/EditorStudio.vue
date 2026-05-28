@@ -2,33 +2,34 @@
   <div class="h-screen flex flex-col bg-background overflow-hidden">
     <EditorTopBar :project-title="project?.title" :project-id="projectId" />
     <div class="flex flex-1 min-h-0">
-      <aside class="w-52 border-r border-outline-variant bg-surface-container-low flex flex-col shrink-0 overflow-y-auto">
-        <p class="p-3 text-xs font-semibold text-on-surface-variant">页面</p>
-        <button
-          v-for="(s, i) in project?.slides || []"
-          :key="s.id"
-          class="mx-2 mb-2 p-2 rounded-lg text-left text-sm border"
-          :class="current?.id === s.id ? 'border-primary bg-white' : 'border-transparent hover:bg-white'"
-          @click="current = s"
-        >
-          <div class="font-medium truncate">{{ i + 1 }}. {{ s.title || '未命名' }}</div>
-        </button>
-      </aside>
+      <EditorToolbox
+        :slides="project?.slides || []"
+        :current-id="current?.id"
+        :current-slide="current"
+        :theme="project?.theme"
+        @select-slide="selectSlide"
+        @add-slide="addSlide"
+        @remove-slide="removeSlide"
+        @save-slide="saveSlideFields"
+        @sync-canvas="syncCanvasFromSlide"
+        @add-material="addMaterial"
+      />
 
-      <main class="flex-1 flex flex-col items-center justify-center p-6 bg-surface-container overflow-y-auto">
-        <div v-if="current" class="w-[320px] min-h-[560px] bg-white rounded-[2rem] shadow-2xl border-8 border-gray-900 overflow-hidden">
-          <div class="h-8 bg-gray-900" />
-          <div class="p-6 bg-gradient-to-br from-primary to-primary-container text-white min-h-[480px]">
-            <span class="text-xs opacity-80">第 {{ slideIndex + 1 }} 页</span>
-            <h2 class="text-xl font-bold mt-2">{{ current.title }}</h2>
-            <p v-if="current.subtitle" class="text-sm mt-2 opacity-90">{{ current.subtitle }}</p>
-            <ul v-if="current.bullets?.length" class="mt-4 space-y-2 text-sm">
-              <li v-for="(b, j) in current.bullets" :key="j">• {{ b }}</li>
-            </ul>
-          </div>
-        </div>
-        <p v-else class="text-on-surface-variant">加载中…</p>
-      </main>
+      <EditorPhoneCanvas
+        :elements="elements"
+        :selected-id="selectedId"
+        :slide="current"
+        :slide-index="slideIndex"
+        @select="selectedId = $event"
+        @deselect="selectedId = null"
+        @update-element="updateElement"
+        @add-text="addElement('text')"
+        @add-shape="addElement('shape')"
+        @style-change="onStyleChange"
+        @duplicate="onDuplicate"
+        @delete-selected="onDeleteSelected"
+        @bring-front="onBringFront"
+      />
 
       <AiPanel
         :loading="aiLoading"
@@ -41,11 +42,14 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '../api/client'
 import { useAuth } from '../composables/useAuth'
+import { useSlideCanvas } from '../composables/useSlideCanvas'
 import AiPanel from '../components/AiPanel.vue'
+import EditorPhoneCanvas from '../components/EditorPhoneCanvas.vue'
+import EditorToolbox from '../components/EditorToolbox.vue'
 import EditorTopBar from '../components/EditorTopBar.vue'
 
 const route = useRoute()
@@ -56,6 +60,20 @@ const current = ref(null)
 const aiLoading = ref(false)
 const quota = ref({ remaining: 5, total: 5 })
 
+const slideIdRef = computed(() => current.value?.id ?? null)
+const {
+  elements,
+  selectedId,
+  saveElements,
+  loadElements,
+  addElement,
+  updateElement,
+  removeElement,
+  duplicateElement,
+  bringToFront,
+  syncFromSlide,
+} = useSlideCanvas(projectId, slideIdRef)
+
 const slideIndex = computed(() => {
   if (!project.value?.slides || !current.value) return 0
   return project.value.slides.findIndex((s) => s.id === current.value.id)
@@ -64,12 +82,117 @@ const slideIndex = computed(() => {
 async function load() {
   project.value = await api.getProject(Number(projectId.value))
   current.value = project.value.slides?.[0] || null
+  loadElements()
+  if (current.value) syncFromSlide(current.value)
   const q = await api.getQuota(user.value?.user_id)
   quota.value = { remaining: q.quota_remaining, total: q.quota_total }
 }
 
 onMounted(load)
 watch(() => route.params.id, load)
+
+function selectSlide(slide) {
+  saveElements()
+  current.value = slide
+  loadElements()
+}
+
+async function addSlide() {
+  saveElements()
+  try {
+    const slide = await api.addSlide(project.value.id, {
+      title: '新页面',
+      subtitle: '',
+      bullets: [],
+      layout: 'default',
+    })
+    project.value.slides.push(slide)
+    current.value = slide
+    loadElements()
+  } catch (e) {
+    alert(e.message)
+  }
+}
+
+async function removeSlide(slideId) {
+  if ((project.value.slides?.length || 0) <= 1) {
+    alert('至少保留一页')
+    return
+  }
+  if (!confirm('确定删除该页面？')) return
+  saveElements()
+  try {
+    await api.deleteSlide(project.value.id, slideId)
+    localStorage.removeItem(`ai_h5_canvas_${project.value.id}_${slideId}`)
+    project.value.slides = project.value.slides.filter((s) => s.id !== slideId)
+    if (current.value?.id === slideId) {
+      current.value = project.value.slides[0]
+      loadElements()
+    }
+  } catch (e) {
+    alert(e.message)
+  }
+}
+
+async function saveSlideFields(fields) {
+  if (!current.value) return
+  try {
+    const updated = await api.updateSlide(project.value.id, current.value.id, fields)
+    const idx = project.value.slides.findIndex((s) => s.id === updated.id)
+    if (idx >= 0) project.value.slides[idx] = updated
+    current.value = updated
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+function syncCanvasFromSlide() {
+  if (!current.value) return
+  elements.value = []
+  syncFromSlide(current.value)
+}
+
+function addMaterial(item) {
+  if (item.type === 'shape') {
+    addElement('shape', {
+      style: { background: item.color, borderRadius: item.borderRadius || 8 },
+    })
+  } else if (item.type === 'image') {
+    addElement('image', { content: item.content, width: 160, height: 100 })
+  }
+}
+
+function onStyleChange(patch) {
+  if (!selectedId.value) return
+  const el = elements.value.find((e) => e.id === selectedId.value)
+  if (!el) return
+  if (patch.fontSize !== undefined) {
+    updateElement(selectedId.value, { style: { ...el.style, fontSize: patch.fontSize } })
+  } else {
+    updateElement(selectedId.value, { style: { ...el.style, ...patch } })
+  }
+}
+
+function onDuplicate() {
+  if (selectedId.value) duplicateElement(selectedId.value)
+}
+
+function onDeleteSelected() {
+  if (selectedId.value) removeElement(selectedId.value)
+}
+
+function onBringFront() {
+  if (selectedId.value) bringToFront(selectedId.value)
+}
+
+function onKeyDown(e) {
+  if (e.key === 'Delete' && selectedId.value && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+    removeElement(selectedId.value)
+  }
+}
+
+onMounted(() => window.addEventListener('keydown', onKeyDown))
+onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
 
 async function onGenerate({ prompt, channelTier, channel }) {
   if (!prompt?.trim() || !current.value) return
@@ -84,6 +207,7 @@ async function onGenerate({ prompt, channelTier, channel }) {
     const idx = project.value.slides.findIndex((s) => s.id === updated.id)
     if (idx >= 0) project.value.slides[idx] = updated
     current.value = updated
+    syncCanvasFromSlide()
     const q = await api.getQuota(user.value?.user_id)
     quota.value = { remaining: q.quota_remaining, total: q.quota_total }
   } catch (e) {
