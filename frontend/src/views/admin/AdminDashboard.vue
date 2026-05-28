@@ -81,9 +81,9 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { api } from '../api/client'
-import AdminShell from '../components/AdminShell.vue'
-import StatCard from '../components/admin/StatCard.vue'
+import { api } from '../../api/client'
+import AdminShell from '../../components/AdminShell.vue'
+import StatCard from '../../components/admin/StatCard.vue'
 
 const data = ref(null)
 const loading = ref(true)
