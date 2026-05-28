@@ -7,7 +7,11 @@ async function request(path, options = {}) {
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
-    throw new Error(data.detail || data.message || `请求失败 (${res.status})`)
+    let detail = data.detail ?? data.message
+    if (Array.isArray(detail)) {
+      detail = detail.map((d) => d.msg || JSON.stringify(d)).join('；')
+    }
+    throw new Error(detail || `请求失败 (${res.status})`)
   }
   return data
 }

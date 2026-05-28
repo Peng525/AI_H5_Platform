@@ -9,6 +9,8 @@ from sqlalchemy.orm import selectinload
 
 from app.models import GenerationLog, Project, Slide
 from app.schemas import DeckJson, GenerateFullRequest, GeneratePageRequest
+from pydantic import ValidationError
+
 from app.services.llm.provider import LlmError, chat_completion, extract_json
 from app.services.template_engine import render_template
 
@@ -31,9 +33,9 @@ async def generate_full_deck(
         raw, channel, model = await chat_completion(messages, body.channel, body.tier)
         data = extract_json(raw)
         deck = DeckJson.model_validate(data)
-    except (LlmError, Exception) as exc:
+    except (LlmError, ValidationError, json.JSONDecodeError) as exc:
         await _log(db, project_id, "full_deck", body.channel or "auto", False, str(exc))
-        raise
+        raise LlmError(f"AI 生成结果解析失败，请重试或缩短主题描述：{exc}") from exc
 
     result = await db.execute(select(Project).where(Project.id == project_id).options(selectinload(Project.slides)))
     project = result.scalar_one()
@@ -100,9 +102,9 @@ async def generate_single_page(
     try:
         raw, channel, model = await chat_completion(messages, body.channel, body.tier)
         data = extract_json(raw)
-    except (LlmError, Exception) as exc:
+    except (LlmError, ValidationError, json.JSONDecodeError) as exc:
         await _log(db, project_id, "single_page", body.channel or "auto", False, str(exc))
-        raise
+        raise LlmError(f"AI 改写结果解析失败：{exc}") from exc
 
     target.layout = data.get("layout", target.layout)
     target.title = data.get("title", target.title)

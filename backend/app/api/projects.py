@@ -150,6 +150,8 @@ async def api_generate_full(project_id: int, body: GenerateFullRequest, db: Asyn
         project = await generate_full_deck(db, project_id, body)
     except LlmError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"生成失败：{exc}") from exc
     result = await db.execute(
         select(Project).where(Project.id == project.id).options(selectinload(Project.slides))
     )

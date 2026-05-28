@@ -123,16 +123,25 @@ async def chat_completion(
     raise LlmError(f"未知通道: {channel}")
 
 
+def _loads_json_relaxed(payload: str) -> dict[str, Any]:
+    """解析 JSON；strict=False 允许模型返回字符串中的控制字符。"""
+    return json.loads(payload, strict=False)
+
+
 def extract_json(text: str) -> dict[str, Any]:
     text = text.strip()
     fence = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
     if fence:
         text = fence.group(1).strip()
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        start = text.find("{")
-        end = text.rfind("}")
-        if start >= 0 and end > start:
-            return json.loads(text[start : end + 1])
-        raise LlmError("无法解析大模型返回的 JSON") from None
+    candidates = [text]
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        candidates.append(text[start : end + 1])
+    last_err: json.JSONDecodeError | None = None
+    for candidate in candidates:
+        try:
+            return _loads_json_relaxed(candidate)
+        except json.JSONDecodeError as exc:
+            last_err = exc
+    raise LlmError(f"无法解析大模型返回的 JSON：{last_err}") from last_err
