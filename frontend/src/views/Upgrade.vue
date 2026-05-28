@@ -1,106 +1,236 @@
 <template>
   <div class="min-h-screen bg-background">
     <AppShell :show-quota="false" />
-    <div class="max-w-4xl mx-auto p-6 md:p-10">
-      <h1 class="text-3xl font-bold text-center mb-2">升级套餐，解锁 AI 配图</h1>
-      <p class="text-center text-on-surface-variant mb-10">
-        统一 GPT 配图引擎 · 按次包约 50% 毛利 · 包月尊享官方直连通道
-      </p>
+    <div class="max-w-5xl mx-auto px-4 py-8 md:px-8 md:py-12">
+      <header class="mb-8 md:mb-10">
+        <h1 class="text-2xl md:text-3xl font-bold">升级套餐</h1>
+        <p class="mt-2 text-on-surface-variant text-sm md:text-base">
+          GPT 配图 ¥0.5/张 · 按次 10～50 张，或包月 60 张更省心
+        </p>
+      </header>
 
-      <div class="grid md:grid-cols-2 gap-6">
-        <article
-          v-for="p in displayPlans"
-          :key="p.id"
-          class="bg-white rounded-xl border border-outline-variant p-6 shadow-card relative transition-all cursor-pointer"
-          @click="selectPlan(p)"
-        >
-          <span
-            v-if="p.recommended"
-            class="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-on-primary text-xs px-3 py-1 rounded-full font-medium"
+      <div class="lg:grid lg:grid-cols-5 lg:gap-8 lg:items-start">
+        <!-- 套餐选择 -->
+        <section class="lg:col-span-3 space-y-4">
+          <!-- 按次包 -->
+          <article
+            class="rounded-2xl border bg-white p-5 md:p-6 shadow-card transition-colors cursor-pointer"
+            :class="selected?.id === 'custom' ? 'border-primary/40 ring-1 ring-primary/20' : 'border-outline-variant'"
+            @click="selectPlan(customPlan)"
           >
-            推荐
-          </span>
-          <h3 class="font-bold text-lg">{{ p.name }}</h3>
-          <p class="text-3xl font-bold mt-2 text-primary">¥{{ formatPrice(p.price) }}</p>
-          <p class="text-sm text-on-surface-variant mt-2">{{ p.desc }}</p>
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h2 class="font-bold text-lg">按次配图包</h2>
+                <p class="text-sm text-on-surface-variant mt-1">灵活购买，用多少买多少</p>
+              </div>
+              <p class="text-2xl font-bold text-primary shrink-0">¥{{ formatPrice(customPrice) }}</p>
+            </div>
 
-          <div v-if="p.id === 'custom'" class="mt-5 space-y-3" @click.stop>
-            <div class="flex items-center justify-between text-sm">
-              <span class="text-on-surface-variant">配图次数</span>
-              <span class="font-semibold text-primary">{{ customQuota }} 次</span>
+            <div class="mt-5 rounded-xl bg-surface-container-low p-4 space-y-4" @click.stop>
+              <div class="flex items-center justify-between gap-3">
+                <label class="text-sm font-medium text-on-surface-variant shrink-0" for="quota-input">
+                  配图次数
+                </label>
+                <div class="flex items-center gap-1">
+                  <button
+                    type="button"
+                    class="w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center hover:bg-white disabled:opacity-40"
+                    :disabled="customQuota <= quotaMin"
+                    @click="adjustQuota(-1)"
+                  >
+                    <span class="material-symbols-outlined text-lg">remove</span>
+                  </button>
+                  <input
+                    id="quota-input"
+                    v-model="quotaInput"
+                    type="number"
+                    inputmode="numeric"
+                    class="w-16 h-9 text-center font-semibold rounded-lg border border-outline-variant bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+                    :min="quotaMin"
+                    :max="quotaMax"
+                    @blur="commitQuotaInput"
+                    @keydown.enter="commitQuotaInput"
+                  />
+                  <button
+                    type="button"
+                    class="w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center hover:bg-white disabled:opacity-40"
+                    :disabled="customQuota >= quotaMax"
+                    @click="adjustQuota(1)"
+                  >
+                    <span class="material-symbols-outlined text-lg">add</span>
+                  </button>
+                  <span class="text-sm text-on-surface-variant ml-1">次</span>
+                </div>
+              </div>
+
+              <input
+                v-model.number="customQuota"
+                type="range"
+                :min="quotaMin"
+                :max="quotaMax"
+                step="1"
+                class="w-full accent-primary"
+                @input="onQuotaSlider"
+              />
+
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="n in quickQuotas"
+                  :key="n"
+                  type="button"
+                  class="px-3 py-1.5 rounded-full text-xs font-medium border transition"
+                  :class="
+                    customQuota === n
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-outline-variant text-on-surface-variant hover:border-primary/40'
+                  "
+                  @click="setQuota(n)"
+                >
+                  {{ n }} 次
+                </button>
+              </div>
+
+              <p v-if="quotaHint" class="text-xs text-amber-700">{{ quotaHint }}</p>
+              <p v-else class="text-xs text-on-surface-variant">
+                可输入 {{ quotaMin }}～{{ quotaMax }} 之间的整数
+              </p>
             </div>
-            <input
-              v-model.number="customQuota"
-              type="range"
-              :min="quotaMin"
-              :max="quotaMax"
-              step="1"
-              class="w-full accent-primary"
-              @input="onCustomQuotaChange"
-            />
-            <div class="flex justify-between text-xs text-on-surface-variant">
-              <span>{{ quotaMin }} 次</span>
-              <span>{{ quotaMax }} 次</span>
+
+            <button
+              type="button"
+              class="mt-5 w-full py-2.5 rounded-lg text-sm font-medium transition"
+              :class="
+                selected?.id === 'custom'
+                  ? 'bg-primary text-on-primary'
+                  : 'border border-outline-variant hover:bg-surface-container-low'
+              "
+              @click.stop="selectPlan(customPlan)"
+            >
+              {{ selected?.id === 'custom' ? '已选择' : '选择此套餐' }}
+            </button>
+          </article>
+
+          <!-- 包月 -->
+          <article
+            class="rounded-2xl border bg-white p-5 md:p-6 shadow-card transition-colors cursor-pointer"
+            :class="selected?.id === 'monthly' ? 'border-primary/40 ring-1 ring-primary/20' : 'border-outline-variant'"
+            @click="selectPlan(monthlyPlan)"
+          >
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="text-xs font-semibold text-primary mb-1">推荐</p>
+                <h2 class="font-bold text-lg">{{ monthlyPlan.name }}</h2>
+                <p class="text-sm text-on-surface-variant mt-1">{{ monthlyPlan.desc }}</p>
+              </div>
+              <p class="text-2xl font-bold text-primary shrink-0">¥{{ formatPrice(monthlyPlan.price) }}</p>
             </div>
+
+            <ul class="mt-4 space-y-2 text-sm text-on-surface-variant">
+              <li class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-base text-primary">check_circle</span>
+                每月 {{ monthlyPlan.quota }} 次 GPT 配图
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-base text-primary">check_circle</span>
+                尊享官方直连通道
+              </li>
+            </ul>
+
+            <button
+              type="button"
+              class="mt-5 w-full py-2.5 rounded-lg text-sm font-medium transition"
+              :class="
+                selected?.id === 'monthly'
+                  ? 'bg-primary text-on-primary'
+                  : 'border border-outline-variant hover:bg-surface-container-low'
+              "
+              @click.stop="selectPlan(monthlyPlan)"
+            >
+              {{ selected?.id === 'monthly' ? '已选择' : '选择此套餐' }}
+            </button>
+          </article>
+        </section>
+
+        <!-- 结账侧栏 -->
+        <aside class="lg:col-span-2 mt-8 lg:mt-0">
+          <div class="lg:sticky lg:top-24 rounded-2xl border border-outline-variant bg-white p-6 shadow-card">
+            <h3 class="font-bold text-base mb-4">订单摘要</h3>
+
+            <template v-if="selected">
+              <dl class="space-y-3 text-sm">
+                <div class="flex justify-between gap-4">
+                  <dt class="text-on-surface-variant">套餐</dt>
+                  <dd class="font-medium text-right">{{ selected.name }}</dd>
+                </div>
+                <div v-if="selected.id === 'custom'" class="flex justify-between gap-4">
+                  <dt class="text-on-surface-variant">配图次数</dt>
+                  <dd class="font-medium">{{ customQuota }} 次</dd>
+                </div>
+                <div class="flex justify-between gap-4 pt-3 border-t border-outline-variant">
+                  <dt class="font-medium">应付金额</dt>
+                  <dd class="text-xl font-bold text-primary">¥{{ formatPrice(selected.price) }}</dd>
+                </div>
+              </dl>
+
+              <button
+                v-if="canStartPay"
+                type="button"
+                class="mt-6 w-full py-3 rounded-xl text-white font-medium inline-flex items-center justify-center gap-2 disabled:opacity-50"
+                style="background: #07c160"
+                :disabled="paying || !!quotaHint"
+                @click="startWechatPay"
+              >
+                <span class="material-symbols-outlined">qr_code_2</span>
+                微信扫码支付
+              </button>
+
+              <div v-if="activeOrder" class="mt-5 space-y-3">
+                <div v-if="showQr" class="mx-auto w-full max-w-[320px] rounded-xl border border-outline-variant bg-white p-3">
+                  <img
+                    v-if="qrImageSrc"
+                    :src="qrImageSrc"
+                    alt="微信收款码"
+                    class="w-full h-auto block mx-auto select-none"
+                    @error="onQrError"
+                  />
+                </div>
+                <p v-if="showQr" class="text-center text-lg font-bold text-primary">
+                  请支付 ¥{{ Number(activeOrder.amount).toFixed(2) }}
+                </p>
+                <p v-if="showQr" class="text-center text-sm text-on-surface-variant leading-relaxed px-1">
+                  扫码后请在微信转账页<strong class="text-on-surface">手动输入 ¥{{ formatPrice(selected?.price) }}</strong>（个人收款码无法自动带金额）
+                </p>
+                <p v-if="showQr" class="text-center text-xs text-on-surface-variant leading-relaxed px-1">
+                  若无法识别：请放大页面后重试，或使用裁切后的纯二维码原图（勿含绿色边框）
+                </p>
+                <p v-if="showQr && countdownSec > 0" class="text-center text-sm text-amber-700 font-medium">
+                  请在 {{ countdownLabel }} 内完成转账
+                </p>
+                <p v-if="showQr" class="text-center text-xs text-on-surface-variant leading-relaxed">
+                  转账后请等待管理员确认收款，套餐将自动开通
+                </p>
+                <p v-else-if="activeOrder.status === 'paid'" class="text-center text-sm text-secondary font-medium">
+                  支付已确认，套餐已开通
+                </p>
+                <p v-else-if="activeOrder.status === 'expired'" class="text-center text-sm text-red-600">
+                  订单已超时，请重新发起支付
+                </p>
+                <p v-else-if="activeOrder.status === 'rejected'" class="text-center text-sm text-red-600">
+                  订单未通过，请重新发起支付
+                </p>
+              </div>
+            </template>
+
+            <p
+              v-if="payMsg"
+              class="mt-4 text-sm text-center font-medium"
+              :class="payOk ? 'text-secondary' : 'text-red-600'"
+            >
+              {{ payMsg }}
+            </p>
           </div>
-
-          <button
-            class="mt-6 w-full py-2.5 rounded-lg text-sm font-medium transition"
-            :class="
-              selected?.id === p.id
-                ? 'bg-primary text-on-primary'
-                : 'border border-outline-variant text-on-surface hover:bg-surface-container-low'
-            "
-            @click.stop="selectPlan(p)"
-          >
-            {{ selected?.id === p.id ? '已选择' : '选择套餐' }}
-          </button>
-        </article>
+        </aside>
       </div>
-
-      <div v-if="selected" class="mt-12 bg-white rounded-2xl border border-outline-variant p-8 shadow-card max-w-md mx-auto">
-        <p class="font-medium text-center mb-2">已选择「{{ selected.name }}」</p>
-        <p class="text-center text-2xl font-bold text-primary mb-6">应付 ¥{{ formatPrice(selected.price) }}</p>
-
-        <div class="text-center">
-          <button
-            v-if="canStartPay"
-            class="px-8 py-3 rounded-lg text-white font-medium inline-flex items-center gap-2 disabled:opacity-50"
-            style="background: #07C160"
-            :disabled="paying"
-            @click="startWechatPay"
-          >
-            <span class="material-symbols-outlined">qr_code_2</span>
-            微信扫码支付
-          </button>
-
-          <div v-if="activeOrder" class="mt-4 space-y-3">
-            <div v-if="showQr" class="w-48 h-48 mx-auto border rounded-xl overflow-hidden bg-white p-2 flex items-center justify-center">
-              <img v-if="qrImageSrc" :src="qrImageSrc" alt="微信收款码" class="w-full h-full object-contain" @error="onQrError" />
-            </div>
-            <p v-if="showQr" class="text-lg font-bold text-primary">
-              请支付 ¥{{ Number(activeOrder.amount).toFixed(2) }}
-            </p>
-            <p v-if="showQr && countdownSec > 0" class="text-sm text-amber-700 font-medium">
-              请在 {{ countdownLabel }} 内完成转账
-            </p>
-            <p v-if="showQr" class="text-xs text-on-surface-variant">
-              转账后请等待管理员确认收款，套餐将自动开通
-            </p>
-            <p v-else-if="activeOrder.status === 'paid'" class="text-sm text-secondary font-medium">
-              支付已确认，套餐已开通
-            </p>
-            <p v-else-if="activeOrder.status === 'expired'" class="text-sm text-red-600">
-              订单已超时关闭，请重新发起支付
-            </p>
-            <p v-else-if="activeOrder.status === 'rejected'" class="text-sm text-red-600">
-              订单未通过，请重新发起支付
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <p v-if="payMsg" class="mt-6 text-center font-medium" :class="payOk ? 'text-secondary' : 'text-red-600'">{{ payMsg }}</p>
     </div>
   </div>
 </template>
@@ -116,7 +246,9 @@ const { updateUser } = useAuth()
 const planItems = ref([])
 const pricing = ref(null)
 const customQuota = ref(20)
-const customPrice = ref(6.8)
+const quotaInput = ref('20')
+const customPrice = ref(10.0)
+const quotaHint = ref('')
 const selected = ref(null)
 const payMsg = ref('')
 const payOk = ref(false)
@@ -129,6 +261,7 @@ let countdownTimer = null
 
 const quotaMin = computed(() => pricing.value?.pack_quota_min ?? 10)
 const quotaMax = computed(() => pricing.value?.pack_quota_max ?? 50)
+const quickQuotas = [10, 20, 30, 40, 50]
 
 const customPlan = computed(() => {
   const item = planItems.value.find((p) => p.id === 'custom') || {}
@@ -147,14 +280,12 @@ const monthlyPlan = computed(() => {
   return {
     id: 'monthly',
     name: item.name || '官方直连包月',
-    price: item.price ?? 49.9,
+    price: item.price ?? 30.0,
     quota: item.quota ?? 60,
     desc: item.desc || '每月 60 次 · 尊享官方直连通道',
     recommended: true,
   }
 })
-
-const displayPlans = computed(() => [customPlan.value, monthlyPlan.value])
 
 const showQr = computed(() => {
   const s = activeOrder.value?.status
@@ -176,6 +307,12 @@ function formatPrice(v) {
   return Number(v).toFixed(1)
 }
 
+function clampQuota(value) {
+  const n = Math.round(Number(value))
+  if (Number.isNaN(n)) return null
+  return Math.max(quotaMin.value, Math.min(quotaMax.value, n))
+}
+
 function clearPayState() {
   activeOrder.value = null
   qrImageSrc.value = ''
@@ -188,10 +325,62 @@ function selectPlan(plan) {
   if (selected.value?.id !== plan.id) {
     clearPayState()
   }
-  selected.value = plan
+  selected.value = plan.id === 'custom' ? { ...customPlan.value } : { ...plan }
+}
+
+function applyQuota(next) {
+  const clamped = clampQuota(next)
+  if (clamped === null) {
+    quotaHint.value = `请输入 ${quotaMin.value}～${quotaMax.value} 之间的整数`
+    return false
+  }
+  quotaHint.value = ''
+  customQuota.value = clamped
+  quotaInput.value = String(clamped)
+  clearPayState()
+  refreshCustomPrice()
+  if (selected.value?.id === 'custom') {
+    selected.value = { ...customPlan.value }
+  }
+  return true
+}
+
+function setQuota(n) {
+  applyQuota(n)
+  selectPlan(customPlan.value)
+}
+
+function adjustQuota(delta) {
+  applyQuota(customQuota.value + delta)
+}
+
+function onQuotaSlider() {
+  quotaInput.value = String(customQuota.value)
+  quotaHint.value = ''
+  clearPayState()
+  refreshCustomPrice()
+  if (selected.value?.id === 'custom') {
+    selected.value = { ...customPlan.value }
+  }
+}
+
+function commitQuotaInput() {
+  const raw = quotaInput.value.trim()
+  if (!raw) {
+    quotaInput.value = String(customQuota.value)
+    return
+  }
+  const clamped = clampQuota(raw)
+  if (clamped === null) {
+    quotaHint.value = `请输入 ${quotaMin.value}～${quotaMax.value} 之间的整数`
+    quotaInput.value = String(customQuota.value)
+    return
+  }
+  applyQuota(clamped)
 }
 
 async function refreshCustomPrice() {
+  if (quotaHint.value) return
   try {
     const res = await api.quotePack(customQuota.value)
     customPrice.value = res.price
@@ -200,14 +389,6 @@ async function refreshCustomPrice() {
     }
   } catch {
     /* 忽略计价失败 */
-  }
-}
-
-function onCustomQuotaChange() {
-  clearPayState()
-  refreshCustomPrice()
-  if (selected.value?.id === 'custom') {
-    selected.value = { ...customPlan.value }
   }
 }
 
@@ -244,7 +425,7 @@ async function renderQr(order) {
   const url = order.qr_code_url
   if (url.startsWith('weixin://')) {
     try {
-      qrImageSrc.value = await QRCode.toDataURL(url, { width: 192, margin: 1 })
+      qrImageSrc.value = await QRCode.toDataURL(url, { width: 220, margin: 1 })
     } catch {
       payMsg.value = '二维码生成失败'
     }
@@ -258,11 +439,11 @@ onMounted(async () => {
   const res = await api.getPlans()
   planItems.value = res.items || []
   pricing.value = res.pricing || null
-  if (res.items?.find((p) => p.quota_default)) {
-    customQuota.value = res.items.find((p) => p.id === 'custom')?.quota_default ?? 20
-  }
+  const defaultQuota = res.items?.find((p) => p.id === 'custom')?.quota_default ?? 20
+  customQuota.value = defaultQuota
+  quotaInput.value = String(defaultQuota)
   await refreshCustomPrice()
-  selected.value = monthlyPlan.value
+  selected.value = { ...monthlyPlan.value }
 })
 
 onUnmounted(() => {
@@ -323,13 +504,12 @@ async function refreshOrderStatus() {
 }
 
 function onQrError() {
-  payMsg.value =
-    '收款码加载失败：请将 wechat-pay-qr.png 放到 backend/pay_assets/ 目录，然后重启服务'
+  payMsg.value = '收款码加载失败：请将 wechat-pay-qr.png 放到 backend/pay_assets/ 目录，然后重启服务'
   payOk.value = false
 }
 
 async function startWechatPay() {
-  if (!selected.value || paying.value) return
+  if (!selected.value || paying.value || quotaHint.value) return
   paying.value = true
   payMsg.value = ''
   payOk.value = false

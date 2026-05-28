@@ -1,12 +1,9 @@
-"""套餐定价：基于 GPT 配图成本与目标毛利率。"""
+"""套餐定价：统一按张计价。"""
 from dataclasses import dataclass
 
-# 统一使用 gpt-image-2（用户口径 GPT-2 配图）
-COST_PER_GENERATION = 0.17
-PACK_MARGIN = 0.50  # 按次包：毛利率约 50%
-MONTHLY_MARGIN = 0.80  # 包月：毛利率约 80%
+# 统一使用 gpt-image-2 配图
+PRICE_PER_GENERATION = 0.5  # 每张 ¥0.5
 MONTHLY_QUOTA = 60
-MONTHLY_PRICE = 49.9  # 约 80% 毛利（成本 60×0.17=10.2）
 PACK_QUOTA_MIN = 10
 PACK_QUOTA_MAX = 50
 
@@ -28,14 +25,12 @@ def clamp_pack_quota(quota: int) -> int:
 
 
 def pack_price(quota: int) -> float:
-    """按次包售价：cost / (1 - margin)。"""
     q = clamp_pack_quota(quota)
-    cost = q * COST_PER_GENERATION
-    return round(cost / (1 - PACK_MARGIN), 1)
+    return round(q * PRICE_PER_GENERATION, 1)
 
 
 def monthly_price() -> float:
-    return MONTHLY_PRICE
+    return round(MONTHLY_QUOTA * PRICE_PER_GENERATION, 1)
 
 
 def resolve_plan(plan_id: str, quota: int | None = None) -> PlanSpec | None:
@@ -63,7 +58,7 @@ def resolve_plan(plan_id: str, quota: int | None = None) -> PlanSpec | None:
             price=p,
             quota=q,
             tier="free",
-            desc=f"{q} 次 GPT 配图生成",
+            desc=f"{q} 次 GPT 配图 · ¥{PRICE_PER_GENERATION}/张",
             plan_type="pack",
         )
     return None
@@ -72,9 +67,7 @@ def resolve_plan(plan_id: str, quota: int | None = None) -> PlanSpec | None:
 def pricing_meta() -> dict:
     return {
         "model": "gpt-image-2",
-        "cost_per_generation": COST_PER_GENERATION,
-        "pack_margin": PACK_MARGIN,
-        "monthly_margin": MONTHLY_MARGIN,
+        "price_per_generation": PRICE_PER_GENERATION,
         "pack_quota_min": PACK_QUOTA_MIN,
         "pack_quota_max": PACK_QUOTA_MAX,
         "monthly_quota": MONTHLY_QUOTA,

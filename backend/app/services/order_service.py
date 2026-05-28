@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.models import Order, User
-from app.services.payment import get_payment_provider
+from app.services.payment.url_utils import wechat_qr_path
 from app.services.payment.base import PaymentError, PaymentNotConfigured
 from app.services.quota import apply_plan_to_user, get_plan, quota_remaining, quota_total
 
@@ -54,7 +54,7 @@ def _qr_url_for_order(order: Order) -> str | None:
     if order.code_url:
         return order.code_url
     if order.payment_channel in ("wechat", "wechat_qr"):
-        return settings.wechat_personal_qr_url.strip() or "/static/wechat-pay-qr.png"
+        return wechat_qr_path()
     return None
 
 

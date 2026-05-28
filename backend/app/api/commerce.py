@@ -25,7 +25,7 @@ from app.services.order_service import (
     order_expires_at,
     order_snapshot,
 )
-from app.services.payment.wechat_native import decrypt_notify_resource, verify_notify_signature
+from app.services.payment.url_utils import absolutize_url, wechat_qr_path
 from app.services.visits import record_visit
 
 logger = logging.getLogger(__name__)
@@ -53,8 +53,9 @@ class OrderCreateResponse(BaseModel):
 
 
 @router.get("/支付/微信收款码", summary="微信个人收款码地址")
-async def wechat_qr_config():
-    return {"qr_code_url": settings.wechat_personal_qr_url or "/static/wechat-pay-qr.png"}
+async def wechat_qr_config(request: Request):
+    path = wechat_qr_path()
+    return {"qr_code_url": absolutize_url(path, str(request.base_url))}
 
 
 @router.post("/统计/访问", summary="记录站点访问")
@@ -67,6 +68,7 @@ async def track_visit(db: AsyncSession = Depends(get_db)):
 @router.post("/订单/创建", response_model=OrderCreateResponse, summary="创建支付订单")
 async def api_create_order(
     body: OrderCreateRequest,
+    request: Request,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -95,7 +97,7 @@ async def api_create_order(
         quota_remaining=int(snap["quota_remaining"]),
         quota_total=int(snap["quota_total"]),
         message=message,
-        qr_code_url=qr_url,
+        qr_code_url=absolutize_url(qr_url, str(request.base_url)),
         payment_channel=order.payment_channel,
         expires_at=order_expires_at(order) if order.status in ("pending", "claimed") else None,
     )

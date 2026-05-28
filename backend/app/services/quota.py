@@ -49,7 +49,7 @@ LEGACY_PLANS = {
 
 PLAN_CATALOG = {
     "custom": {"name": "按次配图包", "price": 0, "quota": 0, "tier": "free", "desc": ""},
-    "monthly": {"name": "官方直连包月", "price": 49.9, "quota": 60, "tier": "pro", "desc": ""},
+    "monthly": {"name": "官方直连包月", "price": 30.0, "quota": 60, "tier": "pro", "desc": ""},
 }
 
 
