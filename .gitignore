@@ -21,6 +21,10 @@ data/
 backend/static/wechat-pay-qr.png
 backend/pay_assets/wechat-pay-qr.png
 
+# BGM 音频（本地测试，勿提交仓库）
+backend/static/bgm/*.mp3
+backend/media/bgm/*.mp3
+
 # 原型临时目录
 _proto_web/
 _proto_mobile/

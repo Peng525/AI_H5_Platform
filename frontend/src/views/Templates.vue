@@ -86,16 +86,18 @@
             <p class="text-xs text-on-surface-variant mt-2">{{ t.pages }} 页</p>
             <div class="mt-3 flex gap-2">
               <button
+                v-if="t.featured"
                 class="flex-1 py-2 border border-outline-variant rounded-lg text-sm font-medium hover:bg-surface-container-low"
                 @click="openPreview(t)"
               >
                 预览
               </button>
               <button
-                class="flex-1 py-2 bg-primary text-on-primary rounded-lg text-sm font-medium"
+                :class="t.featured ? 'flex-1' : 'w-full'"
+                class="py-2 bg-primary text-on-primary rounded-lg text-sm font-medium"
                 @click="useTemplate(t)"
               >
-                使用
+                {{ t.featured ? '使用' : '使用此模板' }}
               </button>
             </div>
           </div>

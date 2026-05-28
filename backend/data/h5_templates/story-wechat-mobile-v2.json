@@ -15,7 +15,7 @@
     "defaultChatTapToContinue": true,
     "bgm": {
       "enabled": true,
-      "url": "/static/bgm/demo-loop.mp3",
+      "url": "/static/bgm/happier-sakura-girl.mp3",
       "loop": true,
       "volume": 0.3
     }

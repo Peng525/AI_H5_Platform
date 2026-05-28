@@ -68,7 +68,7 @@
       <input
         :value="bgmUrl"
         class="w-full text-xs border rounded px-2 py-1.5"
-        placeholder="/static/bgm/demo-loop.mp3"
+        placeholder="/static/bgm/happier-sakura-girl.mp3"
         @change="onBgmUrl"
       />
       <label class="block text-[11px] text-on-surface-variant">

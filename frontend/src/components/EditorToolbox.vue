@@ -37,6 +37,11 @@
         v-if="activeTab === 'pages'"
         :slides="slides"
         :current-id="currentId"
+        :project-id="projectId"
+        :viewport="viewport"
+        :project-settings="projectSettings"
+        :live-slide-id="liveSlideId"
+        :live-elements="liveElements"
         @select="$emit('select-slide', $event)"
         @add="$emit('add-slide')"
         @remove="$emit('remove-slide', $event)"
@@ -88,6 +93,10 @@ defineProps({
   scrollEffect: { type: String, default: 'page' },
   canvasBackground: { type: String, default: '#005daa' },
   projectSettings: { type: Object, default: null },
+  projectId: { type: [Number, String], default: null },
+  viewport: { type: Object, default: null },
+  liveSlideId: { type: Number, default: null },
+  liveElements: { type: Array, default: null },
 })
 
 defineEmits(['select-slide', 'add-slide', 'remove-slide', 'save-slide', 'sync-canvas', 'add-material', 'canvas-bg-change', 'scroll-change', 'preview-animation', 'open-help', 'bgm-change'])

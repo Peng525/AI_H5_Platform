@@ -1,7 +1,7 @@
 <template>
   <div
-    class="inset-0 bg-black z-50 flex flex-col"
-    :class="embedded ? 'absolute' : 'fixed'"
+    class="inset-0 bg-black flex flex-col"
+    :class="embedded ? 'absolute z-0' : 'fixed z-50'"
     tabindex="0"
     @keydown="onKey"
     @click="onRootClick"
@@ -16,20 +16,20 @@
     </div>
     <template v-else-if="project">
       <div
-        v-if="bgmHintVisible"
+        v-if="bgmHintVisible && !embedded"
         class="absolute top-20 left-1/2 -translate-x-1/2 z-40 text-xs text-white bg-black/70 px-4 py-2 rounded-full pointer-events-none"
       >
         点击屏幕开启背景音乐
       </div>
 
-      <div class="absolute top-4 left-4 z-10 max-w-[240px] pointer-events-none">
+      <div v-if="!embedded" class="absolute top-4 left-4 z-10 max-w-[240px] pointer-events-none">
         <p class="text-sm text-white font-semibold drop-shadow-md">{{ scrollModeInfo.label }}</p>
         <p class="text-xs text-white/85 mt-1 leading-relaxed drop-shadow">{{ scrollModeInfo.hint }}</p>
       </div>
 
       <div class="absolute top-4 right-4 z-20 flex items-center gap-2 flex-wrap justify-end">
         <button
-          v-if="bgmConfig.enabled"
+          v-if="bgmConfig.enabled && !embedded"
           type="button"
           class="preview-toolbar-btn"
           :title="bgmMuted ? '开启音乐' : '静音'"
@@ -45,11 +45,24 @@
           <button type="button" class="preview-toolbar-btn" @click="phoneFrame = !phoneFrame">
             {{ phoneFrame ? '无边框' : '设备边框' }}
           </button>
+          <button
+            type="button"
+            class="preview-toolbar-btn preview-toolbar-btn-exit"
+            title="退出预览 (Esc)"
+            @click="exitPreview"
+          >
+            <span class="material-symbols-outlined text-[18px]">close</span>
+            退出
+          </button>
         </template>
       </div>
 
+      <div v-if="slides.length === 0" class="flex-1 flex items-center justify-center p-8 text-center text-white/80 text-sm">
+        <p>该模板暂无试看页面，请点击「使用此模板」创建项目后编辑。</p>
+      </div>
+
       <div
-        v-if="scrollEffect === 'page'"
+        v-else-if="scrollEffect === 'page'"
         class="flex-1 flex items-center justify-center p-4 overflow-hidden relative"
         @wheel.prevent="onWheelZoom"
       >
@@ -156,7 +169,7 @@
         </div>
       </div>
 
-      <div class="flex justify-between items-center px-6 py-4 bg-black/60 text-white text-sm shrink-0 backdrop-blur-sm">
+      <div v-if="!embedded" class="flex justify-between items-center px-6 py-4 bg-black/60 text-white text-sm shrink-0 backdrop-blur-sm">
         <button type="button" class="disabled:opacity-30 px-3 py-1" :disabled="!canGoPrev" @click="goPrev">
           {{ scrollEffect === 'horizontal' ? '← 上一页' : '上一页' }}
         </button>
@@ -165,11 +178,18 @@
           <button type="button" class="disabled:opacity-30 px-3 py-1" :disabled="!canGoNext" @click="goNext">
             {{ scrollEffect === 'horizontal' ? '下一页 →' : '下一页' }}
           </button>
-          <router-link v-if="editorPath" :to="editorPath" class="underline opacity-80">退出</router-link>
+          <button
+            v-if="editorPath"
+            type="button"
+            class="preview-footer-exit"
+            @click="exitPreview"
+          >
+            退出预览
+          </button>
         </div>
       </div>
 
-      <footer v-if="mode === 'share'" class="py-2 text-center text-xs text-white/40 border-t border-white/10 shrink-0">
+      <footer v-if="mode === 'share' && !embedded" class="py-2 text-center text-xs text-white/40 border-t border-white/10 shrink-0">
         AI智能H5演示平台 · 分享预览
       </footer>
     </template>
@@ -178,6 +198,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import ChatStoryOverlay from './ChatStoryOverlay.vue'
 import PreviewSlideFrame from './PreviewSlideFrame.vue'
 import PreviewSelect from './PreviewSelect.vue'
@@ -200,6 +221,8 @@ const props = defineProps({
   loadingText: { type: String, default: '加载演示…' },
   embedded: { type: Boolean, default: false },
 })
+
+const router = useRouter()
 
 const index = ref(0)
 const visibleIndex = ref(0)
@@ -266,7 +289,9 @@ const scrollModeInfo = computed(() => {
     horizontal: '左右滑动切换页面',
     snap: '滚动后吸附整屏',
   }
-  return { label: m?.label || '翻页模式', hint: hints[scrollEffect.value] || m?.desc || '' }
+  const exitHint =
+    props.mode === 'preview' && props.editorPath && !props.embedded ? ' · Esc 退出预览' : ''
+  return { label: m?.label || '翻页模式', hint: (hints[scrollEffect.value] || m?.desc || '') + exitHint }
 })
 
 const currentElements = computed(() => resolvePreviewElements(props.projectId, current.value))
@@ -288,8 +313,8 @@ const transitionName = computed(() => {
 })
 
 const previewScale = computed(() => {
-  const maxW = phoneFrame.value ? 420 : 900
-  const maxH = phoneFrame.value ? 720 : 600
+  const maxW = props.embedded ? 360 : phoneFrame.value ? 420 : 900
+  const maxH = props.embedded ? 640 : phoneFrame.value ? 720 : 600
   return Math.min(1, maxW / viewport.value.width, maxH / viewport.value.height)
 })
 
@@ -480,7 +505,17 @@ function goNext() {
   scrollToVisible(Math.min(slides.value.length - 1, visibleIndex.value + 1))
 }
 
+function exitPreview() {
+  if (!props.editorPath || props.embedded) return
+  router.push(props.editorPath)
+}
+
 function onKey(e) {
+  if (e.key === 'Escape' && props.editorPath && !props.embedded) {
+    e.preventDefault()
+    exitPreview()
+    return
+  }
   if (chatBlocking.value) return
   if (scrollEffect.value === 'page') {
     if (e.key === 'ArrowRight' || e.key === ' ') {
@@ -521,6 +556,27 @@ function onKey(e) {
 }
 .preview-toolbar-btn:hover {
   background: rgba(40, 44, 52, 0.95);
+}
+.preview-toolbar-btn-exit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-color: rgba(255, 120, 120, 0.45);
+}
+.preview-toolbar-btn-exit:hover {
+  background: rgba(80, 30, 30, 0.85);
+}
+.preview-footer-exit {
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  background: rgba(180, 40, 40, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  padding: 6px 14px;
+}
+.preview-footer-exit:hover {
+  background: rgba(200, 50, 50, 0.95);
 }
 .preview-flow-scroll {
   scroll-behavior: smooth;

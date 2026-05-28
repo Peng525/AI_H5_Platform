@@ -24,6 +24,6 @@ reference-frames/
 
 - 微信对话：左右气泡（左白 / 右 `#95EC69`）、圆角头像、点击逐句
 - 滚动：旗舰模板默认 **纵向滚动**（`scrollEffect: vertical`）
-- BGM：`/static/bgm/demo-loop.mp3`（需自行放置 MP3，见 `backend/static/bgm/README.md`）
+- BGM：`/static/bgm/happier-sakura-girl.mp3`（文件放 `backend/media/bgm/`，见 README 与 `scripts/install-bgm.ps1`）
 
 录屏验收：编辑器预览与 `/s/:slug` 分享页应与 `演示.mp4` 体验一致。

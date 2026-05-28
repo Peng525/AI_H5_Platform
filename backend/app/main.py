@@ -16,6 +16,7 @@ from app.seed import seed_demo_user
 STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 # 个人收款码放此目录，不会被前端 build 清空（Docker 可挂载）
 PAY_ASSETS_DIR = Path(__file__).resolve().parents[1] / "pay_assets"
+MEDIA_DIR = Path(__file__).resolve().parents[1] / "media"
 
 
 def _wechat_qr_image_path() -> Path | None:
@@ -77,6 +78,12 @@ if STATIC_DIR.exists():
         if not path:
             raise HTTPException(status_code=404, detail="收款码图片未配置")
         return FileResponse(path, media_type="image/png")
+
+    bgm_dir = MEDIA_DIR / "bgm"
+    if not bgm_dir.is_dir():
+        bgm_dir = STATIC_DIR / "bgm"
+    if bgm_dir.is_dir():
+        app.mount("/static/bgm", StaticFiles(directory=bgm_dir), name="static_bgm")
 
     @app.get("/", include_in_schema=False)
     async def spa_index():

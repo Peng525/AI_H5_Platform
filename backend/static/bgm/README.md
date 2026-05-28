@@ -1,7 +1,19 @@
-# 背景音乐占位
+# 背景音乐
 
-将循环播放的 MP3 文件放置为 `demo-loop.mp3`。
+## 第一版测试曲（Happier – Sakura Girl）
 
-预览与分享页会请求 `/static/bgm/demo-loop.mp3`。若文件不存在，BGM 开关仍可用但不会出声。
+可直接把 MP3 放进本目录（任意文件名），然后运行：
 
-建议使用自有或免版权短循环音乐，时长 30–90 秒。
+```powershell
+cd "E:\cursor projects\类ppt 小程序\develop"
+.\scripts\install-bgm.ps1
+```
+
+脚本会生成模板使用的标准文件名：
+
+- `happier-sakura-girl.mp3`
+- `demo-loop.mp3`（兼容旧 URL）
+
+也可手动复制并重命名为 `happier-sakura-girl.mp3`。
+
+> MP3 文件不提交 Git（见 `.gitignore`），每台开发机需本地安装一次。
