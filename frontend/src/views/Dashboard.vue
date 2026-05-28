@@ -11,8 +11,8 @@
           to="/create"
           class="px-5 py-2.5 rounded-lg bg-primary text-on-primary font-medium shadow-card hover:bg-primary-container transition flex items-center gap-1"
         >
-          <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
-          AI 创建演示
+          <span class="material-symbols-outlined text-[18px]">add</span>
+          新建演示
         </router-link>
       </div>
 
@@ -21,7 +21,7 @@
 
       <div v-else-if="projects.length === 0" class="text-center py-20 bg-surface-container-low rounded-xl border border-dashed border-outline-variant">
         <span class="material-symbols-outlined text-5xl text-on-surface-variant/40">folder_open</span>
-        <p class="text-on-surface-variant mt-4 mb-4">暂无项目，从 AI 创建开始</p>
+        <p class="text-on-surface-variant mt-4 mb-4">暂无项目，从新建演示开始</p>
         <router-link to="/create" class="text-primary font-medium hover:underline">立即创建 →</router-link>
       </div>
 

@@ -2,7 +2,7 @@
 import json
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
 class SlideOut(BaseModel):
@@ -179,21 +179,6 @@ class SlideCanvasUpdate(BaseModel):
     elements: list[dict[str, Any]] = Field(default_factory=list)
 
 
-class GenerateFullRequest(BaseModel):
-    topic: str = Field(..., description="演示主题")
-    audience: str = "通用受众"
-    page_count: int = Field(5, ge=1, le=30)
-    style: str = "专业简约"
-    channel: str | None = None
-    tier: str = Field("free", description="会员档位：free 免费 | pro 升级")
-
-
-class GeneratePageRequest(BaseModel):
-    instruction: str = Field(..., description="修改指令")
-    channel: str | None = None
-    tier: str = Field("free", description="会员档位：free 免费 | pro 升级")
-
-
 class GenerateImageRequest(BaseModel):
     prompt: str = Field(..., description="画面描述")
     channel: str | None = None
@@ -214,8 +199,8 @@ class LlmSettingsOut(BaseModel):
     auto_order: str
     relay_configured: bool
     official_configured: bool
-    model_free: str = Field(description="免费档：文稿与免费配图")
-    model_pro: str = Field(description="升级档")
+    model_free: str = Field(description="免费档配图（兼容字段）")
+    model_pro: str = Field(description="升级档配图（兼容字段）")
     image_model_free: str
     image_model_pro: str
     relay_model: str
@@ -253,16 +238,3 @@ class LlmTestResult(BaseModel):
     channel: str
     model: str = ""
     message: str
-
-
-class DeckJson(BaseModel):
-    title: str
-    theme: str
-    slides: list[dict[str, Any]]
-
-    @field_validator("slides")
-    @classmethod
-    def slides_not_empty(cls, v: list) -> list:
-        if not v:
-            raise ValueError("slides 不能为空")
-        return v

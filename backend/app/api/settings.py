@@ -13,8 +13,9 @@ from app.schemas import (
     PromptTemplateUpdate,
 )
 from app.services.env_store import apply_settings_patch, mask_secret
-from app.services.llm.model_tier import resolve_text_model
-from app.services.llm.provider import LlmError, _official_ready, _relay_ready, chat_completion
+from app.services.llm.image_provider import generate_image
+from app.services.llm.model_tier import resolve_image_model
+from app.services.llm.provider import LlmError, _official_ready, _relay_ready
 from app.services.prompt_template_service import (
     PromptTemplateError,
     delete_template as delete_prompt_template,
@@ -98,41 +99,39 @@ async def update_llm_settings(body: LlmSettingsUpdate, _admin: User = Depends(re
     return _admin_settings_out()
 
 
-@router.post("/大模型/测试", response_model=LlmTestResult, summary="测试大模型连通性")
+@router.post("/大模型/测试", response_model=LlmTestResult, summary="测试 AI 配图连通性")
 async def test_llm(
     channel: str | None = Query(None, description="relay | official | 留空为 auto"),
     tier: str = Query("free", description="free 免费 | pro 升级"),
     _admin: User = Depends(require_admin),
 ):
-    messages = [
-        {"role": "system", "content": "你是助手，请用一句简体中文回复。"},
-        {"role": "user", "content": "连通性测试"},
-    ]
-    model = resolve_text_model(tier)
+    model = resolve_image_model(tier)
     try:
-        _, used, _ = await chat_completion(messages, channel, tier)
+        _, used, used_model, _, _ = await generate_image(
+            "连通性测试：简洁蓝色圆形图标，白底",
+            channel,
+            tier,
+        )
         return LlmTestResult(
             success=True,
             channel=used,
-            model=model,
-            message=f"连接成功（{'免费档' if tier == 'free' else '升级档'}）",
+            model=used_model or model,
+            message=f"配图连接成功（{'免费档' if tier == 'free' else '升级档'}）",
         )
     except LlmError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
-@router.get("/大模型/档位", summary="查看免费/升级模型与配图模型")
+@router.get("/大模型/档位", summary="查看免费/升级配图模型")
 async def get_model_tiers(_admin: User = Depends(require_admin)):
     return {
         "免费档": {
-            "文稿生成": settings.llm_model_free,
             "配图生成": settings.llm_image_model_free,
-            "说明": "默认使用 Gemini 3.1 Flash（含免费配图）",
+            "说明": "编辑器 AI 面板「生成配图」",
         },
         "升级档": {
-            "文稿生成": settings.llm_model_pro,
             "配图生成": settings.llm_image_model_pro,
-            "说明": "升级后使用 Gemini 3 Pro",
+            "说明": "会员高清配图通道",
         },
     }
 

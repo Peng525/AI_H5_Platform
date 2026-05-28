@@ -14,7 +14,7 @@ const routes = [
   },
   { path: '/templates', name: 'templates', component: () => import('../views/Templates.vue'), meta: { title: '探索模板', requiresAuth: true } },
   { path: '/dashboard', name: 'dashboard', component: () => import('../views/Dashboard.vue'), meta: { title: '我的项目', requiresAuth: true } },
-  { path: '/create', name: 'create', component: () => import('../views/Create.vue'), meta: { title: 'AI 创建', requiresAuth: true } },
+  { path: '/create', name: 'create', component: () => import('../views/Create.vue'), meta: { title: '新建演示', requiresAuth: true } },
   { path: '/editor/:id', name: 'editor', component: () => import('../views/EditorStudio.vue'), meta: { title: '编辑器', requiresAuth: true } },
   { path: '/upgrade', name: 'upgrade', component: () => import('../views/Upgrade.vue'), meta: { title: '套餐升级', requiresAuth: true } },
   { path: '/publish/:id', name: 'publish', component: () => import('../views/PublishSuccess.vue'), meta: { title: '发布成功', requiresAuth: true } },

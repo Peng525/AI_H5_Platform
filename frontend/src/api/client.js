@@ -64,16 +64,6 @@ export const api = {
       body: JSON.stringify({ elements }),
     }),
   deleteProject: (id) => request(`/api/v1/项目/${id}`, { method: 'DELETE' }),
-  generateFull: (id, body) =>
-    request(`/api/v1/项目/${id}/生成/全量`, {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
-  generatePage: (id, slideId, body) =>
-    request(`/api/v1/项目/${id}/页面/${slideId}/生成/单页`, {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
   generateImage: (projectId, body) =>
     request(`/api/v1/项目/${projectId}/生成/配图`, {
       method: 'POST',

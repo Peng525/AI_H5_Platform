@@ -45,11 +45,9 @@
 
       <AiPanel
         ref="aiPanelRef"
-        :text-loading="aiLoading"
         :image-loading="imageLoading"
         :quota-remaining="quota.remaining"
         :quota-total="quota.total"
-        @generate-text="onGenerateText"
         @generate-image="onGenerateImage"
         @add-image-to-page="onAddImageToPage"
       />
@@ -75,7 +73,6 @@ const { user } = useAuth()
 const projectId = computed(() => route.params.id)
 const project = ref(null)
 const current = ref(null)
-const aiLoading = ref(false)
 const imageLoading = ref(false)
 const aiPanelRef = ref(null)
 const quota = ref({ remaining: 5, total: 5 })
@@ -280,27 +277,6 @@ onUnmounted(() => {
   window.removeEventListener('keydown', onKeyDown)
   unregisterCanvasFlush()
 })
-
-async function onGenerateText({ prompt, channelTier, channel }) {
-  if (!prompt?.trim() || !current.value) return
-  aiLoading.value = true
-  try {
-    const updated = await api.generatePage(
-      project.value.id,
-      current.value.id,
-      { instruction: prompt, tier: channelTier, channel: channel || undefined }
-    )
-    const idx = project.value.slides.findIndex((s) => s.id === updated.id)
-    if (idx >= 0) project.value.slides[idx] = updated
-    current.value = updated
-    syncCanvasFromSlide()
-    await refreshQuota()
-  } catch (e) {
-    alert(e.message)
-  } finally {
-    aiLoading.value = false
-  }
-}
 
 async function refreshQuota() {
   const q = await api.getQuota()

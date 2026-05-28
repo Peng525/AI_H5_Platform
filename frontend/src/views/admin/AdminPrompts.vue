@@ -1,7 +1,7 @@
 <template>
   <AdminShell title="提示词模板">
     <div class="flex justify-between items-center mb-6">
-      <p class="text-sm text-on-surface-variant">编辑 AI 生成使用的 YAML 提示词（全量生成 / 单页改写等）</p>
+      <p class="text-sm text-on-surface-variant">配图相关提示词（可选，当前编辑器以画面描述为主）</p>
       <button
         type="button"
         class="px-4 py-2 rounded-lg bg-primary text-on-primary text-sm font-medium"

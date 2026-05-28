@@ -11,10 +11,8 @@ from app.deps.auth import get_current_user
 from app.deps.projects import get_owned_project, get_owned_slide
 from app.models import Project, Slide, User
 from app.schemas import (
-    GenerateFullRequest,
     GenerateImageRequest,
     GenerateImageResponse,
-    GeneratePageRequest,
     ProjectCreate,
     ProjectOut,
     ProjectUpdate,
@@ -23,7 +21,7 @@ from app.schemas import (
     SlideOut,
     SlideUpdate,
 )
-from app.services.deck_generator import generate_full_deck, generate_single_page, new_share_slug
+from app.services.deck_generator import new_share_slug
 from app.services.h5_template_service import get_template as get_h5_template
 from app.services.image_generator import generate_slide_image
 from app.services.llm.provider import LlmError
@@ -106,7 +104,7 @@ async def create_project(
                 sort_order=0,
                 layout="title",
                 title=body.title,
-                subtitle="点击右侧 AI 生成或手动编辑",
+                subtitle="点击右侧 AI 生成配图或手动编辑",
                 bullets_json="[]",
             )
         )
@@ -209,41 +207,6 @@ async def delete_slide(slide: Slide = Depends(get_owned_slide), db: AsyncSession
     await db.delete(slide)
     await db.commit()
     return {"message": "已删除"}
-
-
-@router.post("/项目/{project_id}/生成/全量", response_model=ProjectOut, summary="AI 全量生成")
-async def api_generate_full(
-    body: GenerateFullRequest,
-    project: Project = Depends(get_owned_project),
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    try:
-        proj = await generate_full_deck(db, project.id, body, user_id=user.id)
-    except LlmError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"生成失败：{exc}") from exc
-    result = await db.execute(
-        select(Project).where(Project.id == proj.id).options(selectinload(Project.slides))
-    )
-    return _project_out(result.scalar_one())
-
-
-@router.post("/项目/{project_id}/页面/{slide_id}/生成/单页", response_model=SlideOut, summary="AI 单页改写")
-async def api_generate_page(
-    body: GeneratePageRequest,
-    slide: Slide = Depends(get_owned_slide),
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    try:
-        updated = await generate_single_page(db, slide.project_id, slide.id, body, user_id=user.id)
-    except LlmError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return SlideOut.from_orm_slide(updated)
 
 
 @router.post(

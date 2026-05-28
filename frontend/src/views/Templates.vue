@@ -96,11 +96,11 @@
         </article>
 
         <article class="bg-surface-container-low rounded-xl border border-dashed border-outline-variant p-6 flex flex-col items-center justify-center text-center min-h-[280px]">
-          <span class="material-symbols-outlined text-4xl text-primary mb-2">auto_awesome</span>
+          <span class="material-symbols-outlined text-4xl text-primary mb-2">add_circle</span>
           <h3 class="font-semibold">没有找到合适的？</h3>
-          <p class="text-sm text-on-surface-variant mt-2 mb-4">输入需求，让 AI 从零定制专属 H5</p>
+          <p class="text-sm text-on-surface-variant mt-2 mb-4">创建空白项目，在编辑器中用 AI 生成配图</p>
           <router-link to="/create" class="px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-medium">
-            AI 创建演示
+            新建演示
           </router-link>
         </article>
       </div>

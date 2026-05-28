@@ -97,14 +97,6 @@
             <span class="material-symbols-outlined text-lg">image</span>
             {{ imageLoading ? '配图生成中…' : '生成配图' }}
           </button>
-          <button
-            type="button"
-            class="w-full py-2 rounded-lg border border-outline-variant text-sm text-on-surface-variant hover:bg-white disabled:opacity-50"
-            :disabled="textLoading"
-            @click="onGenerateText"
-          >
-            {{ textLoading ? '文案生成中…' : '生成文案' }}
-          </button>
           <p class="text-xs text-center text-on-surface-variant">
             剩余免费次数 {{ quotaRemaining }}/{{ quotaTotal }}
           </p>
@@ -154,9 +146,7 @@
       <div v-else-if="tab === 'prompts'" class="p-4 pb-6 text-sm text-on-surface-variant">
         <p class="font-medium text-on-surface mb-2">内置模板</p>
         <ul class="space-y-2">
-          <li class="p-2 bg-white rounded-lg border">全量生成 — 整套 H5 结构</li>
-          <li class="p-2 bg-white rounded-lg border">单页改写 — 自然语言改一页</li>
-          <li class="p-2 bg-white rounded-lg border">AI 配图 — 根据描述生成插画</li>
+          <li class="p-2 bg-white rounded-lg border">AI 配图 — 根据描述生成插画并添加到页面</li>
         </ul>
       </div>
 
@@ -179,13 +169,12 @@ import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
 
 const props = defineProps({
-  textLoading: Boolean,
   imageLoading: Boolean,
   quotaRemaining: { type: Number, default: 5 },
   quotaTotal: { type: Number, default: 5 },
   llmChannel: { type: String, default: '' },
 })
-const emit = defineEmits(['generate-text', 'generate-image', 'add-image-to-page'])
+const emit = defineEmits(['generate-image', 'add-image-to-page'])
 
 const router = useRouter()
 const { user } = useAuth()
@@ -227,11 +216,6 @@ function payloadBase() {
     channel: props.llmChannel,
     style: selectedStyle.value,
   }
-}
-
-function onGenerateText() {
-  if (!prompt.value?.trim()) return
-  emit('generate-text', payloadBase())
 }
 
 function onGenerateImage() {
