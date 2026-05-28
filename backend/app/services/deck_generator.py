@@ -28,7 +28,7 @@ async def generate_full_deck(
         },
     )
     try:
-        raw, channel = await chat_completion(messages, body.channel)
+        raw, channel, model = await chat_completion(messages, body.channel, body.tier)
         data = extract_json(raw)
         deck = DeckJson.model_validate(data)
     except (LlmError, Exception) as exc:
@@ -55,7 +55,7 @@ async def generate_full_deck(
         )
     if not project.share_slug:
         project.share_slug = secrets.token_urlsafe(8)
-    await _log(db, project_id, "full_deck", channel, True, "生成成功")
+    await _log(db, project_id, "full_deck", channel, True, f"生成成功 · 模型 {model}")
     await db.commit()
     await db.refresh(project)
     return project
@@ -98,7 +98,7 @@ async def generate_single_page(
         },
     )
     try:
-        raw, channel = await chat_completion(messages, body.channel)
+        raw, channel, model = await chat_completion(messages, body.channel, body.tier)
         data = extract_json(raw)
     except (LlmError, Exception) as exc:
         await _log(db, project_id, "single_page", body.channel or "auto", False, str(exc))
@@ -110,7 +110,7 @@ async def generate_single_page(
     target.bullets_json = json.dumps(data.get("bullets", []), ensure_ascii=False)
     target.speaker_notes = data.get("speakerNotes", data.get("speaker_notes", target.speaker_notes))
     target.animation = data.get("animation", target.animation)
-    await _log(db, project_id, "single_page", channel, True, "改写成功")
+    await _log(db, project_id, "single_page", channel, True, f"改写成功 · 模型 {model}")
     await db.commit()
     await db.refresh(target)
     return target

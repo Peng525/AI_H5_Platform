@@ -26,6 +26,13 @@
         <input v-model="form.style" class="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2" />
       </label>
       <label class="block">
+        <span class="text-sm font-medium">会员档位 / 模型</span>
+        <select v-model="form.tier" class="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2">
+          <option value="free">免费档 · Gemini 3.1 Flash（含免费配图）</option>
+          <option value="pro">升级档 · Gemini 3 Pro</option>
+        </select>
+      </label>
+      <label class="block">
         <span class="text-sm font-medium">大模型通道</span>
         <select v-model="form.channel" class="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2">
           <option value="">auto（自动选择）</option>
@@ -61,6 +68,7 @@ const form = reactive({
   page_count: 5,
   style: '专业简约',
   channel: '',
+  tier: 'free',
 })
 
 async function submit() {
@@ -73,6 +81,7 @@ async function submit() {
       audience: form.audience,
       page_count: form.page_count,
       style: form.style,
+      tier: form.tier,
     }
     if (form.channel) body.channel = form.channel
     await api.generateFull(project.id, body)

@@ -143,6 +143,7 @@ async function rewritePage() {
   try {
     const updated = await api.generatePage(project.value.id, current.value.id, {
       instruction: instruction.value,
+      tier: 'free',
     })
     const idx = project.value.slides.findIndex((x) => x.id === updated.id)
     if (idx >= 0) project.value.slides[idx] = updated

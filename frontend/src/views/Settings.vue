@@ -20,25 +20,33 @@
           <dd :class="settings.official_configured ? 'text-secondary' : 'text-red-600'">
             {{ settings.official_configured ? '已配置' : '未配置' }}
           </dd>
-          <dt class="text-on-surface-variant">中转模型</dt>
-          <dd>{{ settings.relay_model }}</dd>
-          <dt class="text-on-surface-variant">官方模型</dt>
-          <dd>{{ settings.official_model }}</dd>
+          <dt class="text-on-surface-variant">免费档（文稿+配图）</dt>
+          <dd class="font-medium">{{ settings.model_free }}</dd>
+          <dt class="text-on-surface-variant">升级档</dt>
+          <dd class="font-medium">{{ settings.model_pro }}</dd>
+          <dt class="text-on-surface-variant">免费配图模型</dt>
+          <dd>{{ settings.image_model_free }}</dd>
+          <dt class="text-on-surface-variant">升级配图模型</dt>
+          <dd>{{ settings.image_model_pro }}</dd>
         </dl>
 
         <div class="mt-6 flex flex-wrap gap-2">
           <button
             class="px-4 py-2 rounded-lg bg-primary text-on-primary text-sm disabled:opacity-50"
             :disabled="testing"
-            @click="runTest('')"
+            @click="runTest('', 'free')"
           >
-            测试 auto
+            测试免费档 Flash
           </button>
-          <button class="px-4 py-2 rounded-lg border text-sm" :disabled="testing" @click="runTest('relay')">
-            测试中转
+          <button
+            class="px-4 py-2 rounded-lg bg-secondary text-white text-sm disabled:opacity-50"
+            :disabled="testing"
+            @click="runTest('', 'pro')"
+          >
+            测试升级档 Pro
           </button>
-          <button class="px-4 py-2 rounded-lg border text-sm" :disabled="testing" @click="runTest('official')">
-            测试官方
+          <button class="px-4 py-2 rounded-lg border text-sm" :disabled="testing" @click="runTest('relay', 'free')">
+            中转 + 免费档
           </button>
         </div>
         <p v-if="testMsg" class="mt-3 text-sm" :class="testOk ? 'text-secondary' : 'text-red-600'">{{ testMsg }}</p>
@@ -83,13 +91,13 @@ onMounted(async () => {
   }
 })
 
-async function runTest(channel) {
+async function runTest(channel, tier = 'free') {
   testing.value = true
   testMsg.value = ''
   try {
-    const r = await api.testLlm(channel || undefined)
+    const r = await api.testLlm(channel || undefined, tier)
     testOk.value = r.success
-    testMsg.value = `${r.message}（实际通道：${r.channel}）`
+    testMsg.value = `${r.message} · 通道 ${r.channel} · 模型 ${r.model || ''}`
   } catch (e) {
     testOk.value = false
     testMsg.value = e.message

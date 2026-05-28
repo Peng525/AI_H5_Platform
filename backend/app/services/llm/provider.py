@@ -6,6 +6,7 @@ from typing import Any
 import httpx
 
 from app.config import settings
+from app.services.llm.model_tier import resolve_text_model
 
 
 class LlmError(Exception):
@@ -40,24 +41,26 @@ async def _chat_openai_compatible(
         raise LlmError("大模型响应格式异常") from exc
 
 
-async def chat_relay(messages: list[dict[str, str]]) -> str:
+async def chat_relay(messages: list[dict[str, str]], tier: str | None = "free") -> str:
     if not _relay_ready():
         raise LlmError("中转 API 未配置，请设置 LLM_RELAY_BASE_URL 与 LLM_RELAY_API_KEY")
+    model = resolve_text_model(tier)
     return await _chat_openai_compatible(
         settings.llm_relay_base_url,
         settings.llm_relay_api_key,
-        settings.llm_relay_model,
+        model,
         messages,
     )
 
 
-async def chat_official(messages: list[dict[str, str]]) -> str:
+async def chat_official(messages: list[dict[str, str]], tier: str | None = "free") -> str:
     if not _official_ready():
         raise LlmError("官方 API 未配置，请设置 LLM_OFFICIAL_API_KEY")
+    model = resolve_text_model(tier)
     return await _chat_openai_compatible(
         settings.llm_official_base_url,
         settings.llm_official_api_key,
-        settings.llm_official_model,
+        model,
         messages,
     )
 
@@ -79,7 +82,7 @@ def _resolve_auto_order() -> list[str]:
     return ready
 
 
-async def chat_auto(messages: list[dict[str, str]]) -> tuple[str, str]:
+async def chat_auto(messages: list[dict[str, str]], tier: str | None = "free") -> tuple[str, str]:
     channels = _resolve_auto_order()
     if not channels:
         raise LlmError("auto 模式无可用通道，请至少配置中转或官方 API 之一")
@@ -87,8 +90,8 @@ async def chat_auto(messages: list[dict[str, str]]) -> tuple[str, str]:
     for ch in channels:
         try:
             if ch == "official":
-                return await chat_official(messages), "official"
-            return await chat_relay(messages), "relay"
+                return await chat_official(messages, tier), "official"
+            return await chat_relay(messages, tier), "relay"
         except LlmError as exc:
             errors.append(f"{ch}: {exc}")
     raise LlmError("auto 模式全部通道失败 — " + "；".join(errors))
@@ -97,14 +100,18 @@ async def chat_auto(messages: list[dict[str, str]]) -> tuple[str, str]:
 async def chat_completion(
     messages: list[dict[str, str]],
     channel: str | None = None,
-) -> tuple[str, str]:
+    tier: str | None = "free",
+) -> tuple[str, str, str]:
+    """返回 (回复文本, 通道, 实际使用的模型名)。"""
+    model = resolve_text_model(tier)
     ch = (channel or settings.llm_default_channel).lower()
     if ch == "auto":
-        return await chat_auto(messages)
+        text, used = await chat_auto(messages, tier)
+        return text, used, model
     if ch == "relay":
-        return await chat_relay(messages), "relay"
+        return await chat_relay(messages, tier), "relay", model
     if ch == "official":
-        return await chat_official(messages), "official"
+        return await chat_official(messages, tier), "official", model
     raise LlmError(f"未知通道: {channel}")
 
 

@@ -73,11 +73,13 @@ class GenerateFullRequest(BaseModel):
     page_count: int = Field(5, ge=1, le=30)
     style: str = "专业简约"
     channel: str | None = None
+    tier: str = Field("free", description="会员档位：free 免费 | pro 升级")
 
 
 class GeneratePageRequest(BaseModel):
     instruction: str = Field(..., description="修改指令")
     channel: str | None = None
+    tier: str = Field("free", description="会员档位：free 免费 | pro 升级")
 
 
 class LlmSettingsOut(BaseModel):
@@ -85,6 +87,10 @@ class LlmSettingsOut(BaseModel):
     auto_order: str
     relay_configured: bool
     official_configured: bool
+    model_free: str = Field(description="免费档：文稿与免费配图")
+    model_pro: str = Field(description="升级档")
+    image_model_free: str
+    image_model_pro: str
     relay_model: str
     official_model: str
 
@@ -92,6 +98,7 @@ class LlmSettingsOut(BaseModel):
 class LlmTestResult(BaseModel):
     success: bool
     channel: str
+    model: str = ""
     message: str
 
 

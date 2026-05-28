@@ -33,8 +33,13 @@ export const api = {
       body: JSON.stringify(body),
     }),
   getLlmSettings: () => request('/api/v1/设置/大模型'),
-  testLlm: (channel) =>
-    request(`/api/v1/设置/大模型/测试${channel ? `?channel=${channel}` : ''}`, { method: 'POST' }),
+  testLlm: (channel, tier = 'free') => {
+    const q = new URLSearchParams()
+    if (channel) q.set('channel', channel)
+    if (tier) q.set('tier', tier)
+    const qs = q.toString()
+    return request(`/api/v1/设置/大模型/测试${qs ? `?${qs}` : ''}`, { method: 'POST' })
+  },
   getTemplates: () => request('/api/v1/模板'),
   sharePreview: (slug) => request(`/api/v1/分享/${slug}`),
 }

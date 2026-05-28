@@ -47,9 +47,18 @@ npm install
 npm run dev
 ```
 
+## 大模型档位与模型
+
+| 档位 | 文稿生成 | 配图（免费配图同档） |
+|------|----------|----------------------|
+| **免费（默认）** | `gemini-3.1-flash` | `gemini-3.1-flash` |
+| **升级** | `gemini-3-pro` | `gemini-3-pro` |
+
+可在 `.env` 中通过 `LLM_MODEL_FREE`、`LLM_MODEL_PRO`、`LLM_IMAGE_MODEL_*` 覆盖。创建演示时可选档位；升级会员后请求传 `tier=pro`。
+
 ## 大模型 auto 模式
 
-设置 `LLM_DEFAULT_CHANNEL=auto` 后，按 `LLM_AUTO_ORDER`（默认 `official,relay`）依次尝试**已配置**的通道，直至成功。
+设置 `LLM_DEFAULT_CHANNEL=auto` 后，按 `LLM_AUTO_ORDER` 依次尝试**已配置**的通道，并使用对应档位的 Gemini 模型名。
 
 ## 目录结构
 
