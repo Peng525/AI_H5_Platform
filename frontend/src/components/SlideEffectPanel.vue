@@ -25,16 +25,19 @@
         <span class="material-symbols-outlined text-[16px]">swap_vert</span>
         浏览滚动效果
       </h3>
-      <p class="text-[11px] text-on-surface-variant mb-2">全局演示浏览方式（预览时生效）</p>
+      <p class="text-[11px] text-on-surface-variant mb-2">全局演示浏览方式（保存后，在顶部「预览」中体验）</p>
       <div class="space-y-2">
         <button
           v-for="s in SCROLL_EFFECTS"
           :key="s.id"
           class="w-full text-left px-3 py-2 rounded-lg border transition"
           :class="scrollEffect === s.id ? 'border-primary bg-primary/5' : 'border-outline-variant hover:bg-white'"
-          @click="$emit('scroll-change', s.id)"
+          @click="pickScrollEffect(s.id)"
         >
-          <div class="font-medium text-xs" :class="scrollEffect === s.id ? 'text-primary' : ''">{{ s.label }}</div>
+          <div class="font-medium text-xs flex items-center gap-1.5" :class="scrollEffect === s.id ? 'text-primary' : ''">
+            <span class="material-symbols-outlined text-[14px]">{{ scrollModeIcon(s.id) }}</span>
+            {{ s.label }}
+          </div>
           <div class="text-[10px] text-on-surface-variant mt-0.5">{{ s.desc }}</div>
         </button>
       </div>
@@ -80,6 +83,20 @@ function pickAnimation(id) {
   animation.value = id
   emit('save', { animation: id })
   playPreview(id)
+}
+
+function pickScrollEffect(id) {
+  emit('scroll-change', id)
+}
+
+function scrollModeIcon(id) {
+  const icons = {
+    page: 'menu_book',
+    vertical: 'unfold_more',
+    horizontal: 'swipe',
+    snap: 'view_carousel',
+  }
+  return icons[id] || 'touch_app'
 }
 
 function previewTransition() {
