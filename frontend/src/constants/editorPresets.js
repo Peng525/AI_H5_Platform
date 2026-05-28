@@ -22,7 +22,7 @@ export const PAGE_ANIMATIONS = [
 /** 页面滚动/浏览模式（存 project settings） */
 export const SCROLL_EFFECTS = [
   { id: 'page', label: '翻页模式', desc: '点击或按键切换整页' },
-  { id: 'vertical', label: '纵向滚动', desc: '上下滚动浏览内容' },
+  { id: 'vertical', label: '纵向滚动', desc: '同一页面内下滑，无感切换每一屏' },
   { id: 'horizontal', label: '横向滑动', desc: '左右滑动切换页面' },
   { id: 'snap', label: '滚动吸附', desc: '滚动时自动吸附到每一页' },
 ]

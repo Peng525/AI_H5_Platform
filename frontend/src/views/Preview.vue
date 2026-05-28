@@ -9,42 +9,33 @@
       <router-link :to="`/editor/${$route.params.id}`" class="text-white underline mt-4 inline-block">返回编辑器</router-link>
     </div>
     <template v-else>
-      <div class="absolute top-4 left-4 z-10 max-w-[200px]">
-        <p class="text-xs text-white/90 font-medium">{{ scrollModeInfo.label }}</p>
-        <p class="text-[10px] text-white/60 mt-0.5">{{ scrollModeInfo.hint }}</p>
+      <div class="absolute top-4 left-4 z-10 max-w-[240px] pointer-events-none">
+        <p class="text-sm text-white font-semibold drop-shadow-md">{{ scrollModeInfo.label }}</p>
+        <p class="text-xs text-white/85 mt-1 leading-relaxed drop-shadow">{{ scrollModeInfo.hint }}</p>
       </div>
 
-      <div class="absolute top-4 right-4 z-10 flex items-center gap-2 flex-wrap justify-end max-w-[320px]">
-        <select
+      <div class="absolute top-4 right-4 z-20 flex items-center gap-2 flex-wrap justify-end">
+        <PreviewSelect
           v-model="scrollEffect"
-          class="text-xs rounded-lg bg-white/10 text-white border border-white/20 px-2 py-1.5 max-w-[120px]"
+          :options="scrollOptions"
           @change="onScrollModeChange"
-        >
-          <option v-for="s in SCROLL_EFFECTS" :key="s.id" :value="s.id">{{ s.label }}</option>
-        </select>
-        <span class="text-xs text-white/80 tabular-nums min-w-[40px] text-center">{{ Math.round(userZoom) }}%</span>
+        />
+        <span class="text-sm text-white font-medium tabular-nums min-w-[44px] text-center drop-shadow">{{ Math.round(userZoom) }}%</span>
         <button
           type="button"
-          class="px-2 py-1.5 rounded-lg bg-white/10 text-white text-xs border border-white/20 hover:bg-white/20"
+          class="preview-toolbar-btn"
           title="重置缩放"
           @click="resetUserZoom"
         >
           重置
         </button>
-        <select
+        <PreviewSelect
           v-model="viewportId"
-          class="text-xs rounded-lg bg-white/10 text-white border border-white/20 px-2 py-1.5 max-w-[140px]"
-        >
-          <optgroup label="手机">
-            <option v-for="v in mobileViewports" :key="v.id" :value="v.id">{{ v.label }}</option>
-          </optgroup>
-          <optgroup label="网页">
-            <option v-for="v in webViewports" :key="v.id" :value="v.id">{{ v.label }}</option>
-          </optgroup>
-        </select>
+          :options="viewportOptions"
+        />
         <button
           type="button"
-          class="px-3 py-1.5 rounded-lg bg-white/10 text-white text-xs border border-white/20 hover:bg-white/20"
+          class="preview-toolbar-btn"
           @click="phoneFrame = !phoneFrame"
         >
           {{ phoneFrame ? '无边框' : '设备边框' }}
@@ -98,19 +89,18 @@
         </div>
       </div>
 
-      <!-- 纵向滚动：自由上下滚，页间留间距，可看到下一页边缘 -->
+      <!-- 纵向滚动 / 滚动吸附：同一滚动容器，整屏无间距，下滑无感切换 -->
       <div
-        v-else-if="scrollEffect === 'vertical'"
-        ref="verticalScrollRef"
-        class="flex-1 overflow-y-auto overflow-x-hidden preview-scroll-free"
-        @scroll="trackVerticalScroll"
-        @wheel="onVerticalWheel"
+        v-else-if="scrollEffect === 'vertical' || scrollEffect === 'snap'"
+        ref="flowScrollRef"
+        class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden preview-flow-scroll snap-y snap-mandatory"
+        @scroll="trackFlowScroll"
+        @wheel="onFlowWheel"
       >
         <div
           v-for="(s, i) in slides"
           :key="s.id"
-          class="flex items-center justify-center px-4 py-10"
-          :style="{ minHeight: '88vh' }"
+          class="preview-flow-panel snap-start snap-always flex items-center justify-center"
         >
           <div :style="scaledWrapStyle">
             <PreviewSlideFrame
@@ -125,7 +115,7 @@
         </div>
       </div>
 
-      <!-- 横向滑动：左右滑动，每页占满视口宽度 -->
+      <!-- 横向滑动 -->
       <div
         v-else-if="scrollEffect === 'horizontal'"
         ref="horizontalScrollRef"
@@ -151,32 +141,7 @@
         </div>
       </div>
 
-      <!-- 滚动吸附：纵向整页吸附，滚轮一格一页 -->
-      <div
-        v-else
-        ref="snapScrollRef"
-        class="flex-1 overflow-y-auto overflow-x-hidden snap-y snap-mandatory preview-scroll-snap"
-        @scroll="trackSnapScroll"
-      >
-        <div
-          v-for="(s, i) in slides"
-          :key="s.id"
-          class="h-full min-h-full snap-start snap-always flex items-center justify-center p-4 shrink-0"
-        >
-          <div :style="scaledWrapStyle">
-            <PreviewSlideFrame
-              :viewport="viewport"
-              :elements="elementsForSlide(s)"
-              :canvas-background="backgroundForSlide(s.id)"
-              :slide="s"
-              :slide-index="i"
-              :slide-total="slides.length"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div class="flex justify-between items-center px-6 py-4 bg-black/50 text-white text-sm shrink-0">
+      <div class="flex justify-between items-center px-6 py-4 bg-black/60 text-white text-sm shrink-0 backdrop-blur-sm">
         <button
           type="button"
           class="disabled:opacity-30 px-3 py-1"
@@ -207,6 +172,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '../api/client'
 import PreviewSlideFrame from '../components/PreviewSlideFrame.vue'
+import PreviewSelect from '../components/PreviewSelect.vue'
 import { loadSlideBackground, resolvePreviewElements } from '../composables/useSlideCanvas'
 import { VIEWPORT_PRESETS, getViewportPreset, SCROLL_EFFECTS } from '../constants/editorPresets'
 import { getSlideAnimation } from '../utils/slideAnimation'
@@ -222,9 +188,15 @@ const viewportId = ref('mobile-375')
 const scrollEffect = ref('page')
 const userZoom = ref(100)
 
-const verticalScrollRef = ref(null)
+const flowScrollRef = ref(null)
 const horizontalScrollRef = ref(null)
-const snapScrollRef = ref(null)
+const flowWheelLock = ref(false)
+
+const scrollOptions = computed(() => SCROLL_EFFECTS.map((s) => ({ value: s.id, label: s.label })))
+const viewportOptions = computed(() => [
+  ...mobileViewports.map((v) => ({ value: v.id, label: v.label })),
+  ...webViewports.map((v) => ({ value: v.id, label: v.label })),
+])
 
 const MIN_ZOOM = 25
 const MAX_ZOOM = 200
@@ -242,9 +214,9 @@ const scrollModeInfo = computed(() => {
   const m = SCROLL_EFFECTS.find((s) => s.id === scrollEffect.value)
   const hints = {
     page: '空格 / 方向键 / 左右按钮切换整页',
-    vertical: '滚轮或拖动上下自由浏览，页间不吸附',
+    vertical: '滚轮或键盘 ↓ 下滑，整屏无感切换',
     horizontal: '滚轮或拖动左右切换，每页占满宽度',
-    snap: '滚轮滚动后自动吸附到最近一页',
+    snap: '滚轮滑动后自动吸附到整屏',
   }
   return { label: m?.label || '翻页模式', hint: hints[scrollEffect.value] || m?.desc || '' }
 })
@@ -291,13 +263,13 @@ const footerStatus = computed(() => {
   if (scrollEffect.value === 'page') {
     return `翻页模式 · ${index.value + 1}/${total}`
   }
-  if (scrollEffect.value === 'vertical') {
-    return `纵向滚动 · 约第 ${visibleIndex.value + 1}/${total} 页（自由滚动）`
+  if (scrollEffect.value === 'vertical' || scrollEffect.value === 'snap') {
+    return `${scrollEffect.value === 'vertical' ? '纵向滚动' : '滚动吸附'} · ${visibleIndex.value + 1}/${total}`
   }
   if (scrollEffect.value === 'horizontal') {
     return `横向滑动 · ${visibleIndex.value + 1}/${total}`
   }
-  return `滚动吸附 · ${visibleIndex.value + 1}/${total}`
+  return `${visibleIndex.value + 1}/${total}`
 })
 
 const canGoPrev = computed(() => {
@@ -350,15 +322,36 @@ function scrollToVisible(i, behavior = 'smooth') {
   if (scrollEffect.value === 'horizontal') {
     const el = horizontalScrollRef.value
     if (el) el.scrollTo({ left: i * el.clientWidth, behavior })
-  } else if (scrollEffect.value === 'snap') {
-    const el = snapScrollRef.value
-    if (el) el.scrollTo({ top: i * el.clientHeight, behavior })
-  } else if (scrollEffect.value === 'vertical') {
-    const el = verticalScrollRef.value
+  } else if (scrollEffect.value === 'vertical' || scrollEffect.value === 'snap') {
+    const el = flowScrollRef.value
     if (!el) return
-    const child = el.children[i]
-    if (child) child.scrollIntoView({ behavior, block: 'start' })
+    const h = el.clientHeight
+    el.scrollTo({ top: i * h, behavior })
   }
+}
+
+function trackFlowScroll(e) {
+  const el = e.target
+  if (!el.clientHeight) return
+  visibleIndex.value = Math.min(
+    slides.value.length - 1,
+    Math.max(0, Math.round(el.scrollTop / el.clientHeight))
+  )
+}
+
+function onFlowWheel(e) {
+  if (scrollEffect.value !== 'vertical') return
+  e.preventDefault()
+  if (flowWheelLock.value) return
+  const dir = e.deltaY > 0 ? 1 : e.deltaY < 0 ? -1 : 0
+  if (!dir) return
+  const next = visibleIndex.value + dir
+  if (next < 0 || next >= slides.value.length) return
+  flowWheelLock.value = true
+  scrollToVisible(next, 'smooth')
+  window.setTimeout(() => {
+    flowWheelLock.value = false
+  }, 520)
 }
 
 function trackHorizontalScroll(e) {
@@ -367,40 +360,10 @@ function trackHorizontalScroll(e) {
   visibleIndex.value = Math.min(slides.value.length - 1, Math.max(0, Math.round(el.scrollLeft / el.clientWidth)))
 }
 
-function trackSnapScroll(e) {
-  const el = e.target
-  if (!el.clientHeight) return
-  visibleIndex.value = Math.min(slides.value.length - 1, Math.max(0, Math.round(el.scrollTop / el.clientHeight)))
-}
-
-function trackVerticalScroll(e) {
-  const el = e.target
-  const mid = el.scrollTop + el.clientHeight / 2
-  let best = 0
-  let bestDist = Infinity
-  Array.from(el.children).forEach((child, i) => {
-    const center = child.offsetTop + child.offsetHeight / 2
-    const dist = Math.abs(center - mid)
-    if (dist < bestDist) {
-      bestDist = dist
-      best = i
-    }
-  })
-  visibleIndex.value = best
-}
-
 function onHorizontalWheel(e) {
   const el = horizontalScrollRef.value
   if (!el) return
   el.scrollLeft += e.deltaY + e.deltaX
-}
-
-function onVerticalWheel(e) {
-  if (e.ctrlKey || e.metaKey) {
-    e.preventDefault()
-    const step = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP
-    userZoom.value = clampUserZoom(userZoom.value + step)
-  }
 }
 
 onMounted(async () => {
@@ -478,7 +441,7 @@ function onKey(e) {
     if (e.key === 'ArrowLeft') goPrev()
     return
   }
-  if (scrollEffect.value === 'snap') {
+  if (scrollEffect.value === 'vertical' || scrollEffect.value === 'snap') {
     if (e.key === 'ArrowDown' || e.key === ' ') {
       e.preventDefault()
       goNext()
@@ -489,17 +452,34 @@ function onKey(e) {
 </script>
 
 <style scoped>
-.preview-scroll-free {
+.preview-toolbar-btn {
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  background: rgba(20, 24, 32, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 8px;
+  padding: 8px 12px;
+  backdrop-filter: blur(8px);
+}
+.preview-toolbar-btn:hover {
+  background: rgba(40, 44, 52, 0.95);
+}
+.preview-flow-scroll {
   scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+.preview-flow-panel {
+  height: 100%;
+  min-height: 100%;
+  flex-shrink: 0;
 }
 .preview-scroll-horizontal {
   scroll-behavior: smooth;
-  scroll-snap-type: x proximity;
+  scroll-snap-type: x mandatory;
 }
 .preview-scroll-horizontal > div {
   scroll-snap-align: center;
-}
-.preview-scroll-snap {
-  scroll-behavior: smooth;
 }
 </style>
