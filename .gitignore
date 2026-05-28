@@ -12,6 +12,10 @@ __pycache__/
 data/
 *.db
 
+# 微信个人收款码（勿提交仓库）
+backend/static/wechat-pay-qr.png
+backend/pay_assets/wechat-pay-qr.png
+
 # 原型临时目录
 _proto_web/
 _proto_mobile/
