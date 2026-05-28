@@ -46,15 +46,28 @@ async def health():
 
 
 if STATIC_DIR.exists():
-    app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets")
+    index_file = STATIC_DIR / "index.html"
+    assets_dir = STATIC_DIR / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
-    @app.get("/{full_path:path}")
+    @app.get("/", include_in_schema=False)
+    async def spa_index():
+        if index_file.exists():
+            return FileResponse(index_file)
+        return {"message": "前端未构建，请先构建 frontend 或运行 Docker 完整镜像"}
+
+    @app.get("/{full_path:path}", include_in_schema=False)
     async def spa_fallback(full_path: str):
-        index = STATIC_DIR / "index.html"
         if full_path.startswith("api"):
             from fastapi import HTTPException
 
             raise HTTPException(status_code=404)
-        if index.exists():
-            return FileResponse(index)
+        if index_file.exists():
+            return FileResponse(index_file)
         return {"message": "前端未构建，请先构建 frontend 或运行 Docker 完整镜像"}
+else:
+
+    @app.get("/", include_in_schema=False)
+    async def spa_missing():
+        return {"message": "前端未构建，请运行 npm run build 或 docker compose build"}
