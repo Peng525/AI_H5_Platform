@@ -38,13 +38,14 @@
 
       <slot name="actions" />
 
-      <router-link
+      <button
         v-if="projectId"
-        :to="`/preview/${projectId}`"
+        type="button"
         class="px-3 py-2 rounded-lg border border-outline-variant text-sm hover:bg-surface-container-high"
+        @click="goPreview"
       >
         预览
-      </router-link>
+      </button>
       <router-link
         v-if="projectId"
         :to="`/publish/${projectId}`"
@@ -114,8 +115,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api/client'
 import ConfirmDialog from './ConfirmDialog.vue'
 import { useAuth } from '../composables/useAuth'
+import { flushCanvasSave } from '../composables/useEditorCanvasSave'
 
-defineProps({
+const props = defineProps({
   projectId: { type: [String, Number], default: null },
   showQuota: { type: Boolean, default: true },
 })
@@ -151,6 +153,11 @@ function isActive(match) {
 function openLogout() {
   menuOpen.value = false
   logoutOpen.value = true
+}
+
+async function goPreview() {
+  await flushCanvasSave()
+  router.push(`/preview/${props.projectId}`)
 }
 
 function onLogoutConfirm() {

@@ -1,9 +1,97 @@
 import { ref, watch } from 'vue'
+import { api } from '../api/client'
 
 const STORAGE_PREFIX = 'ai_h5_canvas_'
+const SETTINGS_PREFIX = 'ai_h5_project_settings_'
+const DEFAULT_CANVAS_BG = '#005daa'
 
 function storageKey(projectId, slideId) {
-  return `${STORAGE_PREFIX}${projectId}_${slideId}`
+  return `${STORAGE_PREFIX}${Number(projectId)}_${slideId}`
+}
+
+export function buildElementsFromSlide(slide) {
+  if (!slide) return []
+  const items = []
+  if (slide.title) {
+    items.push(
+      defaultElement('text', {
+        x: 20,
+        y: 80,
+        width: 320,
+        height: 48,
+        content: slide.title,
+        style: { fontSize: 22, color: '#ffffff', fontWeight: 'bold', background: 'transparent' },
+      })
+    )
+  }
+  if (slide.subtitle) {
+    items.push(
+      defaultElement('text', {
+        x: 20,
+        y: 130,
+        width: 320,
+        height: 32,
+        content: slide.subtitle,
+        style: { fontSize: 14, color: '#ffffff', background: 'transparent' },
+      })
+    )
+  }
+  ;(slide.bullets || []).forEach((b, i) => {
+    items.push(
+      defaultElement('text', {
+        x: 24,
+        y: 170 + i * 28,
+        width: 300,
+        height: 24,
+        content: `• ${b}`,
+        style: { fontSize: 14, color: '#ffffff', background: 'transparent' },
+      })
+    )
+  })
+  if (slide.layout === 'image-text') {
+    const label = encodeURIComponent((slide.title || 'AI配图').slice(0, 16))
+    items.push(
+      defaultElement('image', {
+        x: 20,
+        y: 280,
+        width: 335,
+        height: 200,
+        content: `https://placehold.co/335x200/005daa/ffffff?text=${label}`,
+      })
+    )
+  }
+  return items
+}
+
+/** 预览用：localStorage → 服务端 canvas → 由 slide 字段生成 */
+export function resolvePreviewElements(projectId, slide) {
+  if (!slide?.id) return []
+  const stored = loadCanvasElements(projectId, slide.id)
+  if (stored.length) return stored
+  if (slide.canvas_elements?.length) return slide.canvas_elements
+  return buildElementsFromSlide(slide)
+}
+
+export function loadCanvasElements(projectId, slideId) {
+  if (!projectId || !slideId) return []
+  try {
+    const raw = localStorage.getItem(storageKey(projectId, slideId))
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+export function loadSlideBackground(projectId, slideId) {
+  if (!projectId || !slideId) return DEFAULT_CANVAS_BG
+  try {
+    const raw = localStorage.getItem(`${SETTINGS_PREFIX}${projectId}`)
+    if (!raw) return DEFAULT_CANVAS_BG
+    const s = JSON.parse(raw)
+    return s.slideBackgrounds?.[String(slideId)] ?? DEFAULT_CANVAS_BG
+  } catch {
+    return DEFAULT_CANVAS_BG
+  }
 }
 
 function genId() {
@@ -56,8 +144,9 @@ export function defaultElement(type, overrides = {}) {
 export function useSlideCanvas(projectIdRef, slideIdRef) {
   const elements = ref([])
   const selectedId = ref(null)
+  let saveTimer = null
 
-  function loadElements() {
+  function loadElements(serverCanvas) {
     const pid = projectIdRef.value
     const sid = slideIdRef.value
     if (!pid || !sid) {
@@ -66,14 +155,22 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     }
     try {
       const raw = localStorage.getItem(storageKey(pid, sid))
-      elements.value = raw ? JSON.parse(raw) : []
+      const stored = raw ? JSON.parse(raw) : []
+      if (stored.length) {
+        elements.value = stored
+      } else if (serverCanvas?.length) {
+        elements.value = serverCanvas
+        persistLocal()
+      } else {
+        elements.value = []
+      }
     } catch {
-      elements.value = []
+      elements.value = serverCanvas?.length ? serverCanvas : []
     }
     selectedId.value = null
   }
 
-  function saveElements() {
+  function persistLocal() {
     const pid = projectIdRef.value
     const sid = slideIdRef.value
     if (!pid || !sid) return
@@ -83,7 +180,37 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
         JSON.stringify(elements.value.map((el) => ({ ...el, updatedAt: Date.now() })))
       )
     } catch (e) {
-      console.warn('画布保存失败', e)
+      console.warn('画布本地保存失败', e)
+    }
+  }
+
+  function scheduleServerSave() {
+    const pid = projectIdRef.value
+    const sid = slideIdRef.value
+    if (!pid || !sid) return
+    clearTimeout(saveTimer)
+    saveTimer = setTimeout(() => {
+      api.saveSlideCanvas(Number(pid), sid, elements.value).catch((e) => {
+        console.warn('画布同步服务器失败', e)
+      })
+    }, 400)
+  }
+
+  function saveElements() {
+    persistLocal()
+    scheduleServerSave()
+  }
+
+  async function flushCanvasSave() {
+    const pid = projectIdRef.value
+    const sid = slideIdRef.value
+    if (!pid || !sid) return
+    persistLocal()
+    clearTimeout(saveTimer)
+    try {
+      await api.saveSlideCanvas(Number(pid), sid, elements.value)
+    } catch (e) {
+      console.warn('画布同步服务器失败', e)
     }
   }
 
@@ -137,55 +264,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
 
   function syncFromSlide(slide) {
     if (!slide || elements.value.length > 0) return
-    const items = []
-    if (slide.title) {
-      items.push(
-        defaultElement('text', {
-          x: 20,
-          y: 80,
-          width: 320,
-          height: 48,
-          content: slide.title,
-          style: { fontSize: 22, color: '#ffffff', fontWeight: 'bold', background: 'transparent' },
-        })
-      )
-    }
-    if (slide.subtitle) {
-      items.push(
-        defaultElement('text', {
-          x: 20,
-          y: 130,
-          width: 320,
-          height: 32,
-          content: slide.subtitle,
-          style: { fontSize: 14, color: '#ffffff', background: 'transparent' },
-        })
-      )
-    }
-    ;(slide.bullets || []).forEach((b, i) => {
-      items.push(
-        defaultElement('text', {
-          x: 24,
-          y: 170 + i * 28,
-          width: 300,
-          height: 24,
-          content: `• ${b}`,
-          style: { fontSize: 14, color: '#ffffff', background: 'transparent' },
-        })
-      )
-    })
-    if (slide.layout === 'image-text') {
-      const label = encodeURIComponent((slide.title || 'AI配图').slice(0, 16))
-      items.push(
-        defaultElement('image', {
-          x: 20,
-          y: 280,
-          width: 335,
-          height: 200,
-          content: `https://placehold.co/335x200/005daa/ffffff?text=${label}`,
-        })
-      )
-    }
+    const items = buildElementsFromSlide(slide)
     if (items.length) {
       elements.value = items
       saveElements()
@@ -246,6 +325,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     selectedId,
     loadElements,
     saveElements,
+    flushCanvasSave,
     addElement,
     addImageFromAi,
     updateElement,

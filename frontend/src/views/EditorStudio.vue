@@ -58,9 +58,10 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { api } from '../api/client'
 import { useAuth } from '../composables/useAuth'
+import { registerCanvasFlush, unregisterCanvasFlush } from '../composables/useEditorCanvasSave'
 import { useSlideCanvas } from '../composables/useSlideCanvas'
 import { useProjectEditorSettings } from '../composables/useProjectEditorSettings'
 import AiPanel from '../components/AiPanel.vue'
@@ -96,6 +97,7 @@ const {
   bringToFront,
   syncFromSlide,
   addImageFromAi,
+  flushCanvasSave,
 } = useSlideCanvas(projectId, slideIdRef)
 
 const slideIndex = computed(() => {
@@ -106,19 +108,27 @@ const slideIndex = computed(() => {
 async function load() {
   project.value = await api.getProject(Number(projectId.value))
   current.value = project.value.slides?.[0] || null
-  loadElements()
-  if (current.value) syncFromSlide(current.value)
+  loadElements(current.value?.canvas_elements)
+  if (current.value && !elements.value.length) syncFromSlide(current.value)
   const q = await api.getQuota(user.value?.user_id)
   quota.value = { remaining: q.quota_remaining, total: q.quota_total }
 }
 
-onMounted(load)
+onMounted(() => {
+  registerCanvasFlush(flushCanvasSave)
+  window.addEventListener('keydown', onKeyDown)
+  load()
+})
 watch(() => route.params.id, load)
+onBeforeRouteLeave(async () => {
+  await flushCanvasSave()
+})
 
 function selectSlide(slide) {
   saveElements()
   current.value = slide
-  loadElements()
+  loadElements(slide.canvas_elements)
+  if (!elements.value.length) syncFromSlide(slide)
 }
 
 async function addSlide() {
@@ -133,7 +143,8 @@ async function addSlide() {
     })
     project.value.slides.push(slide)
     current.value = slide
-    loadElements()
+    loadElements(slide.canvas_elements)
+    if (!elements.value.length) syncFromSlide(slide)
   } catch (e) {
     alert(e.message)
   }
@@ -263,8 +274,10 @@ function onKeyDown(e) {
   }
 }
 
-onMounted(() => window.addEventListener('keydown', onKeyDown))
-onUnmounted(() => window.removeEventListener('keydown', onKeyDown))
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeyDown)
+  unregisterCanvasFlush()
+})
 
 async function onGenerateText({ prompt, channelTier, channel }) {
   if (!prompt?.trim() || !current.value) return

@@ -58,6 +58,11 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(body),
     }),
+  saveSlideCanvas: (projectId, slideId, elements) =>
+    request(`/api/v1/项目/${projectId}/页面/${slideId}/画布`, {
+      method: 'PUT',
+      body: JSON.stringify({ elements }),
+    }),
   deleteProject: (id) => request(`/api/v1/项目/${id}`, { method: 'DELETE' }),
   generateFull: (id, body, userId) =>
     request(`/api/v1/项目/${id}/生成/全量${userId ? `?user_id=${userId}` : ''}`, {

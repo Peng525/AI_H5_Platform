@@ -14,10 +14,17 @@ class SlideOut(BaseModel):
     bullets: list[str]
     speaker_notes: str
     animation: str
+    canvas_elements: list[dict[str, Any]] = Field(default_factory=list)
 
     @classmethod
     def from_orm_slide(cls, slide: Any) -> "SlideOut":
         bullets = json.loads(slide.bullets_json or "[]")
+        try:
+            canvas_elements = json.loads(getattr(slide, "canvas_json", None) or "[]")
+            if not isinstance(canvas_elements, list):
+                canvas_elements = []
+        except json.JSONDecodeError:
+            canvas_elements = []
         return cls(
             id=slide.id,
             sort_order=slide.sort_order,
@@ -27,6 +34,7 @@ class SlideOut(BaseModel):
             bullets=bullets,
             speaker_notes=slide.speaker_notes,
             animation=slide.animation,
+            canvas_elements=canvas_elements,
         )
 
 
@@ -65,6 +73,10 @@ class SlideUpdate(BaseModel):
     speaker_notes: str | None = None
     animation: str | None = None
     sort_order: int | None = None
+
+
+class SlideCanvasUpdate(BaseModel):
+    elements: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class GenerateFullRequest(BaseModel):

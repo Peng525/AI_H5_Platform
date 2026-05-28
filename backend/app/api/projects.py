@@ -18,6 +18,7 @@ from app.schemas import (
     ProjectOut,
     ProjectUpdate,
     SlideCreate,
+    SlideCanvasUpdate,
     SlideOut,
     SlideUpdate,
 )
@@ -139,6 +140,20 @@ async def update_slide(
         slide.animation = body.animation
     if body.sort_order is not None:
         slide.sort_order = body.sort_order
+    await db.commit()
+    await db.refresh(slide)
+    return SlideOut.from_orm_slide(slide)
+
+
+@router.put("/项目/{project_id}/页面/{slide_id}/画布", response_model=SlideOut, summary="保存页面画布元素")
+async def update_slide_canvas(
+    project_id: int,
+    slide_id: int,
+    body: SlideCanvasUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    slide = await _get_slide(db, project_id, slide_id)
+    slide.canvas_json = json.dumps(body.elements, ensure_ascii=False)
     await db.commit()
     await db.refresh(slide)
     return SlideOut.from_orm_slide(slide)

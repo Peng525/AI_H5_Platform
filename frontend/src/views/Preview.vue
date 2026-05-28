@@ -31,15 +31,17 @@
       </div>
 
       <div v-if="scrollEffect === 'page'" class="flex-1 flex items-center justify-center p-4 overflow-hidden">
-        <div :class="frameWrapClass" :style="frameStyle">
+        <div :class="outerFrameClass">
           <Transition :name="transitionName" mode="out-in">
-            <div :key="index" class="w-full h-full p-6 text-white flex flex-col justify-center rounded-xl" :class="slideClass">
-              <p class="text-sm opacity-70 mb-2">{{ index + 1 }} / {{ slides.length }}</p>
-              <h1 :class="viewport.device === 'web' ? 'text-4xl' : 'text-2xl'" class="font-bold mb-3">{{ current.title }}</h1>
-              <p v-if="current.subtitle" class="opacity-90 mb-4">{{ current.subtitle }}</p>
-              <ul v-if="current.bullets?.length" class="space-y-2">
-                <li v-for="(b, i) in current.bullets" :key="i">• {{ b }}</li>
-              </ul>
+            <div :key="index" :style="scaledWrapStyle">
+              <PreviewSlideFrame
+                :viewport="viewport"
+                :elements="currentElements"
+                :canvas-background="currentBackground"
+                :slide="current"
+                :slide-index="index"
+                :slide-total="slides.length"
+              />
             </div>
           </Transition>
         </div>
@@ -56,25 +58,34 @@
           class="min-h-full flex items-center justify-center p-4"
           :class="scrollEffect === 'snap' ? 'snap-start' : ''"
         >
-          <div class="w-full max-w-lg rounded-2xl p-8 text-white" :class="themeClass(i)">
-            <p class="text-sm opacity-70 mb-2">{{ i + 1 }} / {{ slides.length }}</p>
-            <h1 class="text-2xl font-bold mb-3">{{ s.title }}</h1>
-            <p v-if="s.subtitle" class="opacity-90 mb-4">{{ s.subtitle }}</p>
-            <ul v-if="s.bullets?.length" class="space-y-2">
-              <li v-for="(b, j) in s.bullets" :key="j">• {{ b }}</li>
-            </ul>
+          <div :style="scaledWrapStyle">
+            <PreviewSlideFrame
+              :viewport="viewport"
+              :elements="elementsForSlide(s)"
+              :canvas-background="backgroundForSlide(s.id)"
+              :slide="s"
+              :slide-index="i"
+              :slide-total="slides.length"
+            />
           </div>
         </div>
       </div>
 
       <div v-else class="flex-1 overflow-x-auto flex snap-x snap-mandatory">
-        <div v-for="(s, i) in slides" :key="s.id" class="min-w-full h-full flex items-center justify-center p-4 snap-center shrink-0">
-          <div class="w-full max-w-lg rounded-2xl p-8 text-white" :class="themeClass(i)">
-            <p class="text-sm opacity-70 mb-2">{{ i + 1 }} / {{ slides.length }}</p>
-            <h1 class="text-2xl font-bold mb-3">{{ s.title }}</h1>
-            <ul v-if="s.bullets?.length" class="space-y-2">
-              <li v-for="(b, j) in s.bullets" :key="j">• {{ b }}</li>
-            </ul>
+        <div
+          v-for="(s, i) in slides"
+          :key="s.id"
+          class="min-w-full h-full flex items-center justify-center p-4 snap-center shrink-0"
+        >
+          <div :style="scaledWrapStyle">
+            <PreviewSlideFrame
+              :viewport="viewport"
+              :elements="elementsForSlide(s)"
+              :canvas-background="backgroundForSlide(s.id)"
+              :slide="s"
+              :slide-index="i"
+              :slide-total="slides.length"
+            />
           </div>
         </div>
       </div>
@@ -95,6 +106,8 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '../api/client'
+import PreviewSlideFrame from '../components/PreviewSlideFrame.vue'
+import { loadSlideBackground, resolvePreviewElements } from '../composables/useSlideCanvas'
 import { VIEWPORT_PRESETS, getViewportPreset, SCROLL_EFFECTS } from '../constants/editorPresets'
 import { getSlideAnimation } from '../utils/slideAnimation'
 
@@ -110,9 +123,18 @@ const scrollEffect = ref('page')
 const mobileViewports = VIEWPORT_PRESETS.filter((v) => v.device === 'mobile')
 const webViewports = VIEWPORT_PRESETS.filter((v) => v.device === 'web')
 
+const projectId = computed(() => Number(route.params.id))
 const slides = computed(() => project.value?.slides || [])
 const current = computed(() => slides.value[index.value] || {})
 const viewport = computed(() => getViewportPreset(viewportId.value))
+
+const currentElements = computed(() => resolvePreviewElements(projectId.value, current.value))
+
+const currentBackground = computed(() => {
+  const slide = current.value
+  if (!slide?.id) return '#005daa'
+  return loadSlideBackground(projectId.value, slide.id)
+})
 
 const transitionName = computed(() => {
   const anim = getSlideAnimation(current.value)
@@ -130,28 +152,29 @@ const transitionName = computed(() => {
 
 const scrollLabel = computed(() => SCROLL_EFFECTS.find((s) => s.id === scrollEffect.value)?.label || '翻页')
 
-function themeClass(i) {
-  return i % 2 === 0
-    ? 'bg-gradient-to-br from-[#005daa] to-[#0075d5]'
-    : 'bg-gradient-to-br from-[#006d33] to-[#45e17c]'
+const previewScale = computed(() => {
+  const maxW = phoneFrame.value ? 420 : 900
+  const maxH = phoneFrame.value ? 720 : 600
+  return Math.min(1, maxW / viewport.value.width, maxH / viewport.value.height)
+})
+
+const scaledWrapStyle = computed(() => ({
+  transform: `scale(${previewScale.value})`,
+  transformOrigin: 'center center',
+}))
+
+const outerFrameClass = computed(() => {
+  if (!phoneFrame.value) return 'overflow-visible'
+  return viewport.value.device === 'mobile' ? 'overflow-visible' : 'overflow-visible'
+})
+
+function elementsForSlide(slide) {
+  return resolvePreviewElements(projectId.value, slide)
 }
 
-const slideClass = computed(() => themeClass(index.value))
-
-const frameWrapClass = computed(() => {
-  if (!phoneFrame.value) return 'w-full max-w-4xl overflow-hidden shadow-2xl'
-  return viewport.value.device === 'mobile'
-    ? 'bg-gray-900 rounded-[2rem] p-2 shadow-2xl overflow-hidden'
-    : 'bg-gray-200 rounded-lg p-1 shadow-2xl border border-gray-400 overflow-hidden'
-})
-
-const frameStyle = computed(() => {
-  const scale = Math.min(1, 420 / viewport.value.width, 720 / viewport.value.height)
-  return {
-    width: Math.round(viewport.value.width * scale) + 'px',
-    minHeight: Math.round(viewport.value.height * scale) + 'px',
-  }
-})
+function backgroundForSlide(slideId) {
+  return loadSlideBackground(projectId.value, slideId)
+}
 
 function loadProjectSettings() {
   try {
@@ -167,7 +190,7 @@ function loadProjectSettings() {
 onMounted(async () => {
   loadProjectSettings()
   try {
-    project.value = await api.getProject(Number(route.params.id))
+    project.value = await api.getProject(projectId.value)
   } catch (e) {
     error.value = e.message
   } finally {

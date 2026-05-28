@@ -1,7 +1,10 @@
 <template>
   <div
-    class="absolute touch-none select-none"
-    :class="selected ? 'ring-2 ring-primary ring-offset-1 z-50' : ''"
+    class="absolute select-none"
+    :class="[
+      readonly ? 'pointer-events-none' : 'touch-none',
+      selected && !readonly ? 'ring-2 ring-primary ring-offset-1 z-50' : '',
+    ]"
     :style="{
       left: element.x + 'px',
       top: element.y + 'px',
@@ -9,11 +12,12 @@
       height: element.height + 'px',
       zIndex: element.zIndex || 1,
     }"
-    @mousedown.stop="onSelect"
+    @mousedown.stop="onRootMouseDown"
   >
     <div
       v-if="element.type === 'text'"
-      class="w-full h-full overflow-hidden px-1 cursor-move"
+      class="w-full h-full overflow-hidden px-1"
+      :class="readonly ? '' : 'cursor-move'"
       :style="textStyle"
       @dblclick.stop="startEdit"
     >
@@ -112,7 +116,7 @@
       <span v-else class="material-symbols-outlined text-3xl text-on-surface-variant/50 pointer-events-none">image</span>
     </div>
 
-    <template v-if="selected">
+    <template v-if="selected && !readonly">
       <div
         class="absolute -bottom-1 -right-1 w-3 h-3 bg-primary rounded-sm cursor-se-resize"
         @mousedown.stop="startResize"
@@ -127,6 +131,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 const props = defineProps({
   element: { type: Object, required: true },
   selected: { type: Boolean, default: false },
+  readonly: { type: Boolean, default: false },
   scale: { type: Number, default: 1 },
 })
 
@@ -193,6 +198,11 @@ function barHeight(v) {
   return Math.max(8, (v / max) * 100)
 }
 
+function onRootMouseDown(e) {
+  if (props.readonly) return
+  onSelect(e)
+}
+
 function onSelect(e) {
   emit('select', props.element.id)
   if (e.target.closest('.cursor-se-resize')) return
@@ -200,6 +210,7 @@ function onSelect(e) {
 }
 
 function startEdit() {
+  if (props.readonly) return
   editing.value = true
   editText.value = props.element.content
   nextTick(() => inputRef.value?.focus())
@@ -211,6 +222,7 @@ function commitEdit() {
 }
 
 function startCellEdit(ri, ci) {
+  if (props.readonly) return
   editingCell.value = { ri, ci }
   editCellValue.value = tableRows.value[ri]?.[ci] ?? ''
   nextTick(() => cellInputRef.value?.focus())

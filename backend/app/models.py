@@ -74,6 +74,7 @@ class Slide(Base):
     bullets_json: Mapped[str] = mapped_column(Text, default="[]")
     speaker_notes: Mapped[str] = mapped_column(Text, default="")
     animation: Mapped[str] = mapped_column(String(32), default="fade")
+    canvas_json: Mapped[str] = mapped_column(Text, default="[]")
 
     project: Mapped["Project"] = relationship(back_populates="slides")
 
