@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     # 微信个人收款码（本地）：图片 URL 或 /static/wechat-pay-qr.png
     wechat_personal_qr_url: str = "/static/wechat-pay-qr.png"
 
+    # 待支付订单有效时长（分钟），超时自动作废
+    order_pending_expire_minutes: int = 2
+
     # 中转 API 额度查询（newapi | novai | novita | custom）
     relay_quota_profile: str = "newapi"
     relay_quota_api_url: str = ""

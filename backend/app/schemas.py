@@ -64,6 +64,7 @@ class OrderOut(BaseModel):
     created_at: Any | None = None
     claimed_at: Any | None = None
     confirmed_at: Any | None = None
+    expires_at: Any | None = None
 
 
 class OrderClaimRequest(BaseModel):

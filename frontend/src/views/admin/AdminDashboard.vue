@@ -239,7 +239,7 @@ async function rejectOrder(o) {
 }
 
 function statusLabel(s) {
-  const map = { paid: '已支付', pending: '待支付', claimed: '待确认', rejected: '已拒绝', failed: '失败' }
+  const map = { paid: '已支付', pending: '待支付', claimed: '待确认', rejected: '已拒绝', failed: '失败', expired: '已超时' }
   return map[s] || s
 }
 

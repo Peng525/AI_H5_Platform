@@ -22,6 +22,7 @@ from app.services.h5_template_service import (
 from app.services.order_service import (
     OrderServiceError,
     confirm_order_payment,
+    expire_stale_orders,
     get_order_by_id,
     list_pending_wechat_orders,
     reject_order_payment,
@@ -125,6 +126,8 @@ async def admin_dashboard(
     db: AsyncSession = Depends(get_db),
 ):
     stats = await visit_stats(db, days=14)
+    await expire_stale_orders(db)
+    await db.commit()
     orders_total = await db.scalar(select(func.count(Order.id))) or 0
     orders_paid = await db.scalar(select(func.count(Order.id)).where(Order.status == "paid")) or 0
     revenue = await db.scalar(
@@ -140,23 +143,9 @@ async def admin_dashboard(
     )
     recent = [_order_out(o) for o in result.scalars().all()]
 
-    pending_result = await db.execute(
-        select(Order)
-        .options(selectinload(Order.user))
-        .where(
-            Order.status.in_(("pending", "claimed")),
-            Order.payment_channel.in_(("wechat", "wechat_qr")),
-        )
-        .order_by(Order.created_at.desc())
-        .limit(10)
-    )
-    pending_orders = [_order_out(o) for o in pending_result.scalars().all()]
-    orders_pending = await db.scalar(
-        select(func.count(Order.id)).where(
-            Order.status.in_(("pending", "claimed")),
-            Order.payment_channel.in_(("wechat", "wechat_qr")),
-        )
-    )
+    pending_orders_raw = await list_pending_wechat_orders(db, limit=10)
+    pending_orders = [_order_out(o) for o in pending_orders_raw]
+    orders_pending = len(pending_orders_raw)
 
     return AdminDashboardOut(
         visits_today=stats["visits_today"],
@@ -164,7 +153,7 @@ async def admin_dashboard(
         visits_30d=stats["visits_30d"],
         orders_total=orders_total,
         orders_paid=orders_paid,
-        orders_pending_confirm=int(orders_pending or 0),
+        orders_pending_confirm=orders_pending,
         revenue_total=float(revenue or 0),
         users_total=users_total,
         visit_chart=stats["chart"],
@@ -332,6 +321,8 @@ async def admin_confirm_order(
     order = await get_order_by_id(db, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="订单不存在")
+    await expire_stale_orders(db, order.user_id)
+    await db.refresh(order)
     try:
         await confirm_order_payment(db, order, body.admin_remark)
         await db.commit()

@@ -1,6 +1,7 @@
 """访问统计与订单 API。"""
 import json
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -18,8 +19,10 @@ from app.services.order_service import (
     claim_order_paid,
     complete_wechat_native_payment,
     create_order,
+    expire_stale_orders,
     get_user_order,
     list_user_orders,
+    order_expires_at,
     order_snapshot,
 )
 from app.services.payment.wechat_native import decrypt_notify_resource, verify_notify_signature
@@ -45,6 +48,7 @@ class OrderCreateResponse(BaseModel):
     message: str
     qr_code_url: str | None = None
     payment_channel: str = ""
+    expires_at: Any | None = None
 
 
 @router.get("/支付/微信收款码", summary="微信个人收款码地址")
@@ -90,6 +94,7 @@ async def api_create_order(
         message=message,
         qr_code_url=qr_url,
         payment_channel=order.payment_channel,
+        expires_at=order_expires_at(order) if order.status in ("pending", "claimed") else None,
     )
 
 
@@ -156,6 +161,7 @@ async def api_get_order(
 ):
     try:
         order = await get_user_order(db, user, order_id)
+        await db.commit()
     except OrderServiceError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return _order_out(order)
@@ -171,6 +177,7 @@ async def api_list_orders(
 
 
 def _order_out(order) -> OrderOut:
+    expires = order_expires_at(order) if order.status in ("pending", "claimed") else None
     return OrderOut(
         id=order.id,
         plan_id=order.plan_id,
@@ -183,4 +190,5 @@ def _order_out(order) -> OrderOut:
         created_at=order.created_at,
         claimed_at=getattr(order, "claimed_at", None),
         confirmed_at=getattr(order, "confirmed_at", None),
+        expires_at=expires,
     )

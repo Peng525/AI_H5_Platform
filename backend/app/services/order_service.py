@@ -1,10 +1,11 @@
 """订单创建与查询。"""
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import settings
 from app.models import Order, User
 from app.services.payment import get_payment_provider
 from app.services.payment.base import PaymentError, PaymentNotConfigured
@@ -19,12 +20,82 @@ class LocalPaymentRequired(OrderServiceError):
     """本地部署不支持该扫码渠道。"""
 
 
-WECHAT_CHANNELS = frozenset({"wechat", "wechat_qr"})
+WECHAT_CHANNELS = frozenset({"wechat", "wechat_qr", "wechat_native"})
 ADMIN_CONFIRM_STATUSES = frozenset({"pending", "claimed"})
+EXPIRABLE_STATUSES = frozenset({"pending", "claimed"})
 
 
 def _is_wechat_order(order: Order) -> bool:
     return order.payment_channel in WECHAT_CHANNELS
+
+
+def _as_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def order_expires_at(order: Order) -> datetime:
+    return _as_utc(order.created_at) + timedelta(minutes=settings.order_pending_expire_minutes)
+
+
+def is_order_expired(order: Order) -> bool:
+    if order.status not in EXPIRABLE_STATUSES:
+        return False
+    return datetime.now(timezone.utc) >= order_expires_at(order)
+
+
+def seconds_until_order_expires(order: Order) -> int:
+    remaining = (order_expires_at(order) - datetime.now(timezone.utc)).total_seconds()
+    return max(0, int(remaining))
+
+
+def _qr_url_for_order(order: Order) -> str | None:
+    if order.code_url:
+        return order.code_url
+    if order.payment_channel in ("wechat", "wechat_qr"):
+        return settings.wechat_personal_qr_url.strip() or "/static/wechat-pay-qr.png"
+    return None
+
+
+async def expire_stale_orders(db: AsyncSession, user_id: int | None = None) -> int:
+    """将超时未支付的订单标记为 expired。"""
+    query = select(Order).where(Order.status.in_(tuple(EXPIRABLE_STATUSES)))
+    if user_id is not None:
+        query = query.where(Order.user_id == user_id)
+    result = await db.execute(query)
+    expired_count = 0
+    for order in result.scalars().all():
+        if is_order_expired(order):
+            order.status = "expired"
+            order.admin_remark = (order.admin_remark or "超时未支付，订单已关闭")[:255]
+            expired_count += 1
+    if expired_count:
+        await db.flush()
+    return expired_count
+
+
+async def _find_reusable_pending_order(
+    db: AsyncSession,
+    user: User,
+    plan_id: str,
+    payment_channel: str,
+) -> Order | None:
+    result = await db.execute(
+        select(Order)
+        .where(
+            Order.user_id == user.id,
+            Order.plan_id == plan_id,
+            Order.payment_channel == payment_channel,
+            Order.status.in_(tuple(EXPIRABLE_STATUSES)),
+        )
+        .order_by(Order.created_at.desc())
+        .limit(1)
+    )
+    order = result.scalar_one_or_none()
+    if order and not is_order_expired(order):
+        return order
+    return None
 
 
 async def create_order(
@@ -39,6 +110,16 @@ async def create_order(
 
     if payment_channel == "alipay":
         raise LocalPaymentRequired("本地部署暂不支持支付宝，请使用微信收款码或演示支付")
+
+    if payment_channel in WECHAT_CHANNELS:
+        await expire_stale_orders(db, user.id)
+        existing = await _find_reusable_pending_order(db, user, plan_id, payment_channel)
+        if existing:
+            msg = (
+                f"请使用微信扫码支付 ¥{float(existing.amount):.2f}，"
+                f"请在 {settings.order_pending_expire_minutes} 分钟内完成转账"
+            )
+            return existing, msg, _qr_url_for_order(existing)
 
     try:
         provider = get_payment_provider(payment_channel)
@@ -72,7 +153,13 @@ async def create_order(
         apply_plan_to_user(user, plan_id)
 
     await db.flush()
-    return order, result.message, result.qr_code_url
+    message = result.message
+    if order.status in EXPIRABLE_STATUSES:
+        message = (
+            f"请使用微信扫码支付 ¥{float(order.amount):.2f}，"
+            f"请在 {settings.order_pending_expire_minutes} 分钟内完成转账"
+        )
+    return order, message, result.qr_code_url
 
 
 async def claim_order_paid(
@@ -96,6 +183,10 @@ async def confirm_order_payment(
     order: Order,
     admin_remark: str = "",
 ) -> Order:
+    await expire_stale_orders(db, order.user_id)
+    await db.refresh(order)
+    if order.status == "expired":
+        raise OrderServiceError("订单已超时关闭，请让用户重新下单")
     if order.status not in ADMIN_CONFIRM_STATUSES:
         raise OrderServiceError("该订单状态不可确认收款")
     if not _is_wechat_order(order):
@@ -164,12 +255,13 @@ async def complete_wechat_native_payment(
 
 
 async def get_user_order(db: AsyncSession, user: User, order_id: int) -> Order:
-    result = await db.execute(
-        select(Order).where(Order.id == order_id, Order.user_id == user.id)
-    )
-    order = result.scalar_one_or_none()
-    if not order:
+    order = await get_order_by_id(db, order_id)
+    if not order or order.user_id != user.id:
         raise OrderServiceError("订单不存在")
+    if order.status in EXPIRABLE_STATUSES and is_order_expired(order):
+        order.status = "expired"
+        order.admin_remark = (order.admin_remark or "超时未支付，订单已关闭")[:255]
+        await db.flush()
     return order
 
 
@@ -185,7 +277,8 @@ async def list_user_orders(db: AsyncSession, user: User, limit: int = 20) -> lis
 
 
 async def list_pending_wechat_orders(db: AsyncSession, limit: int = 50) -> list[Order]:
-    """待管理员确认的微信个人收款码订单（含 pending 与历史 claimed）。"""
+    """待管理员确认的微信个人收款码订单（含 pending 与 claimed，已排除超时）。"""
+    await expire_stale_orders(db)
     result = await db.execute(
         select(Order)
         .options(selectinload(Order.user))

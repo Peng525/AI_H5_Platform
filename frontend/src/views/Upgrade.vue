@@ -38,7 +38,7 @@
 
         <div class="text-center">
           <button
-            v-if="!activeOrder || activeOrder.status === 'rejected'"
+            v-if="canStartPay"
             class="px-8 py-3 rounded-lg text-white font-medium inline-flex items-center gap-2 disabled:opacity-50"
             style="background: #07C160"
             :disabled="paying"
@@ -52,17 +52,20 @@
             <div v-if="showQr" class="w-48 h-48 mx-auto border rounded-xl overflow-hidden bg-white p-2 flex items-center justify-center">
               <img v-if="qrImageSrc" :src="qrImageSrc" alt="微信收款码" class="w-full h-full object-contain" @error="onQrError" />
             </div>
-            <p v-if="showQr" class="text-sm text-on-surface-variant">
-              订单号 <strong class="text-on-surface font-mono">#{{ activeOrder.order_id }}</strong>
-            </p>
             <p v-if="showQr" class="text-lg font-bold text-primary">
               请支付 ¥{{ Number(activeOrder.amount).toFixed(2) }}
             </p>
+            <p v-if="showQr && countdownSec > 0" class="text-sm text-amber-700 font-medium">
+              请在 {{ countdownLabel }} 内完成转账
+            </p>
             <p v-if="showQr" class="text-xs text-on-surface-variant">
-              请使用微信扫码转账对应金额，确认收款后套餐将自动开通
+              转账后请等待管理员确认收款，套餐将自动开通
             </p>
             <p v-else-if="activeOrder.status === 'paid'" class="text-sm text-secondary font-medium">
               支付已确认，套餐已开通
+            </p>
+            <p v-else-if="activeOrder.status === 'expired'" class="text-sm text-red-600">
+              订单已超时关闭，请重新发起支付
             </p>
             <p v-else-if="activeOrder.status === 'rejected'" class="text-sm text-red-600">
               订单未通过，请重新发起支付
@@ -91,11 +94,24 @@ const payOk = ref(false)
 const paying = ref(false)
 const activeOrder = ref(null)
 const qrImageSrc = ref('')
+const countdownSec = ref(0)
 let pollTimer = null
+let countdownTimer = null
 
 const showQr = computed(() => {
   const s = activeOrder.value?.status
   return s === 'pending' || s === 'claimed'
+})
+
+const canStartPay = computed(() => {
+  const s = activeOrder.value?.status
+  return !activeOrder.value || s === 'rejected' || s === 'expired'
+})
+
+const countdownLabel = computed(() => {
+  const m = Math.floor(countdownSec.value / 60)
+  const s = countdownSec.value % 60
+  return `${m}:${String(s).padStart(2, '0')}`
 })
 
 function selectPlan(plan) {
@@ -104,8 +120,36 @@ function selectPlan(plan) {
     qrImageSrc.value = ''
     payMsg.value = ''
     stopPoll()
+    stopCountdown()
   }
   selected.value = plan
+}
+
+function stopCountdown() {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+  countdownSec.value = 0
+}
+
+function startCountdown(expiresAt) {
+  stopCountdown()
+  if (!expiresAt) return
+  const tick = () => {
+    const left = Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000))
+    countdownSec.value = left
+    if (left <= 0) {
+      stopCountdown()
+      if (activeOrder.value && showQr.value) {
+        activeOrder.value = { ...activeOrder.value, status: 'expired' }
+        payMsg.value = '订单已超时，请重新发起支付'
+        stopPoll()
+      }
+    }
+  }
+  tick()
+  countdownTimer = setInterval(tick, 1000)
 }
 
 async function renderQr(order) {
@@ -132,14 +176,19 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopPoll()
+  stopCountdown()
 })
 
 watch(activeOrder, (order) => {
-  if (order) renderQr(order)
+  if (order) {
+    renderQr(order)
+    if (order.expires_at) startCountdown(order.expires_at)
+  }
   if (order?.status === 'pending' || order?.status === 'claimed') {
     startPoll()
   } else {
     stopPoll()
+    if (order?.status !== 'pending' && order?.status !== 'claimed') stopCountdown()
   }
 })
 
@@ -159,13 +208,23 @@ async function refreshOrderStatus() {
   if (!activeOrder.value?.order_id) return
   try {
     const order = await api.getOrder(activeOrder.value.order_id)
-    activeOrder.value = { ...activeOrder.value, status: order.status, amount: order.amount }
+    activeOrder.value = {
+      ...activeOrder.value,
+      status: order.status,
+      amount: order.amount,
+      expires_at: order.expires_at,
+    }
     if (order.status === 'paid') {
       payOk.value = true
       payMsg.value = '套餐已开通，感谢支持！'
       const me = await api.getMe()
       updateUser(me)
       stopPoll()
+      stopCountdown()
+    } else if (order.status === 'expired') {
+      payMsg.value = '订单已超时，请重新发起支付'
+      stopPoll()
+      stopCountdown()
     }
   } catch {
     /* 忽略轮询失败 */
@@ -174,7 +233,7 @@ async function refreshOrderStatus() {
 
 function onQrError() {
   payMsg.value =
-    '收款码加载失败：请将 wechat-pay-qr.png 放到 backend/pay_assets/ 目录，然后重启服务（Docker 需重建或挂载该目录）'
+    '收款码加载失败：请将 wechat-pay-qr.png 放到 backend/pay_assets/ 目录，然后重启服务'
   payOk.value = false
 }
 
