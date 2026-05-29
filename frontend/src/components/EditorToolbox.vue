@@ -47,22 +47,18 @@
         @add="$emit('add-slide')"
         @remove="$emit('remove-slide', $event)"
       />
-      <SlideContentPanel
-        v-else-if="activeTab === 'text'"
-        :slide="currentSlide"
-        @save="$emit('save-slide', $event)"
-        @sync-canvas="$emit('sync-canvas')"
+      <BgmPanel
+        v-else-if="activeTab === 'music'"
+        :project-settings="projectSettings"
+        @bgm-change="$emit('bgm-change', $event)"
       />
       <SlideEffectPanel
         v-else-if="activeTab === 'effect'"
         :slide="currentSlide"
         :scroll-effect="scrollEffect"
-        :project-settings="projectSettings"
         @save="$emit('save-slide', $event)"
         @scroll-change="$emit('scroll-change', $event)"
         @preview-animation="$emit('preview-animation', $event)"
-        @bgm-change="$emit('bgm-change', $event)"
-        @open-dialogue-generator="$emit('open-dialogue-generator')"
       />
       <MaterialPanel
         v-else-if="activeTab === 'material'"
@@ -80,8 +76,8 @@
 
 <script setup>
 import { ref } from 'vue'
+import BgmPanel from './BgmPanel.vue'
 import MaterialPanel from './MaterialPanel.vue'
-import SlideContentPanel from './SlideContentPanel.vue'
 import SlideEffectPanel from './SlideEffectPanel.vue'
 import SlideThumbList from './SlideThumbList.vue'
 
@@ -100,12 +96,12 @@ defineProps({
   liveElements: { type: Array, default: null },
 })
 
-defineEmits(['select-slide', 'add-slide', 'remove-slide', 'save-slide', 'sync-canvas', 'add-material', 'apply-layout', 'canvas-bg-change', 'scroll-change', 'preview-animation', 'open-help', 'bgm-change', 'open-dialogue-generator', 'open-wordcloud-editor'])
+defineEmits(['select-slide', 'add-slide', 'remove-slide', 'save-slide', 'add-material', 'apply-layout', 'canvas-bg-change', 'scroll-change', 'preview-animation', 'open-help', 'bgm-change', 'open-dialogue-generator', 'open-wordcloud-editor'])
 
 const activeTab = ref('pages')
 const tabs = [
   { id: 'pages', label: '页面', icon: 'layers' },
-  { id: 'text', label: '文本', icon: 'title' },
+  { id: 'music', label: '音乐', icon: 'music_note' },
   { id: 'effect', label: '动效', icon: 'animation' },
   { id: 'material', label: '素材', icon: 'cloud_upload' },
 ]

@@ -41,12 +41,6 @@
           <option v-for="v in webViewports" :key="v.id" :value="v.id">{{ v.label }}</option>
         </optgroup>
       </select>
-      <BgmPlayerButton
-        v-if="showBgmPlayer"
-        :muted="bgmMuted"
-        :spinning="bgmSpinning"
-        @toggle="$emit('toggle-bgm-mute')"
-      />
     </div>
 
     <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1 sm:gap-2 bg-white shadow-card rounded-full px-1.5 sm:px-2 py-1 border border-outline-variant z-20 max-w-[calc(100%-1rem)]" data-editor-chrome>
@@ -181,6 +175,14 @@
             >
               <DialoguePreviewCanvas :model-value="chatScriptForPreview" :editable="false" />
             </div>
+
+            <BgmPlayerButton
+              v-if="showBgmPlayer"
+              class="absolute top-2 right-2 z-30"
+              :muted="bgmMuted"
+              :spinning="bgmSpinning"
+              @toggle="$emit('toggle-bgm-mute')"
+            />
           </div>
         </div>
       </div>

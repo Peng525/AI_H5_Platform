@@ -35,13 +35,6 @@
       </div>
 
       <div class="absolute top-4 right-4 z-20 flex items-center gap-2 flex-wrap justify-end">
-        <BgmPlayerButton
-          v-if="bgmConfig.enabled && bgmConfig.url && !embedded"
-          :muted="bgmMuted"
-          :spinning="bgmPlaying && !bgmMuted"
-          class="preview-bgm-player"
-          @toggle="toggleBgmMute"
-        />
         <template v-if="mode === 'preview'">
           <PreviewSelect v-model="scrollEffect" :options="scrollOptions" @change="onScrollModeChange" />
           <span class="text-sm text-white font-medium tabular-nums min-w-[44px] text-center drop-shadow">{{ Math.round(userZoom) }}%</span>
@@ -100,6 +93,10 @@
                 :slide-index="index"
                 :slide-total="slides.length"
                 :enable-stagger="!embedded"
+                :show-bgm-player="bgmPlayerActive"
+                :bgm-muted="bgmMuted"
+                :bgm-spinning="bgmPlaying && !bgmMuted"
+                @toggle-bgm-mute="toggleBgmMute"
               />
               <ChatStoryOverlay
                 :script="slideChatScript(current)"
@@ -133,6 +130,10 @@
               :slide-index="i"
               :slide-total="slides.length"
               :enable-stagger="!embedded && i === visibleIndex"
+              :show-bgm-player="bgmPlayerActive && i === visibleIndex"
+              :bgm-muted="bgmMuted"
+              :bgm-spinning="bgmPlaying && !bgmMuted"
+              @toggle-bgm-mute="toggleBgmMute"
             />
             <ChatStoryOverlay
               v-if="i === visibleIndex"
@@ -166,6 +167,10 @@
               :slide-index="i"
               :slide-total="slides.length"
               :enable-stagger="!embedded && i === visibleIndex"
+              :show-bgm-player="bgmPlayerActive && i === visibleIndex"
+              :bgm-muted="bgmMuted"
+              :bgm-spinning="bgmPlaying && !bgmMuted"
+              @toggle-bgm-mute="toggleBgmMute"
             />
             <ChatStoryOverlay
               v-if="i === visibleIndex"
@@ -208,7 +213,6 @@
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ChatStoryOverlay from './ChatStoryOverlay.vue'
-import BgmPlayerButton from './BgmPlayerButton.vue'
 import PreviewSlideFrame from './PreviewSlideFrame.vue'
 import PreviewSelect from './PreviewSelect.vue'
 import {
@@ -262,6 +266,9 @@ const slides = computed(() => props.project?.slides || [])
 const current = computed(() => slides.value[index.value] || {})
 const viewport = computed(() => getViewportPreset(viewportId.value))
 const bgmConfig = computed(() => projectSettings.value?.bgm || { enabled: false })
+const bgmPlayerActive = computed(
+  () => !props.embedded && bgmConfig.value.enabled && !!bgmConfig.value.url
+)
 
 const activeSlide = computed(() => {
   if (scrollEffect.value === 'page') return current.value

@@ -2,34 +2,29 @@
   <div class="material-panel p-3 flex flex-col gap-3 min-h-0">
     <div>
       <p class="text-xs font-semibold text-on-surface mb-1.5">页面背景</p>
-      <div class="flex flex-wrap gap-1.5 mb-2">
-        <button
-          v-for="preset in canvasBgPresets"
-          :key="'bg-' + preset.value"
-          type="button"
-          class="bg-swatch"
-          :class="isActiveBg(preset.value) ? 'bg-swatch--active' : ''"
-          :style="{ background: preset.value }"
-          :title="preset.label"
-          :aria-label="preset.label"
-          @click="pickCanvasBg(preset.value)"
-        />
-        <button
-          v-for="c in extraQuickColors"
-          :key="'c-' + c"
-          type="button"
-          class="bg-swatch"
-          :class="[
-            c === '#FFFFFF' ? 'bg-swatch--white' : '',
-            isActiveBg(c) ? 'bg-swatch--active' : '',
-          ]"
-          :style="{ background: c }"
-          :title="quickColorLabel(c)"
-          :aria-label="quickColorLabel(c)"
-          @click="pickCanvasBg(c)"
-        />
+      <div class="bg-swatch-board">
+        <div
+          v-for="col in bgSwatchColumns"
+          :key="col.id"
+          class="bg-swatch-column"
+        >
+          <button
+            v-for="item in col.items"
+            :key="item.key"
+            type="button"
+            class="bg-swatch"
+            :class="[
+              item.white ? 'bg-swatch--white' : '',
+              isActiveBg(item.value) ? 'bg-swatch--active' : '',
+            ]"
+            :style="item.style"
+            :title="item.label"
+            :aria-label="item.label"
+            @click="pickCanvasBg(item.value)"
+          />
+        </div>
         <label
-          class="bg-swatch bg-swatch--picker"
+          class="bg-swatch-column bg-swatch--picker"
           title="自定义纯色"
           aria-label="自定义纯色"
         >
@@ -40,19 +35,6 @@
             @input="pickCanvasBg($event.target.value)"
           />
         </label>
-      </div>
-      <div v-if="themeGradients.length" class="flex flex-wrap gap-1.5">
-        <button
-          v-for="g in themeGradients"
-          :key="g.id"
-          type="button"
-          class="bg-swatch"
-          :class="isActiveBg(g.value) ? 'bg-swatch--active' : ''"
-          :style="{ background: g.value }"
-          :title="g.label"
-          :aria-label="g.label"
-          @click="pickCanvasBg({ type: 'gradient', value: g.value })"
-        />
       </div>
     </div>
 
@@ -174,6 +156,44 @@ const extraQuickColors = computed(() => {
   ].filter((c, i, a) => a.indexOf(c) === i).slice(0, 4)
 })
 
+const bgSwatchColumns = computed(() => {
+  const cols = [
+    {
+      id: 'pastel',
+      items: canvasBgPresets.map((p) => ({
+        key: `bg-${p.value}`,
+        label: p.label,
+        style: { background: p.value },
+        value: p.value,
+        white: false,
+      })),
+    },
+    {
+      id: 'solids',
+      items: extraQuickColors.value.map((c) => ({
+        key: `c-${c}`,
+        label: quickColorLabel(c),
+        style: { background: c },
+        value: c,
+        white: c === '#FFFFFF',
+      })),
+    },
+  ]
+  if (themeGradients.value.length) {
+    cols.push({
+      id: 'gradients',
+      items: themeGradients.value.map((g) => ({
+        key: g.id,
+        label: g.label,
+        style: { background: g.value },
+        value: { type: 'gradient', value: g.value },
+        white: false,
+      })),
+    })
+  }
+  return cols
+})
+
 const solidPickerValue = computed(() => {
   const n = normalizeSlideBackground(props.canvasBackground)
   if (n.type === 'solid' && n.value.startsWith('#')) return n.value
@@ -281,6 +301,19 @@ const basicComponents = [
 
 .group:hover .material-label {
   color: #005daa;
+}
+
+.bg-swatch-board {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.bg-swatch-column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .bg-swatch {

@@ -40,6 +40,13 @@
             <li v-for="(b, j) in slide.bullets" :key="j">• {{ b }}</li>
           </ul>
         </div>
+        <BgmPlayerButton
+          v-if="showBgmPlayer"
+          class="absolute top-2 right-2 z-30"
+          :muted="bgmMuted"
+          :spinning="bgmSpinning"
+          @toggle="$emit('toggle-bgm-mute')"
+        />
       </div>
     </div>
   </div>
@@ -48,6 +55,7 @@
 <script setup>
 import { computed } from 'vue'
 import CanvasElement from './CanvasElement.vue'
+import BgmPlayerButton from './BgmPlayerButton.vue'
 import { animationEnterClass, getSlideAnimation } from '../utils/slideAnimation'
 import { DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
 
@@ -60,7 +68,12 @@ const props = defineProps({
   slideTotal: { type: Number, default: 1 },
   animation: { type: String, default: '' },
   enableStagger: { type: Boolean, default: false },
+  showBgmPlayer: { type: Boolean, default: false },
+  bgmMuted: { type: Boolean, default: false },
+  bgmSpinning: { type: Boolean, default: false },
 })
+
+defineEmits(['toggle-bgm-mute'])
 
 const frameClass = computed(() =>
   props.viewport.device === 'mobile'
