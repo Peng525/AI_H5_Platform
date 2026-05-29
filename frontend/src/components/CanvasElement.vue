@@ -11,7 +11,7 @@
       top: element.y + 'px',
       width: element.width + 'px',
       height: element.height + 'px',
-      zIndex: element.zIndex || 1,
+      zIndex: element.zIndex ?? CANVAS_Z.CONTENT_BASE,
       animationDelay: staggerDelay,
     }"
     @mousedown.stop="onRootMouseDown"
@@ -146,6 +146,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { CANVAS_Z } from '../composables/useSlideCanvas.js'
 import { renderWordCloud } from './wordcloud/WordCloudRenderer.js'
 
 const props = defineProps({

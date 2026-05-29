@@ -15,6 +15,9 @@
       @duplicate="$emit('duplicate')"
       @delete="$emit('delete-selected')"
       @bring-front="$emit('bring-front')"
+      @send-back="$emit('send-back')"
+      @bring-forward="$emit('bring-forward')"
+      @send-backward="$emit('send-backward')"
       @center-element="$emit('center-element', $event)"
     />
 
@@ -230,6 +233,9 @@ const emit = defineEmits([
   'duplicate',
   'delete-selected',
   'bring-front',
+  'send-back',
+  'bring-forward',
+  'send-backward',
   'center-element',
   'viewport-change',
   'batch-start',

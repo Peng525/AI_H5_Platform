@@ -5,6 +5,12 @@ import { DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
 const STORAGE_PREFIX = 'ai_h5_canvas_'
 const SETTINGS_PREFIX = 'ai_h5_project_settings_'
 
+/** 画布层级：0 为全页背景图；正文组件从 CONTENT_BASE 起 */
+export const CANVAS_Z = {
+  BACKGROUND: 0,
+  CONTENT_BASE: 10,
+}
+
 function storageKey(projectId, slideId) {
   return `${STORAGE_PREFIX}${Number(projectId)}_${slideId}`
 }
@@ -141,7 +147,7 @@ export function defaultElement(type, overrides = {}) {
     y: 120,
     height: type === 'shape' ? 80 : type === 'image' ? 120 : type === 'table' ? 100 : type === 'chart' ? 120 : type === 'wordcloud' ? 200 : type === 'icon' ? 64 : 48,
     width: type === 'table' ? 220 : type === 'chart' ? 200 : type === 'wordcloud' ? 280 : type === 'icon' ? 64 : type === 'shape' ? 120 : 200,
-    zIndex: 1,
+    zIndex: CANVAS_Z.CONTENT_BASE,
     content: type === 'text' ? '双击编辑文本' : type === 'icon' ? 'star' : type === 'table' ? defaultTableContent() : type === 'chart' ? defaultChartContent() : type === 'wordcloud' ? defaultWordCloudContent() : type === 'image' ? '' : '',
     style: {
       fontSize: 16,
@@ -160,6 +166,20 @@ export function defaultElement(type, overrides = {}) {
     },
   }
   return { ...base, ...overrides, style: { ...base.style, ...(overrides.style || {}) } }
+}
+
+function remapElementsForCanvas(newEls, existingElements) {
+  if (!Array.isArray(newEls) || !newEls.length) return []
+  const maxZ = existingElements.reduce((m, el) => Math.max(m, el.zIndex || 0), 0)
+  const baseZ = Math.max(CANVAS_Z.CONTENT_BASE, maxZ + 1)
+  const internalZs = newEls.map((el) => el.zIndex ?? 1)
+  const minInternal = Math.min(...internalZs)
+  return newEls.map((el) => {
+    const copy = JSON.parse(JSON.stringify(el))
+    copy.id = genId()
+    copy.zIndex = baseZ + ((el.zIndex ?? 1) - minInternal)
+    return copy
+  })
 }
 
 export function useSlideCanvas(projectIdRef, slideIdRef) {
@@ -319,9 +339,20 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
 
   function replaceAllElements(newElements) {
     if (!historyBatching) pushHistory()
-    elements.value = Array.isArray(newElements) ? newElements : []
+    const remapped = remapElementsForCanvas(newElements, [])
+    elements.value = remapped
     selectedIds.value = []
     saveElements()
+  }
+
+  function appendLayoutElements(newElements) {
+    if (!Array.isArray(newElements) || !newElements.length) return []
+    if (!historyBatching) pushHistory()
+    const remapped = remapElementsForCanvas(newElements, elements.value)
+    elements.value.push(...remapped)
+    selectedIds.value = remapped.map((el) => el.id)
+    saveElements()
+    return remapped
   }
 
   function saveElements() {
@@ -345,7 +376,8 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
   function addElement(type, overrides = {}) {
     if (!historyBatching) pushHistory()
     const maxZ = elements.value.reduce((m, el) => Math.max(m, el.zIndex || 0), 0)
-    const el = defaultElement(type, { ...overrides, zIndex: maxZ + 1 })
+    const zIndex = overrides.zIndex ?? Math.max(CANVAS_Z.CONTENT_BASE, maxZ + 1)
+    const el = defaultElement(type, { ...overrides, zIndex })
     elements.value.push(el)
     selectedIds.value = [el.id]
     saveElements()
@@ -473,6 +505,52 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     saveElements()
   }
 
+  function getContentFloorZ() {
+    const contentZs = elements.value
+      .map((el) => el.zIndex ?? CANVAS_Z.CONTENT_BASE)
+      .filter((z) => z > CANVAS_Z.BACKGROUND)
+    return contentZs.length ? Math.min(...contentZs) : CANVAS_Z.CONTENT_BASE
+  }
+
+  function sendSelectedToBack() {
+    if (!selectedIds.value.length) return
+    if (!historyBatching) pushHistory()
+    const floor = getContentFloorZ()
+    for (const id of selectedIds.value) {
+      const idx = elements.value.findIndex((el) => el.id === id)
+      if (idx < 0) continue
+      elements.value[idx] = { ...elements.value[idx], zIndex: floor }
+    }
+    saveElements()
+  }
+
+  function bringSelectedForward() {
+    if (!selectedIds.value.length) return
+    if (!historyBatching) pushHistory()
+    for (const id of selectedIds.value) {
+      const idx = elements.value.findIndex((el) => el.id === id)
+      if (idx < 0) continue
+      const z = elements.value[idx].zIndex || CANVAS_Z.CONTENT_BASE
+      elements.value[idx] = { ...elements.value[idx], zIndex: z + 1 }
+    }
+    saveElements()
+  }
+
+  function sendSelectedBackward() {
+    if (!selectedIds.value.length) return
+    if (!historyBatching) pushHistory()
+    for (const id of selectedIds.value) {
+      const idx = elements.value.findIndex((el) => el.id === id)
+      if (idx < 0) continue
+      const z = elements.value[idx].zIndex || CANVAS_Z.CONTENT_BASE
+      elements.value[idx] = {
+        ...elements.value[idx],
+        zIndex: Math.max(CANVAS_Z.CONTENT_BASE, z - 1),
+      }
+    }
+    saveElements()
+  }
+
   function syncFromSlide(slide) {
     if (!slide || elements.value.length > 0) return
     const items = buildElementsFromSlide(slide)
@@ -498,7 +576,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
       y = 0
       width = vp.width
       height = vp.height
-      zIndex = 0
+      zIndex = CANVAS_Z.BACKGROUND
     } else if (fit === 'original') {
       width = Math.min(meta.width || 280, vp.width - 48)
       height = Math.min(meta.height || Math.round(width * aspect), vp.height - 160)
@@ -539,6 +617,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     loadElements,
     saveElements,
     replaceAllElements,
+    appendLayoutElements,
     flushCanvasSave,
     addElement,
     addImageFromAi,
@@ -554,6 +633,9 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     clearSelection,
     bringToFront,
     bringSelectedToFront,
+    sendSelectedToBack,
+    bringSelectedForward,
+    sendSelectedBackward,
     syncFromSlide,
     undo,
     redo,

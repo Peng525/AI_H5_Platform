@@ -225,6 +225,15 @@
         <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="置顶" @click="$emit('bring-front')">
           <span class="material-symbols-outlined text-[18px]">vertical_align_top</span>
         </button>
+        <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="置底" @click="$emit('send-back')">
+          <span class="material-symbols-outlined text-[18px]">vertical_align_bottom</span>
+        </button>
+        <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="上移一层" @click="$emit('bring-forward')">
+          <span class="material-symbols-outlined text-[18px]">keyboard_arrow_up</span>
+        </button>
+        <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="下移一层" @click="$emit('send-backward')">
+          <span class="material-symbols-outlined text-[18px]">keyboard_arrow_down</span>
+        </button>
         <button type="button" class="p-1.5 hover:bg-red-50 rounded text-red-600" title="删除" @click="$emit('delete')">
           <span class="material-symbols-outlined text-[18px]">delete</span>
         </button>
@@ -252,7 +261,7 @@ const props = defineProps({
   slideId: { type: String, default: '' },
 })
 
-const emit = defineEmits(['add-text', 'add-shape', 'add-image', 'style-change', 'duplicate', 'delete', 'bring-front', 'center-element'])
+const emit = defineEmits(['add-text', 'add-shape', 'add-image', 'style-change', 'duplicate', 'delete', 'bring-front', 'send-back', 'bring-forward', 'send-backward', 'center-element'])
 
 const addMenuOpen = ref(false)
 const addMenuRef = ref(null)

@@ -57,6 +57,9 @@
         @duplicate="onDuplicate"
         @delete-selected="onDeleteSelected"
         @bring-front="onBringFront"
+        @send-back="onSendBack"
+        @bring-forward="onBringForward"
+        @send-backward="onSendBackward"
         @center-element="onCenterElement"
         @viewport-change="setViewport"
         @batch-start="onBatchStart"
@@ -117,7 +120,7 @@ import EditorShortcutsHelp from '../components/EditorShortcutsHelp.vue'
 import LayoutPickerModal from '../components/LayoutPickerModal.vue'
 import DialogueGeneratorModal from '../components/dialogue/DialogueGeneratorModal.vue'
 import WordCloudEditorModal from '../components/wordcloud/WordCloudEditorModal.vue'
-import { buildBlock, getDefaultBlockBackground } from '../constants/layoutBlocks.js'
+import { buildBlock, getDefaultBlockBackground, resetLayoutBlockIds } from '../constants/layoutBlocks.js'
 import { normalizeChatScript, serializeChatScript } from '../utils/chatScript.js'
 
 const route = useRoute()
@@ -171,8 +174,12 @@ const {
   clearSelection,
   bringToFront,
   bringSelectedToFront,
+  sendSelectedToBack,
+  bringSelectedForward,
+  sendSelectedBackward,
   syncFromSlide,
   replaceAllElements,
+  appendLayoutElements,
   addImageFromAi,
   flushCanvasSave,
   undo,
@@ -244,7 +251,7 @@ function finishNewSlide(slide, blockId = null) {
   current.value = slide
   loadElements(slide.canvas_elements)
   if (blockId) {
-    applyLayoutBlock(blockId, slide.id)
+    applyLayoutBlock(blockId, slide.id, { mode: 'replace' })
   } else if (!elements.value.length) {
     syncFromSlide(slide)
   }
@@ -259,16 +266,21 @@ function onLayoutBlankForNewSlide() {
   if (pendingNewSlide.value) finishNewSlide(pendingNewSlide.value, null)
 }
 
-function applyLayoutBlock(blockId, slideId = null) {
+function applyLayoutBlock(blockId, slideId = null, { mode = 'append' } = {}) {
   const sid = slideId ?? current.value?.id
   if (!sid) return
   if (slideId && slideId !== current.value?.id) {
     current.value = project.value.slides.find((s) => s.id === slideId) || current.value
     loadElements([])
   }
+  resetLayoutBlockIds()
   const els = buildBlock(blockId, settings.value.viewportId, settings.value.themeId || 'zjy-minimal')
-  replaceAllElements(els)
-  setSlideBackground(sid, getDefaultBlockBackground(settings.value.themeId || 'zjy-minimal'))
+  if (mode === 'replace') {
+    replaceAllElements(els)
+    setSlideBackground(sid, getDefaultBlockBackground(settings.value.themeId || 'zjy-minimal'))
+  } else {
+    appendLayoutElements(els)
+  }
 }
 
 async function removeSlide(slideId) {
@@ -466,6 +478,18 @@ function onDeleteSelected() {
 function onBringFront() {
   if (selectedIds.value.length > 1) bringSelectedToFront()
   else if (selectedId.value) bringToFront(selectedId.value)
+}
+
+function onSendBack() {
+  sendSelectedToBack()
+}
+
+function onBringForward() {
+  bringSelectedForward()
+}
+
+function onSendBackward() {
+  sendSelectedBackward()
 }
 
 function onCenterElement(axis) {
