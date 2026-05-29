@@ -779,4 +779,3 @@ function onViewportChange(e) {
   }
 }
 </style>
-</script>
