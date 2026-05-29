@@ -41,7 +41,7 @@
 - **背景音乐（BGM）**：动效面板文本按钮启用；曲库来自 `backend/static/bgm/`；画布右上角旋转播放器可静音/继续
 - 画布内容自动保存至服务端，**预览与编辑器内容一致**
 - PPT 风格素材面板（文本框 / 矩形 / 表格 / 图标 / 图片 / 图表）与页面背景色
-- **版式叠加**：素材面板版式（含「更多版式」）点击后**追加**到当前画布，不替换整页；新建页面时仍可选版式整页套用
+- **版式叠加**：素材面板版式（含「更多版式」）点击后**追加**到当前画布，不替换整页；**新建页面默认为空白页**，需要版式时从素材面板叠加或套用
 - **自定义版式（管理端）**：`/admin/layouts` 增删改查；粘贴 `canvas_elements` JSON，启用后出现在素材面板
 - **组件层级**：页面背景最底；画布工具栏支持置顶 / 置底 / 上移一层 / 下移一层
 - Word 风格文本格式工具栏
@@ -49,13 +49,24 @@
 - **三栏编辑器**：左侧工具箱（页面 / 音乐 / 动效 / 素材，2×2 Tab）+ 中间画布 + 右侧 AI 面板
 - AI 全量生成演示结构（模板：全量生成）
 - AI 单页改写（模板：单页改写）
-- **AI 配图生成**：读取 `.env` 通道与 `LLM_IMAGE_MODEL_*`；**提示词模板**一键填入面板；面板预览、复制、一键添加到画布
+- **AI 配图生成**：先生成**原图预览**，再自选「适应宽度 / 填充页面 / 原始尺寸」添加到画布；选中图片后画布工具栏可切换适应方式
 - 表格双击单元格编辑
 - 分享链接 `/s/{slug}`
 - **管理员控制台**：访问统计、订单仪表盘、用户管理、**版式管理**、**H5 模板编辑/PPT 导入**、在线编辑 `.env`
 - Docker 一键本地/云端部署
 
 完整需求追踪见 [`docs/需求清单.md`](docs/需求清单.md)。
+
+## 部署文档
+
+| 文档 | 说明 |
+|------|------|
+| [**docs/Push与发布规范.md**](docs/Push与发布规范.md) | **push 前检查清单**、分支约定、发布到 EC2（每次 push 必遵） |
+| [`docs/部署说明.md`](docs/部署说明.md) | 本机 Docker、**AWS EC2 公网部署**、分享链接、Nginx、常见问题 |
+| [`docs/CI-CD与分支策略.md`](docs/CI-CD与分支策略.md) | GitHub Actions CI/CD、`develop`/`main` 分支、Secrets、手动发布到 EC2 |
+| [`docs/DockerHub连接失败.md`](docs/DockerHub连接失败.md) | 国内 Docker 镜像加速 |
+
+**推荐流程：** 本机 / `develop` 日常开发 → 遵守 [Push与发布规范](docs/Push与发布规范.md) → CI 自动 build → 稳定后 merge `main` → GitHub Actions **手动 Deploy to EC2**。
 
 ### 规划中（P1）→ 已实现
 
@@ -129,7 +140,13 @@ LLM_IMAGE_MODEL_FREE=gemini-3.1-flash-image-preview
 LLM_IMAGE_MODEL_PRO=gemini-3-pro-image-preview
 ```
 
-编辑器 **「生成配图」** → `POST /api/v1/项目/{id}/生成/配图`；**「仅生成文案」** → 单页改写接口。
+### 编辑器 AI 配图
+
+1. 右侧 **AI 助手** → 填写画面描述 → **AI 生图**
+2. 在 **原图预览** 下方选择添加到页面的方式：**适应宽度** / **填充页面** / **原始尺寸**
+3. 点击 **按当前方式添加**；已添加的图片可在画布上选中，顶部工具栏点 **适应宽 / 填充 / 原图** 切换
+
+配置 `LLM_RELAY_*` 或 `LLM_OFFICIAL_*` 及 `LLM_IMAGE_MODEL_*`（见上文配图环境变量）。
 
 ### 编辑器快捷键（画布）
 
@@ -183,7 +200,7 @@ node scripts/generate-h5-templates.mjs
 **编辑器用法**：
 
 - 素材面板 → **版式**（标题 / 章节页 / 三要点 / 表格 / 更多版式）**叠加添加**到当前页；不改变已有页面背景
-- 新建页面 → 选择版式整页套用（可跳过为空白页）
+- 新建页面 → **默认空白页**；需要版式时从 **素材 → 版式** 叠加添加
 - 选中画布组件 → 工具栏调节**层级**（置顶 / 置底 / 上移 / 下移）
 - 动效面板 → 浏览模式、页动效
 - **音乐** Tab → 启用 BGM、选择 `backend/static/bgm` 曲目；幻灯片内右上角旋转播放器
@@ -238,12 +255,21 @@ develop/
 │   └── install-bgm.ps1
 ├── Dockerfile
 ├── docker-compose.yml
+├── .cursor/rules/
+│   ├── git-and-docs.mdc               # 每次 push 前检查（alwaysApply）
+│   ├── deploy-release.mdc             # 部署/workflow 不变量
+│   └── backend-engineering.mdc
+├── .github/workflows/
+│   ├── ci.yml                         # push develop/main：docker build 校验
+│   └── deploy-ec2.yml                 # 手动 SSH 部署 EC2（跟踪 main）
 └── docs/
     ├── 需求清单.md                    # 功能需求与完成状态（含 DG/WC、TM-07~15）
     ├── 互动组件-对话生成器与文字云.md    # P1 互动组件设计与验收
+    ├── CI-CD与分支策略.md              # GitHub Actions、Secrets、分支发布
+    ├── Push与发布规范.md               # push 前检查清单、发布流程（固定规范）
     ├── reference-frames/              # 视觉参照与截帧说明
     ├── Stitch原型对照.md
-    └── 部署说明.md
+    └── 部署说明.md                    # 本地 Docker + EC2 + 分享链接
 ```
 
 ## 环境安装目录

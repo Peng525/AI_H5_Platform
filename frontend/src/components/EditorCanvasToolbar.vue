@@ -209,6 +209,18 @@
             icon="format_color_fill"
             @change="onStyle({ background: $event })"
           />
+          <div class="w-px h-5 bg-outline-variant" />
+          <button
+            v-for="m in imageFitModes"
+            :key="m.id"
+            type="button"
+            class="px-1.5 py-1 text-[10px] rounded border whitespace-nowrap"
+            :class="m.id === 'width' ? 'border-outline-variant hover:bg-surface-container' : 'border-outline-variant hover:bg-surface-container'"
+            :title="m.label"
+            @click="$emit('image-fit', m.id)"
+          >
+            {{ m.short }}
+          </button>
         </template>
 
         <div class="w-px h-5 bg-outline-variant" />
@@ -261,7 +273,13 @@ const props = defineProps({
   slideId: { type: String, default: '' },
 })
 
-const emit = defineEmits(['add-text', 'add-shape', 'add-image', 'style-change', 'duplicate', 'delete', 'bring-front', 'send-back', 'bring-forward', 'send-backward', 'center-element'])
+const emit = defineEmits(['add-text', 'add-shape', 'add-image', 'style-change', 'duplicate', 'delete', 'bring-front', 'send-back', 'bring-forward', 'send-backward', 'center-element', 'image-fit'])
+
+const imageFitModes = [
+  { id: 'width', label: '适应宽度', short: '适应宽' },
+  { id: 'fill', label: '填充页面', short: '填充' },
+  { id: 'original', label: '原始尺寸', short: '原图' },
+]
 
 const addMenuOpen = ref(false)
 const addMenuRef = ref(null)

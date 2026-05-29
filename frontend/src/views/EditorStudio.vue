@@ -63,6 +63,7 @@
         @bring-forward="onBringForward"
         @send-backward="onSendBackward"
         @center-element="onCenterElement"
+        @image-fit="onImageFit"
         @viewport-change="setViewport"
         @batch-start="onBatchStart"
         @batch-end="onBatchEnd"
@@ -82,13 +83,6 @@
     </div>
 
     <EditorShortcutsHelp v-model:open="shortcutsHelpOpen" />
-    <LayoutPickerModal
-      :open="layoutPickerOpen"
-      :blocks="pickerLayoutItems"
-      @close="layoutPickerOpen = false"
-      @pick="onLayoutPickedForNewSlide"
-      @blank="onLayoutBlankForNewSlide"
-    />
     <DialogueGeneratorModal
       :open="dialogueGeneratorOpen"
       :initial-script="current?.chat_script"
@@ -120,7 +114,6 @@ import EditorPhoneCanvas from '../components/EditorPhoneCanvas.vue'
 import EditorToolbox from '../components/EditorToolbox.vue'
 import EditorTopBar from '../components/EditorTopBar.vue'
 import EditorShortcutsHelp from '../components/EditorShortcutsHelp.vue'
-import LayoutPickerModal from '../components/LayoutPickerModal.vue'
 import DialogueGeneratorModal from '../components/dialogue/DialogueGeneratorModal.vue'
 import WordCloudEditorModal from '../components/wordcloud/WordCloudEditorModal.vue'
 import { buildBlock, getDefaultBlockBackground, resetLayoutBlockIds, resolveStoredLayoutElements } from '../constants/layoutBlocks.js'
@@ -138,8 +131,6 @@ const quota = ref({ remaining: 5, total: 5 })
 const previewAnimation = ref('')
 const previewAnimationTick = ref(0)
 const shortcutsHelpOpen = ref(false)
-const layoutPickerOpen = ref(false)
-const pendingNewSlide = ref(null)
 const dialogueGeneratorOpen = ref(false)
 const wordCloudOpen = ref(false)
 const wordCloudEditContent = ref(null)
@@ -150,7 +141,6 @@ const { settings, viewport, setViewport, setScrollEffect, getSlideBackground, se
 const layoutCatalog = useLayoutCatalog()
 const primaryLayoutItems = computed(() => layoutCatalog.getPrimaryLayoutItems())
 const moreLayoutItems = computed(() => layoutCatalog.getMoreLayoutItems())
-const pickerLayoutItems = computed(() => layoutCatalog.getPickerLayoutItems())
 
 const {
   active: bgmActive,
@@ -190,6 +180,7 @@ const {
   replaceAllElements,
   appendLayoutElements,
   addImageFromAi,
+  applyImageFitToSelected,
   flushCanvasSave,
   undo,
   redo,
@@ -250,30 +241,16 @@ async function addSlide() {
       animation: 'fade',
     })
     project.value.slides.push(slide)
-    pendingNewSlide.value = slide
-    layoutPickerOpen.value = true
+    finishNewSlide(slide)
   } catch (e) {
     alert(e.message)
   }
 }
 
-function finishNewSlide(slide, blockId = null) {
+function finishNewSlide(slide) {
   current.value = slide
   loadElements(slide.canvas_elements)
-  if (blockId) {
-    applyLayoutBlock(blockId, slide.id, { mode: 'replace' })
-  } else if (!elements.value.length) {
-    syncFromSlide(slide)
-  }
-  pendingNewSlide.value = null
-}
-
-function onLayoutPickedForNewSlide(blockId) {
-  if (pendingNewSlide.value) finishNewSlide(pendingNewSlide.value, blockId)
-}
-
-function onLayoutBlankForNewSlide() {
-  if (pendingNewSlide.value) finishNewSlide(pendingNewSlide.value, null)
+  if (!elements.value.length) syncFromSlide(slide)
 }
 
 function applyLayoutBlock(blockId, slideId = null, { mode = 'append' } = {}) {
@@ -659,6 +636,10 @@ async function onGenerateImage({ prompt, channelTier, channel, style }) {
 function onAddImageToPage({ url, width, height, fitMode }) {
   if (!url) return
   addImageFromAi(url, fitMode || 'width', viewport.value, { width, height })
+}
+
+function onImageFit(fit) {
+  applyImageFitToSelected(fit, viewport.value)
 }
 
 function onPreviewAnimation(anim) {

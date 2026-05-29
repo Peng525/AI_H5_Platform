@@ -1,0 +1,19 @@
+---
+description: 部署与 EC2 发布不变量；修改 workflow 或部署文档时遵守
+globs: .github/workflows/**,docs/部署说明.md,docs/CI-CD与分支策略.md,docs/Push与发布规范.md,docker-compose*.yml,Dockerfile
+alwaysApply: false
+---
+
+# 部署与发布不变量
+
+权威文档：[`docs/Push与发布规范.md`](docs/Push与发布规范.md)、[`docs/CI-CD与分支策略.md`](docs/CI-CD与分支策略.md)。
+
+修改部署相关文件时保持：
+
+1. **CD 默认手动**：`deploy-ec2.yml` 仅用 `workflow_dispatch`，勿改为 push `develop` 自动部署 EC2
+2. **EC2 跟踪 `main`**：Deploy 脚本默认 `git pull origin main`
+3. **不覆盖线上配置**：部署不得删除/覆盖 EC2 上 `.env` 与 `./data` 挂载
+4. **CI 与 CD 分离**：`ci.yml` 只 build，不 SSH
+5. **文档同步**：改 workflow / compose / Dockerfile 时同步更新 `docs/部署说明.md` 与 `docs/Push与发布规范.md`
+
+EC2 默认路径：`/home/ec2-user/AI_H5_Platform`（Amazon Linux；Ubuntu 为 `/home/ubuntu/AI_H5_Platform`）。

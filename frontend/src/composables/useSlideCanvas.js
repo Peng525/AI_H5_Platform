@@ -69,6 +69,51 @@ export function buildElementsFromSlide(slide) {
   return items
 }
 
+/** 根据适应方式计算图片在画布上的位置与样式 */
+export function computeImageFitLayout(fit, viewport, meta = {}) {
+  const vp = viewport
+  const aspect =
+    meta.height && meta.width
+      ? meta.height / meta.width
+      : 16 / 9
+  let x = 24
+  let y = 120
+  let width = vp.width - 48
+  let height = Math.round(width * aspect)
+  let zIndex = CANVAS_Z.CONTENT_BASE
+  let insertAtFront = false
+
+  if (fit === 'fill') {
+    x = 0
+    y = 0
+    width = vp.width
+    height = vp.height
+    zIndex = CANVAS_Z.BACKGROUND
+    insertAtFront = true
+  } else if (fit === 'original') {
+    width = Math.min(meta.width || 280, vp.width - 48)
+    height = Math.min(meta.height || Math.round(width * aspect), vp.height - 160)
+    x = Math.round((vp.width - width) / 2)
+    y = Math.round((vp.height - height) / 2)
+  } else if (fit === 'width') {
+    height = Math.round(width * aspect)
+    x = Math.round((vp.width - width) / 2)
+  }
+
+  return {
+    x,
+    y,
+    width,
+    height,
+    zIndex,
+    insertAtFront,
+    style: {
+      background: fit === 'fill' ? 'transparent' : '#f0f0f0',
+      objectFit: fit === 'fill' ? 'cover' : 'contain',
+    },
+  }
+}
+
 /** 预览用：localStorage → 服务端 canvas → 由 slide 字段生成 */
 export function resolvePreviewElements(projectId, slide) {
   if (!slide?.id) return []
@@ -563,44 +608,24 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
   watch([projectIdRef, slideIdRef], () => loadElements(), { immediate: true })
 
   function addImageFromAi(src, fit = 'width', viewport = { width: 375, height: 812 }, meta = {}) {
-    const vp = viewport
-    const aspect = meta.height && meta.width ? meta.height / meta.width : 16 / 9
-    let x = 24
-    let y = 120
-    let width = vp.width - 48
-    let height = Math.round(width * aspect)
-    let zIndex = elements.value.reduce((m, el) => Math.max(m, el.zIndex || 0), 0) + 1
-
-    if (fit === 'fill') {
-      x = 0
-      y = 0
-      width = vp.width
-      height = vp.height
-      zIndex = CANVAS_Z.BACKGROUND
-    } else if (fit === 'original') {
-      width = Math.min(meta.width || 280, vp.width - 48)
-      height = Math.min(meta.height || Math.round(width * aspect), vp.height - 160)
-      x = Math.round((vp.width - width) / 2)
-      y = Math.round((vp.height - height) / 2)
-    } else if (fit === 'width') {
-      height = Math.round(width * aspect)
-      x = Math.round((vp.width - width) / 2)
-    }
-
+    const layout = computeImageFitLayout(fit, viewport, meta)
+    const zIndex =
+      fit === 'fill'
+        ? layout.zIndex
+        : elements.value.reduce((m, el) => Math.max(m, el.zIndex || 0), 0) + 1
     const el = defaultElement('image', {
-      x,
-      y,
-      width,
-      height,
+      x: layout.x,
+      y: layout.y,
+      width: layout.width,
+      height: layout.height,
       content: src,
       zIndex,
-      style: {
-        background: fit === 'fill' ? 'transparent' : '#f0f0f0',
-        objectFit: fit === 'fill' ? 'cover' : 'contain',
-      },
+      style: layout.style,
+      sourceWidth: meta.width,
+      sourceHeight: meta.height,
     })
     if (!historyBatching) pushHistory()
-    if (fit === 'fill') {
+    if (layout.insertAtFront) {
       elements.value.unshift(el)
     } else {
       elements.value.push(el)
@@ -608,6 +633,44 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     selectedIds.value = [el.id]
     saveElements()
     return el
+  }
+
+  function applyImageFitToSelected(fit, viewport = { width: 375, height: 812 }) {
+    const id = selectedId.value
+    if (!id) return
+    const idx = elements.value.findIndex((e) => e.id === id)
+    if (idx < 0) return
+    const el = elements.value[idx]
+    if (el.type !== 'image') return
+
+    const meta = {
+      width: el.sourceWidth || el.width,
+      height: el.sourceHeight || el.height,
+    }
+    const layout = computeImageFitLayout(fit, viewport, meta)
+    const zIndex =
+      fit === 'fill'
+        ? layout.zIndex
+        : Math.max(CANVAS_Z.CONTENT_BASE, el.zIndex || CANVAS_Z.CONTENT_BASE)
+    const updated = {
+      ...el,
+      x: layout.x,
+      y: layout.y,
+      width: layout.width,
+      height: layout.height,
+      zIndex,
+      style: { ...el.style, ...layout.style },
+    }
+    if (!historyBatching) pushHistory()
+    elements.value.splice(idx, 1)
+    if (layout.insertAtFront) {
+      elements.value.unshift(updated)
+    } else {
+      elements.value.push(updated)
+    }
+    selectedIds.value = [updated.id]
+    saveElements()
+    return updated
   }
 
   return {
@@ -621,6 +684,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     flushCanvasSave,
     addElement,
     addImageFromAi,
+    applyImageFitToSelected,
     updateElement,
     removeElement,
     removeSelected,

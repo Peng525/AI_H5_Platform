@@ -49,6 +49,7 @@
           @bring-forward="$emit('bring-forward')"
           @send-backward="$emit('send-backward')"
           @center-element="$emit('center-element', $event)"
+          @image-fit="$emit('image-fit', $event)"
         />
       </div>
     </div>
@@ -244,6 +245,7 @@ const emit = defineEmits([
   'bring-forward',
   'send-backward',
   'center-element',
+  'image-fit',
   'viewport-change',
   'batch-start',
   'batch-end',

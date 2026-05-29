@@ -68,27 +68,6 @@
           </button>
         </div>
 
-        <div>
-          <p class="text-xs font-medium text-on-surface-variant mb-1">添加到页面时的尺寸</p>
-          <div class="flex flex-wrap gap-1.5">
-            <button
-              v-for="m in fitModes"
-              :key="m.id"
-              type="button"
-              class="px-2 py-1 text-[11px] rounded-full border"
-              :class="fitMode === m.id ? 'bg-secondary/15 border-secondary text-secondary' : 'border-outline-variant'"
-              @click="fitMode = m.id"
-            >
-              {{ m.label }}
-            </button>
-          </div>
-        </div>
-
-        <label class="flex items-center gap-2 text-xs text-on-surface-variant cursor-pointer">
-          <input v-model="autoAddToPage" type="checkbox" class="rounded border-outline-variant text-primary focus:ring-primary" />
-          生成后自动添加到当前页
-        </label>
-
         <div class="space-y-2 pt-1">
           <button
             class="w-full py-3 rounded-lg bg-primary text-on-primary font-medium flex items-center justify-center gap-2 disabled:opacity-50"
@@ -109,25 +88,43 @@
           ref="previewRef"
           class="rounded-lg border border-outline-variant overflow-hidden bg-white"
         >
-          <div class="px-2 py-1.5 bg-surface-container-low border-b border-outline-variant">
-            <span class="text-xs text-on-surface-variant">生成结果</span>
+          <div class="px-2 py-1.5 bg-surface-container-low border-b border-outline-variant flex items-center justify-between gap-2">
+            <span class="text-xs text-on-surface-variant">原图预览</span>
+            <span v-if="generatedImage.width && generatedImage.height" class="text-[10px] text-on-surface-variant/80">
+              {{ generatedImage.width }}×{{ generatedImage.height }}
+            </span>
           </div>
           <div class="p-2 bg-surface-container-low">
             <img
               :src="generatedImage.url"
-              alt="AI 生图结果"
+              alt="AI 生图原图"
               class="w-full h-auto max-w-full object-contain rounded-sm mx-auto block"
               draggable="false"
             />
           </div>
-          <div class="p-2 space-y-1.5 border-t border-outline-variant">
+          <div class="p-2 space-y-2 border-t border-outline-variant">
+            <div>
+              <p class="text-[11px] font-medium text-on-surface-variant mb-1">添加到页面的方式</p>
+              <div class="flex flex-wrap gap-1.5">
+                <button
+                  v-for="m in fitModes"
+                  :key="m.id"
+                  type="button"
+                  class="px-2 py-1 text-[11px] rounded-full border"
+                  :class="fitMode === m.id ? 'bg-secondary/15 border-secondary text-secondary' : 'border-outline-variant'"
+                  @click="fitMode = m.id"
+                >
+                  {{ m.label }}
+                </button>
+              </div>
+            </div>
             <div class="flex gap-1.5">
               <button
                 type="button"
                 class="flex-1 py-1.5 text-xs rounded-md bg-primary text-on-primary"
                 @click="emitAddToPage"
               >
-                添加到页面
+                按「{{ fitModeLabel }}」添加
               </button>
               <button
                 type="button"
@@ -207,7 +204,7 @@
 </template>
 
 <script setup>
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
 import { IMAGE_PROMPT_TEMPLATES, formatImagePromptTemplate } from '../constants/imagePromptTemplates'
@@ -228,7 +225,6 @@ const channelTier = ref('free')
 const prompt = ref('')
 const selectedStyle = ref('商务专业')
 const fitMode = ref('width')
-const autoAddToPage = ref(true)
 const generatedImage = ref(null)
 const imageError = ref('')
 const scrollRef = ref(null)
@@ -248,6 +244,8 @@ const fitModes = [
   { id: 'fill', label: '填充页面' },
   { id: 'original', label: '原始尺寸' },
 ]
+
+const fitModeLabel = computed(() => fitModes.find((m) => m.id === fitMode.value)?.label || '适应宽度')
 
 function onProClick() {
   if (user.value?.tier === 'pro') {
@@ -304,9 +302,6 @@ function setGeneratedImage(result) {
   nextTick(() => {
     scrollPreviewIntoView()
   })
-  if (autoAddToPage.value) {
-    emitAddToPage()
-  }
 }
 
 function setImageError(msg) {
