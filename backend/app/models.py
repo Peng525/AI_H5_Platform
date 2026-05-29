@@ -121,6 +121,7 @@ class H5Template(Base):
     settings_json: Mapped[str] = mapped_column(Text, default="{}")
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     enabled: Mapped[int] = mapped_column(Integer, default=1)
+    source: Mapped[str] = mapped_column(String(16), default="file")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

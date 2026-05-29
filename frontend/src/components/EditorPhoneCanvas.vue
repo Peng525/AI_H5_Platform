@@ -7,6 +7,7 @@
       :selected="selectedElement"
       :theme-id="themeId"
       :viewport-id="viewportId"
+      :slide-id="slide?.id || ''"
       @add-text="$emit('add-text')"
       @add-shape="$emit('add-shape')"
       @add-image="$emit('add-image')"
@@ -31,7 +32,7 @@
       <select
         :value="viewportId"
         class="text-[10px] sm:text-xs border border-outline-variant rounded-lg px-1.5 sm:px-2 py-1 sm:py-1.5 bg-white shadow-card max-w-[7.5rem] sm:max-w-[10rem] min-w-0"
-        @change="$emit('viewport-change', $event.target.value)"
+        @change="onViewportChange($event.target.value)"
       >
         <optgroup label="手机">
           <option v-for="v in mobileViewports" :key="v.id" :value="v.id">{{ v.label }}</option>
@@ -98,7 +99,6 @@
     <div
       class="absolute left-1/2 top-1/2 will-change-transform"
       :style="canvasTransformStyle"
-      @mousedown.self="$emit('deselect')"
     >
       <div
         class="bg-white shadow-2xl overflow-hidden flex flex-col"
@@ -124,13 +124,24 @@
           ref="canvasRef"
           class="flex-1 relative overflow-hidden"
           :style="{ background: canvasBackground }"
-          @mousedown.self="$emit('deselect')"
         >
           <div
             :key="transitionKey"
             class="absolute inset-0"
             :class="previewAnimClass"
           >
+            <div
+              class="absolute inset-0 z-[1] cursor-crosshair"
+              aria-hidden="true"
+              @mousedown="onCanvasPointerDown"
+            />
+
+            <div
+              v-if="marqueeRect"
+              class="absolute z-[45] border-2 border-[#4a4a4a] bg-[#4a4a4a]/12 pointer-events-none rounded-sm"
+              :style="marqueeStyle"
+            />
+
             <CanvasElement
               v-for="el in elements"
               :key="el.id"
@@ -173,7 +184,9 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { closeActiveColorPicker } from '../composables/useColorPickerSession'
 import { VIEWPORT_PRESETS, getViewportPreset } from '../constants/editorPresets'
+import { DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
 import { animationEnterClass } from '../utils/slideAnimation'
 import CanvasElement from './CanvasElement.vue'
 import EditorCanvasToolbar from './EditorCanvasToolbar.vue'
@@ -189,7 +202,7 @@ const props = defineProps({
   viewportId: { type: String, default: 'mobile-375' },
   previewAnimation: { type: String, default: '' },
   previewAnimationTick: { type: Number, default: 0 },
-  canvasBackground: { type: String, default: '#005daa' },
+  canvasBackground: { type: String, default: DEFAULT_CANVAS_BG },
   themeId: { type: String, default: 'zjy-minimal' },
   showDialoguePreview: { type: Boolean, default: false },
 })
@@ -211,6 +224,7 @@ const emit = defineEmits([
   'batch-end',
   'move-delta',
   'edit-wordcloud',
+  'marquee-select',
   'update:show-dialogue-preview',
 ])
 
@@ -248,6 +262,7 @@ const zoomInput = ref(String(DEFAULT_ZOOM))
 const zoomInputRef = ref(null)
 const transitionKey = ref(0)
 const canvasRef = ref(null)
+const marqueeRect = ref(null)
 const panMode = ref(false)
 const spaceHeld = ref(false)
 const isPanning = ref(false)
@@ -296,6 +311,92 @@ const canvasTransformStyle = computed(() => ({
   transform: `translate3d(calc(-50% + ${panX.value}px), calc(-50% + ${panY.value}px), 0) scale(${displayScale.value})`,
   transformOrigin: 'center center',
 }))
+
+const marqueeStyle = computed(() => {
+  const r = marqueeRect.value
+  if (!r) return {}
+  return {
+    left: `${r.x}px`,
+    top: `${r.y}px`,
+    width: `${r.w}px`,
+    height: `${r.h}px`,
+  }
+})
+
+function clientToCanvasLocal(clientX, clientY) {
+  const el = canvasRef.value
+  if (!el) return { x: 0, y: 0 }
+  const rect = el.getBoundingClientRect()
+  const lw = el.clientWidth || el.offsetWidth || 1
+  const lh = el.clientHeight || el.offsetHeight || 1
+  return {
+    x: ((clientX - rect.left) / rect.width) * lw,
+    y: ((clientY - rect.top) / rect.height) * lh,
+  }
+}
+
+function elementIntersectsRect(el, rect) {
+  const ex = el.x ?? 0
+  const ey = el.y ?? 0
+  const ew = el.width ?? 0
+  const eh = el.height ?? 0
+  return !(ex + ew < rect.x || rect.x + rect.w < ex || ey + eh < rect.y || rect.y + rect.h < ey)
+}
+
+function onCanvasPointerDown(e) {
+  if (panActive.value || e.button !== 0) return
+  e.preventDefault()
+  e.stopPropagation()
+
+  const startClient = { x: e.clientX, y: e.clientY }
+  const startLocal = clientToCanvasLocal(startClient.x, startClient.y)
+  let dragging = false
+  const DRAG_THRESHOLD = 4
+
+  marqueeRect.value = { x: startLocal.x, y: startLocal.y, w: 0, h: 0 }
+
+  function onMove(ev) {
+    const dx = ev.clientX - startClient.x
+    const dy = ev.clientY - startClient.y
+    if (!dragging && Math.hypot(dx, dy) < DRAG_THRESHOLD) return
+    dragging = true
+    const cur = clientToCanvasLocal(ev.clientX, ev.clientY)
+    const x = Math.min(startLocal.x, cur.x)
+    const y = Math.min(startLocal.y, cur.y)
+    marqueeRect.value = {
+      x,
+      y,
+      w: Math.abs(cur.x - startLocal.x),
+      h: Math.abs(cur.y - startLocal.y),
+    }
+  }
+
+  function onUp(ev) {
+    window.removeEventListener('mousemove', onMove)
+    window.removeEventListener('mouseup', onUp)
+    const rect = marqueeRect.value
+    marqueeRect.value = null
+
+    if (!dragging) {
+      emit('deselect')
+      return
+    }
+
+    if (!rect || rect.w < 2 || rect.h < 2) {
+      emit('deselect')
+      return
+    }
+
+    const ids = props.elements.filter((el) => elementIntersectsRect(el, rect)).map((el) => el.id)
+    emit('marquee-select', {
+      ids,
+      additive: ev.ctrlKey || ev.metaKey || ev.shiftKey,
+    })
+  }
+
+  window.addEventListener('mousemove', onMove)
+  window.addEventListener('mouseup', onUp)
+}
 
 function togglePanMode() {
   panMode.value = !panMode.value
@@ -374,13 +475,24 @@ watch(
 
 watch(
   () => props.slide?.id,
-  () => resetView()
+  () => {
+    closeActiveColorPicker()
+    resetView()
+  }
 )
 
 watch(
   () => props.viewportId,
-  () => resetView()
+  () => {
+    closeActiveColorPicker()
+    resetView()
+  }
 )
+
+function onViewportChange(id) {
+  closeActiveColorPicker()
+  emit('viewport-change', id)
+}
 
 onMounted(() => {
   window.addEventListener('keydown', onPanKeyDown)

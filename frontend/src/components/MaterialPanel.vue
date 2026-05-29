@@ -4,7 +4,19 @@
       <p class="text-[11px] font-semibold text-on-surface-variant mb-1.5">页面背景</p>
       <div class="flex flex-wrap gap-1 mb-2">
         <button
-          v-for="c in quickColors"
+          v-for="preset in canvasBgPresets"
+          :key="'bg-' + preset.value"
+          type="button"
+          class="h-6 px-1.5 rounded-sm border border-black/10 shrink-0 hover:scale-105 transition-transform text-[9px] text-on-surface-variant"
+          :class="isActiveBg(preset.value) ? 'ring-2 ring-primary ring-offset-1' : ''"
+          :style="{ background: preset.value }"
+          :title="preset.label"
+          @click="pickCanvasBg(preset.value)"
+        >
+          {{ preset.label }}
+        </button>
+        <button
+          v-for="c in extraQuickColors"
           :key="'c-' + c"
           type="button"
           class="w-5 h-5 rounded-sm border border-black/10 shrink-0 hover:scale-110 transition-transform"
@@ -150,10 +162,11 @@ import { computed } from 'vue'
 import { getTheme, getThemeGradients } from '../constants/designThemes.js'
 import { BUSINESS_LAYOUT_BLOCKS, STORY_LAYOUT_BLOCKS } from '../constants/layoutBlocks.js'
 import { themePaletteColors } from '../constants/textFormats.js'
+import { CANVAS_BACKGROUND_PRESETS, DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
 import { normalizeSlideBackground, slideBackgroundCSSValue } from '../utils/slideBackground.js'
 
 const props = defineProps({
-  canvasBackground: { type: String, default: '#005daa' },
+  canvasBackground: { type: String, default: DEFAULT_CANVAS_BG },
   themeId: { type: String, default: 'zjy-minimal' },
 })
 
@@ -163,16 +176,15 @@ const themeGradients = computed(() => getThemeGradients(props.themeId))
 const businessBlocks = BUSINESS_LAYOUT_BLOCKS
 const storyBlocks = STORY_LAYOUT_BLOCKS
 
-const quickColors = computed(() => {
+const canvasBgPresets = CANVAS_BACKGROUND_PRESETS
+
+const extraQuickColors = computed(() => {
   const theme = getTheme(props.themeId)
   return [
-    theme.colors.bg,
-    theme.colors.bgMuted,
-    theme.colors.accent,
-    theme.colors.text,
     '#FFFFFF',
+    theme.colors.accent,
     ...themePaletteColors(props.themeId),
-  ].filter((c, i, a) => a.indexOf(c) === i).slice(0, 10)
+  ].filter((c, i, a) => a.indexOf(c) === i).slice(0, 4)
 })
 
 const solidPickerValue = computed(() => {

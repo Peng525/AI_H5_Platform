@@ -139,6 +139,7 @@ def _to_dict(row: H5Template) -> dict[str, Any]:
         "sort_order": row.sort_order,
         "enabled": bool(row.enabled),
         "featured": featured,
+        "source": getattr(row, "source", None) or "file",
     }
 
 
@@ -161,6 +162,30 @@ def _enrich_from_file_template(data: dict[str, Any]) -> dict[str, Any]:
     if file_data.get("pages"):
         enriched["pages"] = int(file_data["pages"])
     return enriched
+
+
+def _cover_slide_from_slides(slides: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not slides:
+        return None
+    first = slides[0]
+    if not isinstance(first, dict):
+        return None
+    return {
+        "id": "cover",
+        "title": first.get("title", ""),
+        "subtitle": first.get("subtitle", ""),
+        "bullets": first.get("bullets") or [],
+        "layout": first.get("layout", "cover"),
+        "canvas_background": first.get("canvas_background"),
+        "canvas_elements": first.get("canvas_elements") or [],
+    }
+
+
+def _public_template_item(data: dict[str, Any]) -> dict[str, Any]:
+    slides = data.get("slides_json") or []
+    item = {k: v for k, v in data.items() if k not in ("slides_json", "settings_json")}
+    item["cover_slide"] = _cover_slide_from_slides(slides)
+    return item
 
 
 def _filter_items(items: list[dict], category: str, device: str, q: str) -> list[dict]:
@@ -234,10 +259,13 @@ async def sync_flagship_templates(db: AsyncSession) -> None:
             "enabled": 1,
         }
         if row:
+            if getattr(row, "source", "file") == "admin":
+                continue
             for key, val in payload.items():
                 setattr(row, key, val)
+            row.source = "file"
         else:
-            db.add(H5Template(id=tid, **payload))
+            db.add(H5Template(id=tid, source="file", **payload))
     await db.flush()
 
 
@@ -251,7 +279,7 @@ async def list_for_user(
         select(H5Template).where(H5Template.enabled == 1).order_by(H5Template.sort_order, H5Template.id)
     )
     items = [_enrich_from_file_template(_to_dict(r)) for r in result.scalars().all()]
-    public = [{k: v for k, v in t.items() if k != "slides_json"} for t in items]
+    public = [_public_template_item(t) for t in items]
     return _filter_items(public, category, device, q)
 
 
@@ -294,13 +322,14 @@ async def create_template(db: AsyncSession, data: dict[str, Any]) -> dict:
     if exists:
         raise H5TemplateError("模板 ID 已存在")
     slides_json = data.get("slides_json", [])
+    page_count = int(data.get("pages", len(slides_json) or 1))
     row = H5Template(
         id=tid,
         title=data["title"],
         description=data.get("description", ""),
         category=data.get("category", ""),
         device=data.get("device", "mobile"),
-        pages=int(data.get("pages", 1)),
+        pages=page_count,
         premium=1 if data.get("premium") else 0,
         cover_gradient=data.get("cover_gradient", "from-primary to-primary-container"),
         default_viewport=data.get("default_viewport", "mobile-375"),
@@ -308,6 +337,7 @@ async def create_template(db: AsyncSession, data: dict[str, Any]) -> dict:
         settings_json=json.dumps(data.get("settings_json") or {}, ensure_ascii=False),
         sort_order=int(data.get("sort_order", 0)),
         enabled=1 if data.get("enabled", True) else 0,
+        source="admin",
     )
     db.add(row)
     await db.flush()
@@ -329,10 +359,13 @@ async def update_template(db: AsyncSession, template_id: str, data: dict[str, An
         row.enabled = 1 if data["enabled"] else 0
     if "sort_order" in data and data["sort_order"] is not None:
         row.sort_order = int(data["sort_order"])
-    if "slides_json" in data and data["slides_json"] is not None:
-        row.slides_json = json.dumps(data["slides_json"], ensure_ascii=False)
     if "settings_json" in data and data["settings_json"] is not None:
         row.settings_json = json.dumps(data["settings_json"], ensure_ascii=False)
+    if "slides_json" in data and data["slides_json"] is not None:
+        row.slides_json = json.dumps(data["slides_json"], ensure_ascii=False)
+        if "pages" not in data or data["pages"] is None:
+            row.pages = len(data["slides_json"]) or 1
+    row.source = "admin"
     await db.flush()
     return _to_dict(row)
 

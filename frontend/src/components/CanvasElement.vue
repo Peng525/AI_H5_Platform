@@ -3,7 +3,7 @@
     class="absolute select-none"
     :class="[
       readonly ? 'pointer-events-none' : 'touch-none',
-      selected && !readonly ? 'ring-2 ring-primary ring-offset-1 z-50' : '',
+      selected && !readonly ? 'ring-2 ring-white z-50 shadow-[0_0_0_1px_rgba(0,0,0,0.35)]' : '',
       staggerClass,
     ]"
     :style="{
@@ -137,7 +137,7 @@
 
     <template v-if="selected && !readonly">
       <div
-        class="absolute -bottom-1 -right-1 w-3 h-3 bg-primary rounded-sm cursor-se-resize"
+        class="absolute -bottom-1 -right-1 w-3 h-3 bg-white border border-black/35 rounded-sm cursor-se-resize shadow-sm"
         @mousedown.stop="startResize"
       />
     </template>

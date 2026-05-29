@@ -1,5 +1,5 @@
 <template>
-  <aside class="w-[240px] border-r border-outline-variant bg-surface-container-low flex flex-col shrink-0 overflow-hidden">
+  <aside class="editor-toolbox-panel w-[11.5rem] sm:w-[13.75rem] lg:w-[15rem] border-r border-outline-variant bg-surface-container-low flex flex-col shrink-0 overflow-hidden min-h-full">
     <div class="p-2 sm:p-3 border-b border-outline-variant flex items-center gap-2 min-w-0">
       <div class="w-8 h-8 rounded bg-primary-container text-on-primary-container flex items-center justify-center shrink-0">
         <span class="material-symbols-outlined text-[20px]">widgets</span>
@@ -91,13 +91,15 @@ import SlideContentPanel from './SlideContentPanel.vue'
 import SlideEffectPanel from './SlideEffectPanel.vue'
 import SlideThumbList from './SlideThumbList.vue'
 
+import { DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
+
 defineProps({
   slides: { type: Array, default: () => [] },
   currentId: { type: Number, default: null },
   currentSlide: { type: Object, default: null },
   theme: { type: String, default: 'default' },
   scrollEffect: { type: String, default: 'page' },
-  canvasBackground: { type: String, default: '#005daa' },
+  canvasBackground: { type: String, default: DEFAULT_CANVAS_BG },
   projectSettings: { type: Object, default: null },
   projectId: { type: [Number, String], default: null },
   viewport: { type: Object, default: null },

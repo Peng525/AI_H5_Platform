@@ -1,6 +1,6 @@
 <template>
   <div class="absolute top-2 sm:top-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 z-20 max-w-[calc(100%-0.5rem)] sm:max-w-[98%]" data-editor-chrome>
-    <div class="flex items-center gap-0.5 sm:gap-1 bg-white shadow-card rounded-lg px-1 sm:px-2 py-1 border border-outline-variant flex-wrap justify-center max-h-[38vh] overflow-y-auto">
+    <div class="flex items-center gap-0.5 sm:gap-1 bg-white shadow-card rounded-lg px-1 sm:px-2 py-1 border border-outline-variant flex-wrap justify-center overflow-visible">
       <!-- 添加 -->
       <div ref="addMenuRef" class="relative">
         <button
@@ -130,12 +130,14 @@
 
           <WordColorPicker
             :model-value="selected.style?.color || '#1b1b1c'"
+            :context-key="colorPickerContextKey"
             label="字体颜色"
             icon="format_color_text"
             @change="onStyle({ color: $event })"
           />
           <WordColorPicker
             :model-value="selected.style?.background || '#ffffff'"
+            :context-key="colorPickerContextKey"
             label="背景颜色"
             icon="format_color_fill"
             @change="onStyle({ background: $event })"
@@ -146,6 +148,7 @@
         <template v-else-if="isShape">
           <WordColorPicker
             :model-value="selected.style?.background || '#005daa'"
+            :context-key="colorPickerContextKey"
             label="填充颜色"
             icon="format_color_fill"
             @change="onStyle({ background: $event })"
@@ -167,6 +170,7 @@
           <span class="text-xs text-on-surface-variant px-1">双击单元格编辑</span>
           <WordColorPicker
             :model-value="selected.style?.headerBackground || '#005daa'"
+            :context-key="colorPickerContextKey"
             label="表头背景"
             icon="format_color_fill"
             @change="onStyle({ headerBackground: $event })"
@@ -175,6 +179,7 @@
         <template v-else-if="selected.type === 'chart'">
           <WordColorPicker
             :model-value="selected.style?.chartColor || '#005daa'"
+            :context-key="colorPickerContextKey"
             label="图表颜色"
             icon="format_color_fill"
             @change="onStyle({ chartColor: $event })"
@@ -183,12 +188,14 @@
         <template v-else-if="selected.type === 'icon'">
           <WordColorPicker
             :model-value="selected.style?.color || '#005daa'"
+            :context-key="colorPickerContextKey"
             label="图标颜色"
             icon="format_color_text"
             @change="onStyle({ color: $event })"
           />
           <WordColorPicker
             :model-value="selected.style?.background || '#e8f0fe'"
+            :context-key="colorPickerContextKey"
             label="背景颜色"
             icon="format_color_fill"
             @change="onStyle({ background: $event })"
@@ -197,6 +204,7 @@
         <template v-else-if="selected.type === 'image'">
           <WordColorPicker
             :model-value="selected.style?.background || '#f0f0f0'"
+            :context-key="colorPickerContextKey"
             label="背景颜色"
             icon="format_color_fill"
             @change="onStyle({ background: $event })"
@@ -241,6 +249,7 @@ const props = defineProps({
   selected: { type: Object, default: null },
   themeId: { type: String, default: 'zjy-minimal' },
   viewportId: { type: String, default: 'mobile-375' },
+  slideId: { type: String, default: '' },
 })
 
 const emit = defineEmits(['add-text', 'add-shape', 'add-image', 'style-change', 'duplicate', 'delete', 'bring-front', 'center-element'])
@@ -258,6 +267,8 @@ const isBold = computed(() => {
 const textAlign = computed(() => props.selected?.style?.textAlign || 'left')
 
 const themePresets = computed(() => getThemeTextPresets(props.themeId, props.viewportId))
+
+const colorPickerContextKey = computed(() => `${props.viewportId}:${props.slideId}:${props.selected?.id || ''}`)
 
 const currentFontId = computed(() => {
   const ff = props.selected?.style?.fontFamily || ''

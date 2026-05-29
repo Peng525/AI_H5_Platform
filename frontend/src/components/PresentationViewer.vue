@@ -220,6 +220,7 @@ import {
 import { resolvePreviewElements } from '../composables/useSlideCanvas'
 import { VIEWPORT_PRESETS, getViewportPreset, SCROLL_EFFECTS } from '../constants/editorPresets'
 import { getSlideAnimation } from '../utils/slideAnimation'
+import { DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
 
 const props = defineProps({
   project: { type: Object, default: null },
@@ -376,7 +377,7 @@ function elementsForSlide(slide) {
 }
 
 function backgroundForSlide(slide) {
-  if (!slide?.id) return slide?.canvas_background || '#005daa'
+  if (!slide?.id) return slide?.canvas_background || DEFAULT_CANVAS_BG
   const fromApi = slide.canvas_background
   if (fromApi) return fromApi
   return resolveSlideBackground(props.projectId, slide.id, projectSettings.value)

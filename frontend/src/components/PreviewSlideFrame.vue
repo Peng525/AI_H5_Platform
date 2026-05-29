@@ -49,11 +49,12 @@
 import { computed } from 'vue'
 import CanvasElement from './CanvasElement.vue'
 import { animationEnterClass, getSlideAnimation } from '../utils/slideAnimation'
+import { DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
 
 const props = defineProps({
   viewport: { type: Object, required: true },
   elements: { type: Array, default: () => [] },
-  canvasBackground: { type: String, default: '#005daa' },
+  canvasBackground: { type: String, default: DEFAULT_CANVAS_BG },
   slide: { type: Object, default: null },
   slideIndex: { type: Number, default: 0 },
   slideTotal: { type: Number, default: 1 },

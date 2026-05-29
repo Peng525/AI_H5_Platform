@@ -1,7 +1,7 @@
 """管理员 API。"""
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,8 +17,10 @@ from app.services.h5_template_service import (
     admin_list,
     create_template,
     delete_template,
+    get_template,
     update_template,
 )
+from app.services.pptx_template_parser import PptxParseError, parse_pptx_bytes
 from app.services.order_service import (
     OrderServiceError,
     confirm_order_payment,
@@ -243,6 +245,67 @@ async def admin_list_templates(
         H5TemplateOut(**{**r, "premium": bool(r.get("premium")), "enabled": bool(r.get("enabled"))})
         for r in rows
     ]
+
+
+@router.get("/模板/{template_id}", response_model=H5TemplateOut, summary="H5 模板详情")
+async def admin_get_template(
+    template_id: str,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    row = await get_template(db, template_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="模板不存在")
+    return H5TemplateOut(**{**row, "premium": bool(row.get("premium")), "enabled": bool(row.get("enabled"))})
+
+
+@router.post("/模板/解析-pptx", response_model=H5TemplateOut, summary="解析 PPTX 为模板草稿")
+async def admin_parse_pptx_template(
+    file: UploadFile = File(...),
+    device: str = Form("mobile"),
+    category: str = Form("简约商务"),
+    title: str = Form(""),
+    _admin: User = Depends(require_admin),
+):
+    if not file.filename or not file.filename.lower().endswith(".pptx"):
+        raise HTTPException(status_code=400, detail="请上传 .pptx 文件")
+    raw = await file.read()
+    inferred_title = title.strip() or (file.filename.rsplit(".", 1)[0] if file.filename else "导入模板")
+    try:
+        parsed = parse_pptx_bytes(raw, device=device if device in ("mobile", "web") else "mobile", title=inferred_title, category=category)
+    except PptxParseError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return H5TemplateOut(**{**parsed, "premium": bool(parsed.get("premium")), "enabled": bool(parsed.get("enabled")), "featured": len(parsed.get("slides_json") or []) > 0})
+
+
+@router.post("/模板/导入-pptx", response_model=H5TemplateOut, summary="上传 PPTX 并发布为模板")
+async def admin_import_pptx_template(
+    file: UploadFile = File(...),
+    device: str = Form("mobile"),
+    category: str = Form("简约商务"),
+    title: str = Form(""),
+    template_id: str = Form(""),
+    enabled: bool = Form(True),
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    if not file.filename or not file.filename.lower().endswith(".pptx"):
+        raise HTTPException(status_code=400, detail="请上传 .pptx 文件")
+    raw = await file.read()
+    inferred_title = title.strip() or (file.filename.rsplit(".", 1)[0] if file.filename else "导入模板")
+    try:
+        parsed = parse_pptx_bytes(raw, device=device if device in ("mobile", "web") else "mobile", title=inferred_title, category=category)
+    except PptxParseError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if template_id.strip():
+        parsed["id"] = template_id.strip()
+    parsed["enabled"] = enabled
+    try:
+        row = await create_template(db, parsed)
+        await db.commit()
+    except H5TemplateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return H5TemplateOut(**{**row, "premium": bool(row.get("premium")), "enabled": bool(row.get("enabled"))})
 
 
 @router.post("/模板", response_model=H5TemplateOut, summary="创建 H5 模板")

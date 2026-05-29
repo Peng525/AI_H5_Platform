@@ -21,6 +21,8 @@ export const EDITOR_SHORTCUT_GROUPS = [
       { label: '多选（追加）', keys: ['Ctrl', '点击'] },
       { label: '多选（追加）', keys: ['Shift', '点击'] },
       { label: '多选（切换）', keys: ['Ctrl', '点击', '已选元素'] },
+      { label: '框选多个', keys: ['拖动', '画布空白'] },
+      { label: '取消选中', keys: ['点击', '画布空白'] },
       { label: '编辑文本', keys: ['双击', '文本框'] },
       { label: '编辑表格单元格', keys: ['双击', '单元格'] },
     ],

@@ -5,15 +5,15 @@
         v-if="open"
         class="fixed inset-0 z-[200] bg-surface-container-low flex flex-col"
       >
-        <header class="shrink-0 flex items-center justify-between px-4 py-3 border-b border-outline-variant bg-white">
-          <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-primary">forum</span>
-            <h1 class="text-lg font-bold">对话生成器</h1>
+        <header class="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-3 border-b border-outline-variant bg-white">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="material-symbols-outlined text-primary shrink-0">forum</span>
+            <h1 class="text-base sm:text-lg font-bold truncate">对话生成器</h1>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
             <button
               type="button"
-              class="px-3 py-1.5 text-sm border border-outline-variant rounded-lg hover:bg-surface-container-low"
+              class="px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm border border-outline-variant rounded-lg hover:bg-surface-container-low"
               :disabled="exporting"
               @click="downloadImage"
             >
@@ -21,7 +21,7 @@
             </button>
             <button
               type="button"
-              class="px-3 py-1.5 text-sm bg-primary text-on-primary rounded-lg font-medium"
+              class="px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm bg-primary text-on-primary rounded-lg font-medium"
               @click="insertIntoSlide"
             >
               插入当前页
@@ -32,32 +32,36 @@
           </div>
         </header>
 
-        <div class="flex-1 flex min-h-0">
-          <aside class="w-36 shrink-0 border-r border-outline-variant bg-white overflow-y-auto p-2 space-y-2">
-            <p class="text-[10px] font-semibold text-on-surface-variant px-1">样式预设</p>
+        <div class="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
+          <aside class="order-3 lg:order-1 w-full lg:w-32 xl:w-36 shrink-0 border-t lg:border-t-0 lg:border-r border-outline-variant bg-white overflow-x-auto lg:overflow-y-auto p-2 flex lg:flex-col gap-2">
+            <p class="hidden lg:block text-[10px] font-semibold text-on-surface-variant px-1">样式预设</p>
             <button
               v-for="preset in CHAT_STYLE_PRESETS"
               :key="preset.id"
               type="button"
-              class="w-full rounded-lg border p-2 text-left transition hover:border-primary"
+              class="shrink-0 lg:w-full rounded-lg border p-2 text-left transition hover:border-primary min-w-[88px] lg:min-w-0"
               :class="localScript.style?.presetId === preset.id ? 'border-primary ring-1 ring-primary' : 'border-outline-variant'"
               @click="applyPreset(preset)"
             >
-              <div class="flex gap-1 mb-1 h-6">
-                <span class="flex-1 rounded-sm" :style="{ background: preset.thumb.owner }" />
-                <span class="flex-1 rounded-sm border border-black/10" :style="{ background: preset.thumb.other }" />
+              <div class="flex gap-1 mb-1 h-5">
+                <span class="flex-1 rounded-full" :style="{ background: preset.thumb.owner }" />
+                <span class="flex-1 rounded-full border border-black/10" :style="{ background: preset.thumb.other }" />
               </div>
               <span class="text-[10px]">{{ preset.label }}</span>
             </button>
           </aside>
 
-          <main class="flex-1 min-w-0 flex items-center justify-center p-6 bg-[#e8eaed]">
-            <PhoneDeviceFrame ref="phoneFrameRef">
-              <DialoguePreviewCanvas v-model="localScript" editable />
+          <main class="order-1 lg:order-2 flex-1 min-h-0 min-w-0 flex items-center justify-center p-3 sm:p-6 bg-[#e8eaed] overflow-hidden">
+            <PhoneDeviceFrame ref="phoneFrameRef" class="max-h-full w-full max-w-[min(100%,420px)]">
+              <DialoguePreviewCanvas
+                v-model="localScript"
+                editable
+                @select-index="onSelectTimelineIndex"
+              />
             </PhoneDeviceFrame>
           </main>
 
-          <aside class="w-56 shrink-0 border-l border-outline-variant bg-white overflow-y-auto p-3 space-y-4 text-xs">
+          <aside class="order-2 lg:order-3 w-full lg:w-52 xl:w-56 shrink-0 border-b lg:border-b-0 lg:border-l border-outline-variant bg-white overflow-y-auto p-3 space-y-4 text-xs max-h-[38vh] lg:max-h-none">
             <section>
               <h3 class="font-semibold text-on-surface-variant mb-2">圆角</h3>
               <label class="block mb-2">
@@ -94,31 +98,48 @@
               </label>
             </section>
 
-            <section>
-              <h3 class="font-semibold text-on-surface-variant mb-2">参与者</h3>
-              <div
-                v-for="p in localScript.participants"
-                :key="p.id"
-                class="border border-outline-variant rounded-lg p-2 mb-2 space-y-1"
-              >
-                <input v-model="p.name" class="w-full border rounded px-2 py-1 text-xs" placeholder="昵称" />
-                <input v-model="p.avatar" class="w-full border rounded px-2 py-1 text-[10px]" placeholder="头像 URL" />
-                <select v-model="p.defaultSide" class="w-full border rounded px-2 py-1 text-xs">
-                  <option value="left">默认左侧</option>
-                  <option value="right">默认右侧</option>
-                </select>
-                <select v-model="p.role" class="w-full border rounded px-2 py-1 text-xs">
-                  <option value="owner">主人</option>
-                  <option value="guest">访客</option>
-                </select>
+            <section v-if="selectedParticipant">
+              <h3 class="font-semibold text-on-surface-variant mb-2">参与者头像</h3>
+              <p class="text-[10px] text-on-surface-variant mb-2">{{ selectedParticipant.name }}</p>
+              <div class="flex items-center gap-2 mb-3">
+                <div
+                  class="w-12 h-12 bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600 overflow-hidden shrink-0"
+                  :style="{ borderRadius: `${localScript.style.avatarRadius || 6}px` }"
+                >
+                  <img
+                    v-if="selectedParticipant.avatar && !selectedParticipant.useDefaultAvatar"
+                    :src="selectedParticipant.avatar"
+                    alt=""
+                    class="w-full h-full object-cover"
+                  />
+                  <span v-else>{{ selectedParticipant.name?.slice(0, 1) || '用' }}</span>
+                </div>
+                <div class="flex flex-col gap-1.5 min-w-0">
+                  <label class="cursor-pointer px-2 py-1.5 text-[10px] border border-outline-variant rounded-lg text-center hover:bg-surface-container-low">
+                    上传头像
+                    <input type="file" accept="image/*" class="hidden" @change="onAvatarUpload" />
+                  </label>
+                  <button
+                    type="button"
+                    class="px-2 py-1.5 text-[10px] border border-outline-variant rounded-lg hover:bg-surface-container-low"
+                    @click="useDefaultAvatar"
+                  >
+                    使用默认
+                  </button>
+                </div>
               </div>
-              <button
-                type="button"
-                class="w-full py-1.5 border border-dashed border-outline-variant rounded text-[10px]"
-                @click="addParticipant"
-              >
-                + 新用户
-              </button>
+              <input
+                v-model="selectedParticipant.name"
+                class="w-full border rounded px-2 py-1 text-xs"
+                placeholder="昵称"
+                @input="syncParticipant"
+              />
+            </section>
+            <section v-else>
+              <h3 class="font-semibold text-on-surface-variant mb-2">参与者</h3>
+              <p class="text-[10px] text-on-surface-variant leading-relaxed">
+                选中一条消息后，可上传头像或使用默认头像。点击消息旁的 + 可单独添加时间戳（+1 分钟）或添加消息（自动新建用户）。
+              </p>
             </section>
 
             <section>
@@ -141,11 +162,11 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import DialoguePreviewCanvas from './DialoguePreviewCanvas.vue'
 import PhoneDeviceFrame from '../PhoneDeviceFrame.vue'
 import { CHAT_STYLE_PRESETS } from '../../constants/chatStylePresets.js'
-import { emptyChatScript, genChatId, normalizeChatScript, serializeChatScript } from '../../utils/chatScript.js'
+import { emptyChatScript, normalizeChatScript, serializeChatScript } from '../../utils/chatScript.js'
 import { downloadElementAsPng } from '../../utils/exportCanvasImage.js'
 
 const props = defineProps({
@@ -158,26 +179,40 @@ const emit = defineEmits(['close', 'insert'])
 const localScript = ref(emptyChatScript())
 const exporting = ref(false)
 const phoneFrameRef = ref(null)
+const selectedTimelineIndex = ref(-1)
 
 const colorRows = [
-  { key: 'ownerBgColor', label: '主人气泡背景' },
-  { key: 'ownerTextColor', label: '主人文字' },
-  { key: 'otherBgColor', label: '他人气泡背景' },
-  { key: 'otherTextColor', label: '他人文字' },
+  { key: 'ownerBgColor', label: '右侧气泡' },
+  { key: 'ownerTextColor', label: '右侧文字' },
+  { key: 'otherBgColor', label: '左侧气泡' },
+  { key: 'otherTextColor', label: '左侧文字' },
   { key: 'dateTextColor', label: '日期文字' },
   { key: 'background', label: '对话背景' },
 ]
+
+const selectedParticipant = computed(() => {
+  const idx = selectedTimelineIndex.value
+  if (idx < 0) return null
+  const item = localScript.value.timeline?.[idx]
+  if (!item || item.type !== 'message') return null
+  return localScript.value.participants?.find((p) => p.id === item.participantId) || null
+})
 
 watch(
   () => [props.open, props.initialScript],
   () => {
     if (!props.open) return
+    selectedTimelineIndex.value = -1
     localScript.value = normalizeChatScript(
       props.initialScript?.enabled !== false ? props.initialScript : { ...emptyChatScript(), enabled: true }
     )
   },
   { immediate: true, deep: true }
 )
+
+function onSelectTimelineIndex(i) {
+  selectedTimelineIndex.value = i
+}
 
 function applyPreset(preset) {
   localScript.value = {
@@ -186,15 +221,30 @@ function applyPreset(preset) {
   }
 }
 
-function addParticipant() {
-  const n = localScript.value.participants.length
-  localScript.value.participants.push({
-    id: genChatId('p'),
-    name: `用户${String.fromCharCode(65 + n)}`,
-    avatar: '',
-    role: 'guest',
-    defaultSide: 'left',
-  })
+function syncParticipant() {
+  localScript.value = { ...localScript.value }
+}
+
+function onAvatarUpload(e) {
+  const file = e.target.files?.[0]
+  e.target.value = ''
+  const p = selectedParticipant.value
+  if (!file || !p) return
+  const reader = new FileReader()
+  reader.onload = () => {
+    p.avatar = reader.result
+    p.useDefaultAvatar = false
+    syncParticipant()
+  }
+  reader.readAsDataURL(file)
+}
+
+function useDefaultAvatar() {
+  const p = selectedParticipant.value
+  if (!p) return
+  p.avatar = ''
+  p.useDefaultAvatar = true
+  syncParticipant()
 }
 
 async function downloadImage() {

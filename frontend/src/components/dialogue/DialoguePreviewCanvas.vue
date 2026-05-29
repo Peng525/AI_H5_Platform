@@ -11,52 +11,48 @@
           class="text-center text-xs py-1"
           :style="timestampStyle(script.style)"
         >
-          {{ item.text }}
+          <input
+            v-if="editable && selectedIndex === i"
+            :value="item.text"
+            class="bg-transparent text-center outline-none border-b border-primary/40 w-20"
+            @click.stop
+            @input="updateTimestamp(i, $event.target.value)"
+          />
+          <span v-else @click.stop="editable && selectIndex(i)">{{ item.text }}</span>
         </div>
 
         <div
           v-else
-          class="relative group"
-          :class="editable ? 'cursor-pointer' : ''"
+          class="message-row relative"
+          :class="[
+            editable ? 'cursor-pointer' : '',
+            editable && selectedIndex === i ? 'message-row--selected' : '',
+          ]"
           @click.stop="editable && selectIndex(i)"
         >
           <div
             v-if="editable && selectedIndex === i"
-            class="absolute -inset-1 border-2 border-primary rounded-lg pointer-events-none z-10"
-          />
-          <div
-            v-if="editable && selectedIndex === i"
-            class="absolute -top-3 left-1/2 -translate-x-1/2 z-20"
+            class="message-row__tools"
           >
             <button
               type="button"
-              class="w-6 h-6 rounded-full bg-primary text-white text-sm shadow flex items-center justify-center"
+              class="message-row__fab message-row__fab--top"
               title="在上方插入"
-              @click.stop="insertAt(i, 'above')"
+              @click.stop="openInsertMenu($event, i, 'above')"
             >
               +
             </button>
-          </div>
-          <div
-            v-if="editable && selectedIndex === i"
-            class="absolute -bottom-3 left-1/2 -translate-x-1/2 z-20"
-          >
             <button
               type="button"
-              class="w-6 h-6 rounded-full bg-primary text-white text-sm shadow flex items-center justify-center"
+              class="message-row__fab message-row__fab--bottom"
               title="在下方插入"
-              @click.stop="insertAt(i, 'below')"
+              @click.stop="openInsertMenu($event, i, 'below')"
             >
               +
             </button>
-          </div>
-          <div
-            v-if="editable && selectedIndex === i"
-            class="absolute -top-2 -right-2 z-20"
-          >
             <button
               type="button"
-              class="w-5 h-5 rounded-full bg-red-500 text-white text-xs shadow"
+              class="message-row__fab message-row__fab--delete"
               title="删除"
               @click.stop="removeAt(i)"
             >
@@ -81,105 +77,87 @@
               />
               <span v-else>{{ avatarInitial(item.name, item.side) }}</span>
             </div>
-            <div class="max-w-[72%] min-w-0">
+            <div class="max-w-[78%] min-w-0" :class="item.side === 'right' ? 'items-end' : 'items-start'">
               <p
-                v-if="item.name"
-                class="text-[11px] mb-0.5 opacity-70"
+                v-if="item.name && editable"
+                class="text-[11px] mb-0.5 opacity-60 px-1"
                 :class="item.side === 'right' ? 'text-right' : 'text-left'"
               >
                 {{ item.name }}
               </p>
               <div
-                v-if="editable && selectedIndex === i"
-                class="relative px-3 py-2 text-[15px] leading-relaxed shadow-sm"
+                :class="bubbleClass(item.side)"
                 :style="bubbleInlineStyle(item.isOwner, script.style)"
-                @click.stop
               >
                 <textarea
+                  v-if="editable && selectedIndex === i"
                   :value="item.text"
-                  rows="2"
-                  class="w-full bg-transparent outline-none resize-none text-inherit"
+                  rows="1"
+                  class="dialogue-bubble__input"
+                  @click.stop
                   @input="updateText(i, $event.target.value)"
                 />
-              </div>
-              <div
-                v-else
-                class="px-3 py-2.5 text-[15px] leading-relaxed break-words shadow-sm"
-                :style="bubbleInlineStyle(item.isOwner, script.style)"
-              >
-                {{ item.text || (editable ? '点击编辑…' : '') }}
+                <span v-else class="dialogue-bubble__text">{{ item.text || (editable ? '点击编辑…' : '') }}</span>
               </div>
             </div>
           </div>
         </div>
       </template>
 
-      <div v-if="editable && !renderItems.length" class="text-center text-sm opacity-50 py-8">
-        点击下方 + 添加对话或时间
+      <div v-if="editable && !renderItems.length" class="text-center py-10 space-y-2">
+        <p class="text-sm opacity-50 mb-3">暂无对话内容</p>
+        <div class="flex flex-wrap justify-center gap-2">
+          <button
+            type="button"
+            class="px-4 py-2 text-sm border border-outline-variant rounded-full hover:bg-white/80"
+            @click="addTimestampAt(0)"
+          >
+            添加时间戳
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2 text-sm bg-primary text-on-primary rounded-full"
+            @click="addMessageAt(0)"
+          >
+            添加消息
+          </button>
+        </div>
       </div>
     </div>
 
-    <div
-      v-if="editable"
-      class="shrink-0 border-t border-black/10 p-3 bg-white/80 backdrop-blur relative"
-    >
-      <div class="flex flex-wrap gap-2 justify-center">
-        <button
-          v-for="p in script.participants"
-          :key="p.id"
-          type="button"
-          class="px-2 py-1 text-xs border border-outline-variant rounded-full hover:bg-surface-container-low"
-          @click="addMessage(p.id)"
+    <Teleport to="body">
+      <div v-if="insertMenuOpen">
+        <div class="fixed inset-0 z-[280]" @click="closeInsertMenu" />
+        <div
+          class="fixed z-[290] bg-white border border-outline-variant rounded-lg shadow-xl py-1 min-w-[148px]"
+          :style="insertMenuStyle"
+          @click.stop
         >
-          + {{ p.name }}
-        </button>
-        <button
-          type="button"
-          class="px-2 py-1 text-xs border border-dashed border-primary text-primary rounded-full"
-          @click="addParticipant"
-        >
-          + 新用户
-        </button>
-        <button
-          type="button"
-          class="px-2 py-1 text-xs border border-outline-variant rounded-full"
-          @click="addTimestamp"
-        >
-          + 时间
-        </button>
+          <p class="text-[10px] text-on-surface-variant px-3 py-1">插入</p>
+          <button
+            type="button"
+            class="block w-full text-left px-3 py-2 text-sm hover:bg-surface-container-low"
+            @click="confirmAddTimestamp"
+          >
+            添加时间戳
+          </button>
+          <button
+            type="button"
+            class="block w-full text-left px-3 py-2 text-sm hover:bg-surface-container-low"
+            @click="confirmAddMessage"
+          >
+            添加消息
+          </button>
+          <button
+            type="button"
+            class="block w-full text-left px-3 py-2 text-sm text-on-surface-variant hover:bg-surface-container-low"
+            @click="closeInsertMenu"
+          >
+            取消
+          </button>
+        </div>
       </div>
-
-      <div
-        v-if="insertMenuOpen"
-        class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white border border-outline-variant rounded-lg shadow-lg p-2 min-w-[160px] z-30"
-        @click.stop
-      >
-        <p class="text-[10px] text-on-surface-variant px-2 pb-1">插入内容</p>
-        <button
-          v-for="p in script.participants"
-          :key="'ins-' + p.id"
-          type="button"
-          class="block w-full text-left px-2 py-1.5 text-xs hover:bg-surface-container-low rounded"
-          @click="confirmInsertMessage(p.id)"
-        >
-          {{ p.name }}
-        </button>
-        <button
-          type="button"
-          class="block w-full text-left px-2 py-1.5 text-xs hover:bg-surface-container-low rounded"
-          @click="confirmInsertTimestamp"
-        >
-          时间戳
-        </button>
-        <button
-          type="button"
-          class="block w-full text-left px-2 py-1.5 text-xs text-on-surface-variant"
-          @click="insertMenuOpen = false"
-        >
-          取消
-        </button>
-      </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
@@ -188,27 +166,41 @@ import { computed, ref } from 'vue'
 import {
   avatarInlineStyle,
   avatarInitial,
+  bubbleClass,
   bubbleInlineStyle,
   buildRenderableTimeline,
   dialogueBackgroundStyle,
   timestampStyle,
 } from '../../utils/dialogueRender.js'
-import { genChatId, normalizeChatScript } from '../../utils/chatScript.js'
+import {
+  createParticipantAtIndex,
+  genChatId,
+  nextTimestampAfterTimeline,
+  normalizeChatScript,
+  sideForParticipantIndex,
+} from '../../utils/chatScript.js'
 
 const props = defineProps({
   modelValue: { type: Object, required: true },
   editable: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'select-index'])
 
 const rootRef = ref(null)
 const selectedIndex = ref(-1)
 const insertMenuOpen = ref(false)
 const insertAtIndex = ref(-1)
+const insertMenuPos = ref({ top: 0, left: 0 })
 
 const script = computed(() => normalizeChatScript(props.modelValue))
 const renderItems = computed(() => buildRenderableTimeline(script.value))
+
+const insertMenuStyle = computed(() => ({
+  top: `${insertMenuPos.value.top}px`,
+  left: `${insertMenuPos.value.left}px`,
+  transform: 'translateX(-50%)',
+}))
 
 function emitScript(patch) {
   emit('update:modelValue', { ...script.value, ...patch })
@@ -216,6 +208,7 @@ function emitScript(patch) {
 
 function selectIndex(i) {
   selectedIndex.value = i
+  emit('select-index', i)
 }
 
 function updateText(i, text) {
@@ -223,76 +216,189 @@ function updateText(i, text) {
   emitScript({ timeline })
 }
 
+function updateTimestamp(i, text) {
+  const timeline = script.value.timeline.map((t, idx) => (idx === i ? { ...t, text } : t))
+  emitScript({ timeline })
+}
+
 function removeAt(i) {
   const timeline = script.value.timeline.filter((_, idx) => idx !== i)
   selectedIndex.value = -1
+  emit('select-index', -1)
   emitScript({ timeline })
 }
 
-function insertAt(i, where) {
+function openInsertMenu(e, i, where) {
+  const rect = e.currentTarget.getBoundingClientRect()
   insertAtIndex.value = where === 'above' ? i : i + 1
+  insertMenuPos.value = {
+    top: rect.bottom + 6,
+    left: rect.left + rect.width / 2,
+  }
   insertMenuOpen.value = true
 }
 
-function confirmInsertMessage(participantId) {
-  const p = script.value.participants.find((x) => x.id === participantId)
-  const side = p?.defaultSide || 'left'
-  const item = {
+function closeInsertMenu() {
+  insertMenuOpen.value = false
+}
+
+function insertIndex() {
+  return insertAtIndex.value >= 0 ? insertAtIndex.value : script.value.timeline.length
+}
+
+function addTimestampAt(at) {
+  const timeline = [...script.value.timeline]
+  const insertAt = at >= 0 ? at : timeline.length
+  const tsText = nextTimestampAfterTimeline(timeline, insertAt)
+  timeline.splice(insertAt, 0, { id: genChatId('ts'), type: 'timestamp', text: tsText })
+  selectedIndex.value = insertAt
+  emit('select-index', insertAt)
+  emitScript({ timeline })
+}
+
+function addMessageAt(at) {
+  const participants = [...script.value.participants]
+  const participant = createParticipantAtIndex(participants.length)
+  participants.push(participant)
+  const timeline = [...script.value.timeline]
+  const insertAt = at >= 0 ? at : timeline.length
+  const message = {
     id: genChatId('m'),
     type: 'message',
-    participantId,
-    side,
+    participantId: participant.id,
+    side: sideForParticipantIndex(participants.length - 1),
     text: '',
   }
-  const timeline = [...script.value.timeline]
-  const at = insertAtIndex.value >= 0 ? insertAtIndex.value : timeline.length
-  timeline.splice(at, 0, item)
-  insertMenuOpen.value = false
-  selectedIndex.value = at
-  emitScript({ timeline })
+  timeline.splice(insertAt, 0, message)
+  selectedIndex.value = insertAt
+  emit('select-index', insertAt)
+  emitScript({ participants, timeline })
 }
 
-function confirmInsertTimestamp() {
-  const item = { id: genChatId('ts'), type: 'timestamp', text: '15:30' }
-  const timeline = [...script.value.timeline]
-  const at = insertAtIndex.value >= 0 ? insertAtIndex.value : timeline.length
-  timeline.splice(at, 0, item)
-  insertMenuOpen.value = false
-  selectedIndex.value = at
-  emitScript({ timeline })
+function confirmAddTimestamp() {
+  addTimestampAt(insertIndex())
+  closeInsertMenu()
 }
 
-function addMessage(participantId) {
-  insertAtIndex.value = script.value.timeline.length
-  confirmInsertMessage(participantId)
+function confirmAddMessage() {
+  addMessageAt(insertIndex())
+  closeInsertMenu()
 }
 
-function addTimestamp() {
-  insertAtIndex.value = script.value.timeline.length
-  confirmInsertTimestamp()
-}
-
-function addParticipant() {
-  const n = script.value.participants.length
-  const id = genChatId('p')
-  const participants = [
-    ...script.value.participants,
-    {
-      id,
-      name: `用户${String.fromCharCode(65 + n)}`,
-      avatar: '',
-      role: 'guest',
-      defaultSide: 'left',
-    },
-  ]
-  emitScript({ participants })
-}
-
-defineExpose({ rootRef })
+defineExpose({ rootRef, selectedIndex, selectIndex })
 </script>
 
 <style scoped>
 .dialogue-preview {
   -webkit-overflow-scrolling: touch;
+}
+
+.message-row {
+  padding: 4px 2px;
+  border-radius: 8px;
+}
+
+.message-row--selected {
+  box-shadow: 0 0 0 2px rgba(0, 93, 170, 0.45);
+  background: rgba(0, 93, 170, 0.04);
+}
+
+.message-row__tools {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.message-row__fab {
+  pointer-events: auto;
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #005daa;
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+
+.message-row__fab--top {
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.message-row__fab--bottom {
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.message-row__fab--delete {
+  top: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  font-size: 14px;
+  background: #dc2626;
+}
+
+:deep(.dialogue-bubble) {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  padding: 9px 13px;
+  font-size: 15px;
+  line-height: 1.45;
+  word-break: break-word;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.06);
+}
+
+:deep(.dialogue-bubble--right) {
+  border-radius: 18px 6px 18px 18px;
+}
+
+:deep(.dialogue-bubble--right::after) {
+  content: '';
+  position: absolute;
+  right: -5px;
+  top: 12px;
+  border: 5px solid transparent;
+  border-left-color: var(--bubble-bg, #95ec69);
+}
+
+:deep(.dialogue-bubble--left) {
+  border-radius: 6px 18px 18px 18px;
+}
+
+:deep(.dialogue-bubble--left::after) {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 12px;
+  border: 5px solid transparent;
+  border-right-color: var(--bubble-bg, #fff);
+}
+
+:deep(.dialogue-bubble__input) {
+  width: 100%;
+  min-width: 4rem;
+  background: transparent;
+  border: 0;
+  outline: none;
+  resize: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  padding: 0;
+}
+
+:deep(.dialogue-bubble__text) {
+  display: block;
+  white-space: pre-wrap;
 }
 </style>

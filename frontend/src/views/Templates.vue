@@ -80,18 +80,7 @@
           :key="t.id"
           class="bg-white rounded-xl border border-outline-variant overflow-hidden shadow-card hover:shadow-lg transition group"
         >
-          <div class="h-36 bg-gradient-to-br overflow-hidden relative" :class="t.cover_gradient">
-            <div class="w-full h-full transition-transform duration-500 group-hover:scale-105" :class="'bg-gradient-to-br ' + t.cover_gradient" />
-            <span class="absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-full bg-black/40 text-white">
-              {{ deviceLabel(t.device) }}
-            </span>
-            <span
-              v-if="t.featured"
-              class="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-white"
-            >
-              可试看
-            </span>
-          </div>
+          <TemplateCoverThumb :template="t" />
           <div class="p-4">
             <div class="flex items-start justify-between gap-2">
               <h3 class="font-semibold group-hover:text-primary transition-colors">{{ t.title }}</h3>
@@ -153,6 +142,7 @@ import { defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api/client'
 import AppShell from '../components/AppShell.vue'
+import TemplateCoverThumb from '../components/TemplateCoverThumb.vue'
 
 const TemplatePreviewModal = defineAsyncComponent(() => import('../components/TemplatePreviewModal.vue'))
 
@@ -196,10 +186,6 @@ async function initPage() {
   } finally {
     loading.value = false
   }
-}
-
-function deviceLabel(deviceType) {
-  return deviceType === 'web' ? '网页版' : '移动端'
 }
 
 async function load() {

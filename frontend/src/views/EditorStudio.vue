@@ -1,7 +1,7 @@
 <template>
   <div class="h-screen flex flex-col bg-background overflow-hidden">
     <EditorTopBar :project-id="projectId" />
-    <div class="flex flex-1 min-h-0">
+    <div class="editor-workspace flex flex-1 min-h-0 min-w-0 overflow-x-auto overflow-y-hidden">
       <EditorToolbox
         :slides="project?.slides || []"
         :current-id="current?.id"
@@ -31,6 +31,7 @@
       />
 
       <EditorPhoneCanvas
+        class="editor-canvas-panel"
         :elements="elements"
         :selected-ids="selectedIds"
         :slide="current"
@@ -44,6 +45,7 @@
         :show-dialogue-preview="showDialoguePreview"
         @select="onSelectElement"
         @deselect="clearSelection"
+        @marquee-select="onMarqueeSelect"
         @update-element="updateElement"
         @add-text="addElement('text')"
         @add-shape="addElement('shape')"
@@ -152,6 +154,7 @@ const {
   copySelected,
   pasteClipboard,
   selectElement,
+  selectElements,
   clearSelection,
   bringToFront,
   bringSelectedToFront,
@@ -483,6 +486,14 @@ function onSelectElement({ id, ctrlKey, shiftKey }) {
   }
 }
 
+function onMarqueeSelect({ ids, additive }) {
+  if (!ids.length && !additive) {
+    clearSelection()
+    return
+  }
+  selectElements(ids, { additive })
+}
+
 function onBatchStart(dragElementId) {
   beginHistoryBatch()
   pendingDragElementId.value = dragElementId || null
@@ -603,3 +614,21 @@ function onPreviewAnimation(anim) {
   previewAnimationTick.value += 1
 }
 </script>
+
+<style scoped>
+.editor-workspace {
+  scrollbar-width: thin;
+}
+
+.editor-workspace :deep(.editor-canvas-panel) {
+  flex: 1 1 22rem;
+  min-width: 18rem;
+}
+
+@media (min-width: 1024px) {
+  .editor-workspace :deep(.editor-canvas-panel) {
+    flex: 1 1 28rem;
+    min-width: 24rem;
+  }
+}
+</style>

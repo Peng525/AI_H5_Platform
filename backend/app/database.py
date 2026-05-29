@@ -61,6 +61,8 @@ async def _migrate_sqlite_columns(conn) -> None:
         tpl_names = {row[1] for row in tpl_cols}
         if tpl_names and "settings_json" not in tpl_names:
             sync_conn.execute(text("ALTER TABLE h5_templates ADD COLUMN settings_json TEXT DEFAULT '{}'"))
+        if tpl_names and "source" not in tpl_names:
+            sync_conn.execute(text("ALTER TABLE h5_templates ADD COLUMN source VARCHAR(16) DEFAULT 'file'"))
         order_cols = sync_conn.execute(text("PRAGMA table_info(orders)")).fetchall()
         order_names = {row[1] for row in order_cols}
         if "user_remark" not in order_names:

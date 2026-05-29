@@ -30,6 +30,31 @@ async function request(path, options = {}) {
   return data
 }
 
+async function uploadForm(path, formData) {
+  const { authHeaders } = useAuth()
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+    body: formData,
+  })
+  const data = await res.json().catch(() => ({}))
+  if (res.status === 401) {
+    const { logout } = useAuth()
+    logout()
+    const redirect = encodeURIComponent(window.location.pathname + window.location.search)
+    window.location.replace(`/login?redirect=${redirect}`)
+    throw new Error('登录已过期，请重新登录')
+  }
+  if (!res.ok) {
+    let detail = data.detail ?? data.message
+    if (Array.isArray(detail)) {
+      detail = detail.map((d) => d.msg || JSON.stringify(d)).join('；')
+    }
+    throw new Error(detail || `请求失败 (${res.status})`)
+  }
+  return data
+}
+
 export const api = {
   health: () => request('/api/v1/健康'),
   listBgmTracks: () => request('/api/v1/bgm/曲目'),
@@ -123,11 +148,14 @@ export const api = {
   createAdminUser: (body) => request('/api/v1/管理/用户', { method: 'POST', body: JSON.stringify(body) }),
   updateAdminUser: (id, body) => request(`/api/v1/管理/用户/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   listAdminTemplates: () => request('/api/v1/管理/模板'),
+  getAdminTemplate: (id) => request(`/api/v1/管理/模板/${encodeURIComponent(id)}`),
   createAdminTemplate: (body) => request('/api/v1/管理/模板', { method: 'POST', body: JSON.stringify(body) }),
   updateAdminTemplate: (id, body) =>
     request(`/api/v1/管理/模板/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteAdminTemplate: (id) =>
     request(`/api/v1/管理/模板/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  parseAdminPptxTemplate: (formData) => uploadForm('/api/v1/管理/模板/解析-pptx', formData),
+  importAdminPptxTemplate: (formData) => uploadForm('/api/v1/管理/模板/导入-pptx', formData),
   testLlm: (channel, tier = 'free') => {
     const q = new URLSearchParams()
     if (channel) q.set('channel', channel)

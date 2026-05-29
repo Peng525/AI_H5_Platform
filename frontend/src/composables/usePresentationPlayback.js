@@ -1,6 +1,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 
 import { slideBackgroundCSSValue } from '../utils/slideBackground'
+import { DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
 
 /** 演示播放：对话门控 + BGM */
 export function usePresentationPlayback(options = {}) {
@@ -163,7 +164,7 @@ export function mergeProjectSettings(projectId, serverSettings) {
 }
 
 export function resolveSlideBackground(projectId, slideId, settings) {
-  const DEFAULT = '#005daa'
+  const DEFAULT = DEFAULT_CANVAS_BG
   if (!slideId) return slideBackgroundCSSValue(DEFAULT)
   const key = String(slideId)
   const fromSettings = settings?.slideBackgrounds?.[key]

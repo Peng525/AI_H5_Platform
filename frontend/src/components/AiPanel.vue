@@ -1,14 +1,15 @@
 <template>
-  <aside class="w-[300px] border-l border-outline-variant bg-surface-container-low flex flex-col h-full min-h-0 shrink-0 overflow-hidden">
+  <aside class="editor-ai-panel w-[14rem] sm:w-[16.25rem] lg:w-[18.75rem] border-l border-outline-variant bg-surface-container-low flex flex-col h-full min-h-0 shrink-0 overflow-hidden">
     <div class="p-4 border-b border-outline-variant shrink-0">
       <h2 class="font-semibold text-sm">AI 智能面板</h2>
     </div>
 
-    <nav class="flex border-b border-outline-variant text-sm shrink-0">
+    <nav class="flex border-b border-outline-variant text-xs sm:text-sm shrink-0 overflow-x-auto">
       <button
         v-for="t in tabs"
         :key="t.id"
-        class="flex-1 py-2.5 text-center"
+        type="button"
+        class="flex-1 min-w-[4.5rem] py-2 sm:py-2.5 text-center whitespace-nowrap px-1"
         :class="tab === t.id ? 'text-primary border-b-2 border-primary font-medium' : 'text-on-surface-variant'"
         @click="tab = t.id"
       >
@@ -143,10 +144,42 @@
         <p v-if="imageError" class="text-xs text-red-600">{{ imageError }}</p>
       </div>
 
-      <div v-else-if="tab === 'prompts'" class="p-4 pb-6 text-sm text-on-surface-variant">
-        <p class="font-medium text-on-surface mb-2">内置模板</p>
+      <div v-else-if="tab === 'prompts'" class="p-4 pb-6 space-y-3">
+        <p class="text-xs text-on-surface-variant">
+          选择模板后将自动填入「AI 助手」中的画面描述，可按需修改后生成。
+        </p>
         <ul class="space-y-2">
-          <li class="p-2 bg-white rounded-lg border">AI 生图 — 根据描述生成图片并添加到页面</li>
+          <li
+            v-for="tpl in promptTemplates"
+            :key="tpl.id"
+            class="rounded-lg border bg-white overflow-hidden transition-colors"
+            :class="selectedTemplateId === tpl.id ? 'border-primary ring-1 ring-primary/20' : 'border-outline-variant hover:border-primary/40'"
+          >
+            <button
+              type="button"
+              class="w-full text-left p-3"
+              @click="applyPromptTemplate(tpl)"
+            >
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-on-surface">{{ tpl.title }}</p>
+                  <p v-if="tpl.description" class="text-xs text-on-surface-variant mt-0.5">{{ tpl.description }}</p>
+                </div>
+                <span
+                  v-if="selectedTemplateId === tpl.id"
+                  class="material-symbols-outlined text-primary text-lg shrink-0"
+                >check_circle</span>
+              </div>
+              <table class="mt-2 w-full text-[11px] text-on-surface-variant border-collapse">
+                <tbody>
+                  <tr v-for="field in tpl.fields" :key="field.label" class="align-top">
+                    <td class="pr-2 py-0.5 whitespace-nowrap text-on-surface/70 w-10">{{ field.label }}</td>
+                    <td class="py-0.5 leading-snug">{{ field.value }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </button>
+          </li>
         </ul>
       </div>
 
@@ -160,6 +193,16 @@
         </div>
       </div>
     </div>
+
+    <ConfirmDialog
+      :open="upgradeDialogOpen"
+      title="升级会员"
+      message="官方原生通道为会员专享，提供更高清的画质。是否前往升级页面开通会员？"
+      confirm-text="去升级"
+      cancel-text="取消"
+      @confirm="onUpgradeConfirm"
+      @cancel="upgradeDialogOpen = false"
+    />
   </aside>
 </template>
 
@@ -167,6 +210,8 @@
 import { nextTick, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
+import { IMAGE_PROMPT_TEMPLATES, formatImagePromptTemplate } from '../constants/imagePromptTemplates'
+import ConfirmDialog from './ConfirmDialog.vue'
 
 const props = defineProps({
   imageLoading: Boolean,
@@ -188,6 +233,9 @@ const generatedImage = ref(null)
 const imageError = ref('')
 const scrollRef = ref(null)
 const previewRef = ref(null)
+const upgradeDialogOpen = ref(false)
+const selectedTemplateId = ref('')
+const promptTemplates = IMAGE_PROMPT_TEMPLATES
 
 const tabs = [
   { id: 'assistant', label: 'AI 助手' },
@@ -204,9 +252,26 @@ const fitModes = [
 function onProClick() {
   if (user.value?.tier === 'pro') {
     channelTier.value = 'pro'
-  } else {
-    router.push('/upgrade')
+    return
   }
+  upgradeDialogOpen.value = true
+}
+
+function onUpgradeConfirm() {
+  upgradeDialogOpen.value = false
+  router.push('/upgrade')
+}
+
+function applyPromptTemplate(tpl) {
+  selectedTemplateId.value = tpl.id
+  prompt.value = formatImagePromptTemplate(tpl)
+  if (tpl.suggestedStyle && styles.includes(tpl.suggestedStyle)) {
+    selectedStyle.value = tpl.suggestedStyle
+  }
+  tab.value = 'assistant'
+  nextTick(() => {
+    scrollRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
+  })
 }
 
 function payloadBase() {

@@ -181,6 +181,7 @@ class H5TemplateCreate(BaseModel):
     cover_gradient: str = "from-primary to-primary-container"
     default_viewport: str = "mobile-375"
     slides_json: list[dict[str, Any]] = Field(default_factory=list)
+    settings_json: dict[str, Any] = Field(default_factory=dict)
     sort_order: int = 0
     enabled: bool = True
 

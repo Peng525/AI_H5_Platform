@@ -43,7 +43,7 @@
                 {{ item.name }}
               </p>
               <div
-                class="px-3 py-2.5 text-[15px] leading-relaxed break-words shadow-sm"
+                :class="bubbleClass(item.side)"
                 :style="bubbleInlineStyle(item.isOwner, script.style)"
               >
                 {{ item.text }}
@@ -66,6 +66,7 @@ import { normalizeChatScript } from '../utils/chatScript.js'
 import {
   avatarInlineStyle,
   avatarInitial,
+  bubbleClass,
   bubbleInlineStyle,
   buildRenderableTimeline,
   dialogueBackgroundStyle,
@@ -167,5 +168,42 @@ watch(
 }
 .chat-messages {
   -webkit-overflow-scrolling: touch;
+}
+
+:deep(.dialogue-bubble) {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  padding: 9px 13px;
+  font-size: 15px;
+  line-height: 1.45;
+  word-break: break-word;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.06);
+}
+
+:deep(.dialogue-bubble--right) {
+  border-radius: 18px 6px 18px 18px;
+}
+
+:deep(.dialogue-bubble--right::after) {
+  content: '';
+  position: absolute;
+  right: -5px;
+  top: 12px;
+  border: 5px solid transparent;
+  border-left-color: var(--bubble-bg, #95ec69);
+}
+
+:deep(.dialogue-bubble--left) {
+  border-radius: 6px 18px 18px 18px;
+}
+
+:deep(.dialogue-bubble--left::after) {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 12px;
+  border: 5px solid transparent;
+  border-right-color: var(--bubble-bg, #fff);
 }
 </style>

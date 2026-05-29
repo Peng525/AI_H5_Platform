@@ -1,12 +1,14 @@
 /** 页面背景：兼容 hex 字符串与 { type, value } 对象 */
+import { DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
+
 export function normalizeSlideBackground(raw) {
-  if (!raw) return { type: 'solid', value: '#005daa' }
+  if (!raw) return { type: 'solid', value: DEFAULT_CANVAS_BG }
   if (typeof raw === 'string') {
     const v = raw.trim()
     if (v.startsWith('linear-gradient') || v.startsWith('radial-gradient')) {
       return { type: 'gradient', value: v }
     }
-    return { type: 'solid', value: v || '#005daa' }
+    return { type: 'solid', value: v || DEFAULT_CANVAS_BG }
   }
   if (typeof raw === 'object' && raw.value) {
     return {
@@ -14,7 +16,7 @@ export function normalizeSlideBackground(raw) {
       value: String(raw.value),
     }
   }
-  return { type: 'solid', value: '#005daa' }
+  return { type: 'solid', value: DEFAULT_CANVAS_BG }
 }
 
 export function slideBackgroundCSSValue(raw) {

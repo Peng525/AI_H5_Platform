@@ -1,9 +1,9 @@
 import { computed, ref, watch } from 'vue'
 import { api } from '../api/client'
+import { DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
 
 const STORAGE_PREFIX = 'ai_h5_canvas_'
 const SETTINGS_PREFIX = 'ai_h5_project_settings_'
-const DEFAULT_CANVAS_BG = '#005daa'
 
 function storageKey(projectId, slideId) {
   return `${STORAGE_PREFIX}${Number(projectId)}_${slideId}`
@@ -282,6 +282,15 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     selectedIds.value = []
   }
 
+  function selectElements(ids, { additive = false } = {}) {
+    const unique = [...new Set(ids)]
+    if (additive) {
+      selectedIds.value = [...new Set([...selectedIds.value, ...unique])]
+    } else {
+      selectedIds.value = unique
+    }
+  }
+
   function persistLocal() {
     const pid = projectIdRef.value
     const sid = slideIdRef.value
@@ -541,6 +550,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     copySelected,
     pasteClipboard,
     selectElement,
+    selectElements,
     clearSelection,
     bringToFront,
     bringSelectedToFront,

@@ -1,5 +1,5 @@
 import { slideBackgroundCSSValue } from './slideBackground.js'
-import { resolveMessageItem } from './chatScript.js'
+import { getParticipantSide, resolveMessageItem } from './chatScript.js'
 
 export function dialogueBackgroundStyle(style) {
   const bg = style?.background || '#ededed'
@@ -13,16 +13,20 @@ export function avatarInitial(name, side) {
 
 export function bubbleInlineStyle(isOwner, style) {
   const s = style || {}
-  const radius = Number(s.bubbleRadius ?? 4)
+  const bg = isOwner ? s.ownerBgColor || '#95EC69' : s.otherBgColor || '#ffffff'
   return {
-    background: isOwner ? s.ownerBgColor || '#95EC69' : s.otherBgColor || '#ffffff',
+    background: bg,
     color: isOwner ? s.ownerTextColor || '#111' : s.otherTextColor || '#111',
-    borderRadius: `${radius}px`,
+    '--bubble-bg': bg,
   }
 }
 
+export function bubbleClass(side) {
+  return side === 'right' ? 'dialogue-bubble dialogue-bubble--right' : 'dialogue-bubble dialogue-bubble--left'
+}
+
 export function avatarInlineStyle(style) {
-  const radius = Number(style?.avatarRadius ?? 4)
+  const radius = Number(style?.avatarRadius ?? 6)
   return { borderRadius: `${radius}px` }
 }
 

@@ -6,9 +6,8 @@ export function genChatId(prefix = 'c') {
 
 export function defaultParticipants() {
   return [
-    { id: 'p_owner', name: '用户A', avatar: '', role: 'owner', defaultSide: 'right' },
-    { id: 'p_guest', name: '用户B', avatar: '', role: 'guest', defaultSide: 'left' },
-    { id: 'p_guest2', name: '用户C', avatar: '', role: 'guest', defaultSide: 'left' },
+    { id: 'p_a', name: '用户A', avatar: '', useDefaultAvatar: true },
+    { id: 'p_b', name: '用户B', avatar: '', useDefaultAvatar: true },
   ]
 }
 
@@ -18,14 +17,14 @@ export function defaultTimeline() {
     {
       id: genChatId('m'),
       type: 'message',
-      participantId: 'p_owner',
+      participantId: 'p_a',
       side: 'right',
       text: '你好，易企秀。',
     },
     {
       id: genChatId('m'),
       type: 'message',
-      participantId: 'p_guest',
+      participantId: 'p_b',
       side: 'left',
       text: '你好，海报。',
     },
@@ -33,11 +32,11 @@ export function defaultTimeline() {
 }
 
 function legacyMessageToTimeline(messages) {
-  const ownerId = 'p_owner'
-  const guestId = 'p_guest'
+  const ownerId = 'p_a'
+  const guestId = 'p_b'
   const participants = [
-    { id: ownerId, name: '我', avatar: '', role: 'owner', defaultSide: 'right' },
-    { id: guestId, name: '小助手', avatar: '', role: 'guest', defaultSide: 'left' },
+    { id: ownerId, name: '我', avatar: '', useDefaultAvatar: true },
+    { id: guestId, name: '小助手', avatar: '', useDefaultAvatar: true },
   ]
   const timeline = messages.map((m) => {
     const side = m.side === 'right' ? 'right' : 'left'
@@ -81,23 +80,25 @@ export function normalizeChatScript(raw) {
   if (!participants?.length) participants = defaultParticipants()
   if (!timeline?.length) timeline = defaultTimeline()
 
-  participants = participants.map((p, i) => ({
-    id: p.id || genChatId('p'),
-    name: p.name || `用户${String.fromCharCode(65 + i)}`,
-    avatar: p.avatar || '',
-    role: p.role === 'owner' ? 'owner' : 'guest',
-    defaultSide: p.defaultSide === 'right' ? 'right' : 'left',
-  }))
+  participants = participants.map((p, i) => {
+    const useDefault = p.useDefaultAvatar !== false && !p.avatar
+    return {
+      id: p.id || genChatId('p'),
+      name: p.name || `用户${String.fromCharCode(65 + i)}`,
+      avatar: useDefault ? '' : p.avatar || '',
+      useDefaultAvatar: useDefault,
+    }
+  })
 
   timeline = timeline.map((item) => {
     if (item.type === 'timestamp') {
       return { id: item.id || genChatId('ts'), type: 'timestamp', text: item.text || '12:00' }
     }
-    const side = item.side === 'right' ? 'right' : 'left'
+    const side = item.side === 'right' ? 'right' : item.side === 'left' ? 'left' : getParticipantSide(item.participantId, participants)
     return {
       id: item.id || genChatId('m'),
       type: 'message',
-      participantId: item.participantId || (side === 'right' ? 'p_owner' : 'p_guest'),
+      participantId: item.participantId || participants[0]?.id,
       side,
       text: item.text || '',
     }
@@ -115,9 +116,8 @@ export function serializeChatScript(state) {
     participants: n.participants.map((p) => ({
       id: p.id,
       name: p.name,
-      avatar: p.avatar || '',
-      role: p.role,
-      defaultSide: p.defaultSide,
+      avatar: p.useDefaultAvatar ? '' : p.avatar || '',
+      useDefaultAvatar: !!p.useDefaultAvatar,
     })),
     timeline: n.timeline.map((t) => {
       if (t.type === 'timestamp') return { id: t.id, type: 'timestamp', text: t.text }
@@ -136,21 +136,57 @@ export function getParticipant(participants, id) {
   return (participants || []).find((p) => p.id === id) || null
 }
 
+export function sideForParticipantIndex(index) {
+  return index % 2 === 0 ? 'right' : 'left'
+}
+
 export function getParticipantSide(participantId, participants) {
-  const p = getParticipant(participants, participantId)
-  return p?.defaultSide === 'right' ? 'right' : 'left'
+  const idx = (participants || []).findIndex((p) => p.id === participantId)
+  if (idx < 0) return 'left'
+  return sideForParticipantIndex(idx)
+}
+
+export function parseTimeToMinutes(text) {
+  const m = String(text || '').trim().match(/^(\d{1,2}):(\d{2})$/)
+  if (!m) return 15 * 60 + 30
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10)
+}
+
+export function formatMinutesToTime(mins) {
+  const total = ((mins % (24 * 60)) + 24 * 60) % (24 * 60)
+  const h = Math.floor(total / 60)
+  const m = total % 60
+  return `${h}:${String(m).padStart(2, '0')}`
+}
+
+export function nextTimestampAfterTimeline(timeline, beforeIndex = timeline.length) {
+  let last = 15 * 60 + 30
+  for (let i = 0; i < beforeIndex; i++) {
+    if (timeline[i]?.type === 'timestamp') last = parseTimeToMinutes(timeline[i].text)
+  }
+  return formatMinutesToTime(last + 1)
+}
+
+export function createParticipantAtIndex(index) {
+  return {
+    id: genChatId('p'),
+    name: `用户${String.fromCharCode(65 + index)}`,
+    avatar: '',
+    useDefaultAvatar: true,
+  }
 }
 
 export function resolveMessageItem(item, participants) {
   if (item.type === 'timestamp') return item
   const p = getParticipant(participants, item.participantId)
-  const side = item.side || p?.defaultSide || 'left'
+  const side = item.side || getParticipantSide(item.participantId, participants)
+  const avatar = p?.useDefaultAvatar ? '' : p?.avatar || ''
   return {
     ...item,
     side,
     name: p?.name || '',
-    avatar: p?.avatar || '',
-    isOwner: p?.role === 'owner' || side === 'right',
+    avatar,
+    isOwner: side === 'right',
   }
 }
 

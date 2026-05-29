@@ -1,6 +1,7 @@
 import { computed, ref, watch } from 'vue'
 import { getViewportPreset } from '../constants/editorPresets'
 import { slideBackgroundCSSValue, slideBackgroundToStorage } from '../utils/slideBackground'
+import { DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
 import { api } from '../api/client'
 
 const PREFIX = 'ai_h5_project_settings_'
@@ -14,8 +15,6 @@ const defaults = {
   bgm: { enabled: false, trackId: '', url: '', loop: true, volume: 0.35 },
   defaultChatTapToContinue: true,
 }
-
-const DEFAULT_CANVAS_BG = '#005daa'
 
 export function useProjectEditorSettings(projectIdRef) {
   const settings = ref({ ...defaults })
