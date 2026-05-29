@@ -152,13 +152,35 @@
             </section>
 
             <section>
-              <label class="block text-[10px] text-on-surface-variant">
-                自动逐句间隔 (ms，0=点击)
+              <h3 class="font-semibold text-on-surface-variant mb-2">播放方式</h3>
+              <div class="grid grid-cols-2 gap-2 mb-2">
+                <button
+                  type="button"
+                  class="px-2 py-2 rounded-lg border text-[11px] font-medium transition"
+                  :class="playbackMode === 'click' ? 'border-primary bg-primary/5 text-primary' : 'border-outline-variant hover:bg-surface-container-low'"
+                  @click="setPlaybackMode('click')"
+                >
+                  点击播放
+                </button>
+                <button
+                  type="button"
+                  class="px-2 py-2 rounded-lg border text-[11px] font-medium transition"
+                  :class="playbackMode === 'auto' ? 'border-primary bg-primary/5 text-primary' : 'border-outline-variant hover:bg-surface-container-low'"
+                  @click="setPlaybackMode('auto')"
+                >
+                  自动播放
+                </button>
+              </div>
+              <p class="text-[10px] text-on-surface-variant leading-relaxed mb-2">
+                {{ playbackMode === 'click' ? '预览/分享时点击屏幕逐句显示下一条消息。' : '预览/分享时按间隔自动逐句弹出，仍可点击加速。' }}
+              </p>
+              <label v-if="playbackMode === 'auto'" class="block text-[10px] text-on-surface-variant">
+                逐句间隔 (ms)
                 <input
-                  v-model.number="localScript.autoAdvanceMs"
+                  v-model.number="autoIntervalMs"
                   type="number"
-                  min="0"
-                  step="500"
+                  min="300"
+                  step="100"
                   class="w-full mt-0.5 border rounded px-2 py-1"
                 />
               </label>
@@ -223,6 +245,32 @@ const selectedMessageText = computed({
     localScript.value = { ...localScript.value, timeline }
   },
 })
+
+const playbackMode = computed({
+  get() {
+    const n = normalizeChatScript(localScript.value)
+    return n.playbackMode
+  },
+  set(mode) {
+    const next = normalizeChatScript({ ...localScript.value, playbackMode: mode })
+    localScript.value = { ...localScript.value, playbackMode: next.playbackMode, autoAdvanceMs: next.autoAdvanceMs }
+  },
+})
+
+const autoIntervalMs = computed({
+  get() {
+    const ms = Number(localScript.value.autoAdvanceMs || 0)
+    return ms > 0 ? ms : 1500
+  },
+  set(val) {
+    const ms = Math.max(300, Number(val) || 1500)
+    localScript.value = { ...localScript.value, playbackMode: 'auto', autoAdvanceMs: ms }
+  },
+})
+
+function setPlaybackMode(mode) {
+  playbackMode.value = mode
+}
 
 watch(
   () => [props.open, props.initialScript],

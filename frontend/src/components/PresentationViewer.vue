@@ -309,7 +309,7 @@ const scrollHintVisible = computed(() => {
 const scrollModeInfo = computed(() => {
   const m = SCROLL_EFFECTS.find((s) => s.id === scrollEffect.value)
   const hints = {
-    page: '空格 / 方向键切换；对话页点击逐句弹出',
+    page: '空格 / 方向键切换；对话页支持点击或自动逐句播放',
     vertical: '滚轮下滑整屏切换；对话页需先点完聊天',
     horizontal: '左右滑动切换页面',
     snap: '滚动后吸附整屏',

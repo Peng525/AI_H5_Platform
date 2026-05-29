@@ -62,7 +62,16 @@ function legacyMessageToTimeline(messages) {
 export function normalizeChatScript(raw) {
   const src = raw && typeof raw === 'object' ? raw : {}
   const enabled = !!src.enabled
-  const autoAdvanceMs = Number(src.autoAdvanceMs || 0)
+  let autoAdvanceMs = Number(src.autoAdvanceMs || 0)
+  let playbackMode = src.playbackMode === 'auto' || src.playbackMode === 'click' ? src.playbackMode : null
+  if (!playbackMode) {
+    playbackMode = autoAdvanceMs > 0 ? 'auto' : 'click'
+  }
+  if (playbackMode === 'click') {
+    autoAdvanceMs = 0
+  } else if (autoAdvanceMs <= 0) {
+    autoAdvanceMs = 1500
+  }
 
   let style = { ...DEFAULT_CHAT_STYLE, ...(src.style || {}) }
   if (src.style?.presetId) {
@@ -106,14 +115,15 @@ export function normalizeChatScript(raw) {
     }
   })
 
-  return { enabled, autoAdvanceMs, style, participants, timeline }
+  return { enabled, playbackMode, autoAdvanceMs, style, participants, timeline }
 }
 
 export function serializeChatScript(state) {
   const n = normalizeChatScript(state)
   return {
     enabled: n.enabled,
-    autoAdvanceMs: n.autoAdvanceMs,
+    playbackMode: n.playbackMode,
+    autoAdvanceMs: n.playbackMode === 'auto' ? Math.max(300, n.autoAdvanceMs || 1500) : 0,
     style: { ...n.style },
     participants: n.participants.map((p) => ({
       id: p.id,
@@ -211,6 +221,7 @@ export function timelineToLegacyMessages(script) {
 export function emptyChatScript() {
   return serializeChatScript({
     enabled: true,
+    playbackMode: 'click',
     autoAdvanceMs: 0,
     style: { ...DEFAULT_CHAT_STYLE },
     participants: defaultParticipants(),

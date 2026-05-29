@@ -89,6 +89,10 @@ const timeline = computed(() => buildRenderableTimeline(normalized.value))
 const visibleItems = computed(() => timeline.value.slice(0, visibleCount.value))
 const allVisible = computed(() => visibleCount.value >= timeline.value.length)
 
+const isAutoPlayback = computed(
+  () => script.value.playbackMode === 'auto' || Number(script.value.autoAdvanceMs || 0) > 0
+)
+
 const overlayBgStyle = computed(() => ({
   ...dialogueBackgroundStyle(script.value.style),
   backgroundColor: `${dialogueBackgroundStyle(script.value.style).background}f2`,
@@ -96,9 +100,13 @@ const overlayBgStyle = computed(() => ({
 
 const hintText = computed(() => {
   if (!timeline.value.length) return ''
-  if (visibleCount.value === 0) return '点击开始对话'
-  if (!allVisible.value) return '点击继续'
-  return '点击进入下一页'
+  if (visibleCount.value === 0) {
+    return isAutoPlayback.value ? '即将开始对话…' : '点击开始对话'
+  }
+  if (!allVisible.value) {
+    return isAutoPlayback.value ? '自动播放中，点击可跳过' : '点击继续'
+  }
+  return isAutoPlayback.value ? '对话结束，即将进入下一页' : '点击进入下一页'
 })
 
 function clearAutoTimer() {
@@ -110,6 +118,7 @@ function clearAutoTimer() {
 
 function scheduleAutoAdvance() {
   clearAutoTimer()
+  if (!isAutoPlayback.value) return
   const ms = Number(script.value.autoAdvanceMs || 0)
   if (!ms || !props.active || allVisible.value) return
   autoTimer = setTimeout(() => {
@@ -124,7 +133,7 @@ function scheduleAutoAdvance() {
 function reset() {
   clearAutoTimer()
   visibleCount.value = 0
-  if (props.active && timeline.value.length && Number(script.value.autoAdvanceMs || 0) > 0) {
+  if (props.active && timeline.value.length && isAutoPlayback.value) {
     visibleCount.value = 1
     emit('progress', 1)
     scheduleAutoAdvance()
