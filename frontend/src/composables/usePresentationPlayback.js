@@ -2,6 +2,7 @@ import { computed, onUnmounted, ref, watch } from 'vue'
 
 import { slideBackgroundCSSValue } from '../utils/slideBackground'
 import { DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
+import { useBgmPlayer } from './useBgmPlayer.js'
 
 /** 演示播放：对话门控 + BGM */
 export function usePresentationPlayback(options = {}) {
@@ -13,11 +14,17 @@ export function usePresentationPlayback(options = {}) {
 
   const chatBlocking = ref(false)
   const chatSlideKey = ref(null)
-  const audioRef = ref(null)
-  const bgmMuted = ref(false)
   const bgmUnlocked = ref(false)
 
   const bgmConfig = computed(() => settingsRef?.value?.bgm || {})
+  const {
+    active: bgmActive,
+    muted: bgmMuted,
+    playing: bgmPlaying,
+    tryPlay,
+    toggleMute: toggleBgmMuteInternal,
+    stop: stopBgm,
+  } = useBgmPlayer(bgmConfig, { autoPlay: false })
 
   function slideChatScript(slide) {
     if (!slide?.chat_script?.enabled) return null
@@ -44,30 +51,11 @@ export function usePresentationPlayback(options = {}) {
     chatBlocking.value = false
   }
 
-  function ensureAudio() {
-    if (audioRef.value) return audioRef.value
-    const audio = new Audio()
-    audio.loop = !!bgmConfig.value.loop
-    audio.volume = Number(bgmConfig.value.volume ?? 0.35)
-    audioRef.value = audio
-    return audio
-  }
-
   async function tryPlayBgm() {
-    const cfg = bgmConfig.value
-    if (!cfg.enabled || !cfg.url || bgmMuted.value) return
-    const audio = ensureAudio()
-    if (audio.src !== cfg.url) {
-      audio.src = cfg.url
-      audio.loop = cfg.loop !== false
-      audio.volume = Number(cfg.volume ?? 0.35)
-    }
-    try {
-      await audio.play()
-      bgmUnlocked.value = true
-    } catch {
-      onNeedUserGesture?.()
-    }
+    if (!bgmConfig.value.enabled || !bgmConfig.value.url || bgmMuted.value) return
+    const ok = await tryPlay()
+    if (ok) bgmUnlocked.value = true
+    else onNeedUserGesture?.()
   }
 
   function unlockBgmFromGesture() {
@@ -76,18 +64,8 @@ export function usePresentationPlayback(options = {}) {
   }
 
   function toggleBgmMute() {
-    bgmMuted.value = !bgmMuted.value
-    const audio = audioRef.value
-    if (!audio) return
-    if (bgmMuted.value) {
-      audio.pause()
-    } else if (bgmUnlocked.value) {
-      tryPlayBgm()
-    }
-  }
-
-  function stopBgm() {
-    audioRef.value?.pause()
+    toggleBgmMuteInternal()
+    if (!bgmMuted.value) bgmUnlocked.value = true
   }
 
   watch(
@@ -99,7 +77,6 @@ export function usePresentationPlayback(options = {}) {
 
   onUnmounted(() => {
     stopBgm()
-    audioRef.value = null
   })
 
   function guardNavigation(fn) {
@@ -114,6 +91,8 @@ export function usePresentationPlayback(options = {}) {
     chatBlocking,
     chatSlideKey,
     bgmMuted,
+    bgmPlaying,
+    bgmActive,
     bgmUnlocked,
     slideChatScript,
     syncChatGate,

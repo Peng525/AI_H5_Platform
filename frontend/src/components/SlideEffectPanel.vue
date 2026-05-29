@@ -66,75 +66,38 @@
         背景音乐
       </h3>
       <p class="text-xs text-on-surface/75 leading-relaxed">
-        可选配置。关闭后预览与分享页不播放音乐；开启后请选择曲目或填写自定义地址。
+        可选配置。开启后从曲库选择曲目，画布右上角播放器可静音或继续播放。
       </p>
 
-      <label class="flex items-center gap-2 text-xs cursor-pointer">
-        <input type="checkbox" :checked="bgmEnabled" @change="onBgmToggle" />
-        <span>启用背景音乐</span>
-      </label>
+      <button
+        type="button"
+        class="text-xs font-medium text-primary hover:text-primary/80 underline underline-offset-2"
+        @click="toggleBgmEnabled"
+      >
+        {{ bgmEnabled ? '关闭背景音乐' : '启用背景音乐' }}
+      </button>
 
       <template v-if="bgmEnabled">
-        <div class="space-y-1.5">
-          <label class="text-xs font-medium text-on-surface">选择曲目</label>
-          <select
-            class="w-full text-xs border border-outline-variant rounded-lg px-2 py-2 bg-white text-on-surface"
-            :value="selectedTrackKey"
-            @change="onTrackSelect"
-          >
-            <option value="">— 不选曲目（仅自定义 URL）—</option>
-            <option
-              v-for="t in catalogTracks"
-              :key="t.id"
-              :value="t.id"
-              :disabled="!t.available"
-            >
-              {{ t.title }}{{ t.available ? '' : '（未安装）' }}
-            </option>
-            <option value="__custom__">自定义 URL…</option>
-          </select>
-          <p v-if="catalogLoading" class="text-[11px] text-on-surface/70">加载曲目列表…</p>
-          <p v-else-if="!availableTrackCount" class="text-[11px] text-amber-800 leading-relaxed">
-            暂无可用 MP3。将文件放入 <code class="text-[11px]">backend/media/bgm/</code> 或运行
-            <code class="text-[11px]">scripts/install-bgm.ps1</code>
-          </p>
-          <p v-else-if="catalogHint" class="text-[11px] text-on-surface/70">{{ catalogHint }}</p>
-        </div>
-
-        <div v-if="showCustomUrl" class="space-y-1">
-          <label class="text-xs font-medium text-on-surface">自定义音频地址</label>
-          <input
-            :value="bgmUrl"
-            class="w-full text-xs border border-outline-variant rounded-lg px-2 py-1.5"
-            placeholder="/static/bgm/happier-sakura-girl.mp3"
-            @change="onBgmUrl"
-          />
-        </div>
-
-        <p v-if="bgmEnabled && !bgmUrl" class="text-[11px] text-amber-800">
-          已启用但未选择曲目，预览时将无音乐。
+        <p v-if="catalogLoading" class="text-[11px] text-on-surface/70">加载曲目列表…</p>
+        <p v-else-if="!availableTracks.length" class="text-[11px] text-amber-800 leading-relaxed">
+          暂无可用 MP3，请将文件放入 <code class="text-[11px]">backend/static/bgm/</code>
         </p>
-        <p v-else-if="currentTrackLabel" class="text-[11px] text-on-surface/70">
+        <div v-else class="space-y-1.5">
+          <p class="text-xs font-medium text-on-surface">选择曲目</p>
+          <button
+            v-for="t in availableTracks"
+            :key="t.id"
+            type="button"
+            class="effect-option-btn w-full text-left px-3 py-2 rounded-lg border bg-white transition-colors text-xs font-medium"
+            :class="bgmTrackId === t.id ? 'border-primary text-primary shadow-[inset_0_0_0_1px_#005daa]' : 'border-outline-variant text-on-surface hover:border-primary/50'"
+            @click="pickTrack(t)"
+          >
+            {{ t.title }}
+          </button>
+        </div>
+        <p v-if="currentTrackLabel" class="text-[11px] text-on-surface/70">
           当前：{{ currentTrackLabel }}
         </p>
-
-        <label class="flex items-center gap-2 text-xs cursor-pointer">
-          <input type="checkbox" :checked="bgmLoop" @change="onBgmLoop" />
-          循环播放
-        </label>
-
-        <label class="block text-xs font-medium text-on-surface">
-          音量 {{ Math.round(bgmVolume * 100) }}%
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.05"
-            :value="bgmVolume"
-            class="w-full"
-            @input="onBgmVolume"
-          />
-        </label>
       </template>
     </section>
   </div>
@@ -159,29 +122,15 @@ const animation = ref('fade')
 const previewing = ref(false)
 let previewTimer = null
 
-const { tracks: catalogTracks, loading: catalogLoading, hint: catalogHint, loadBgmCatalog, findTrackById, findTrackByUrl } =
+const { tracks: catalogTracks, loading: catalogLoading, loadBgmCatalog, findTrackById, findTrackByUrl } =
   useBgmCatalog()
 
 const bgmEnabled = computed(() => !!props.projectSettings?.bgm?.enabled)
 const bgmUrl = computed(() => props.projectSettings?.bgm?.url || '')
 const bgmTrackId = computed(() => props.projectSettings?.bgm?.trackId || '')
 const bgmVolume = computed(() => Number(props.projectSettings?.bgm?.volume ?? 0.35))
-const bgmLoop = computed(() => props.projectSettings?.bgm?.loop !== false)
 
-const availableTrackCount = computed(() => catalogTracks.value.filter((t) => t.available).length)
-
-const showCustomUrl = computed(() => {
-  if (!bgmTrackId.value && bgmUrl.value) return true
-  return selectedTrackKey.value === '__custom__'
-})
-
-const selectedTrackKey = computed(() => {
-  if (bgmTrackId.value) return bgmTrackId.value
-  if (bgmUrl.value && !findTrackByUrl(bgmUrl.value)) return '__custom__'
-  const byUrl = findTrackByUrl(bgmUrl.value)
-  if (byUrl) return byUrl.id
-  return ''
-})
+const availableTracks = computed(() => catalogTracks.value.filter((t) => t.available))
 
 const currentTrackLabel = computed(() => {
   if (!bgmUrl.value) return ''
@@ -197,60 +146,34 @@ function emitBgm(patch) {
   emit('bgm-change', patch)
 }
 
-function onBgmToggle(e) {
-  const enabled = e.target.checked
-  if (!enabled) {
+function toggleBgmEnabled() {
+  if (bgmEnabled.value) {
     emitBgm({ enabled: false })
     return
   }
-  emitBgm({ enabled: true })
-  if (!bgmUrl.value && availableTrackCount.value > 0) {
-    const first = catalogTracks.value.find((t) => t.available)
-    if (first) {
-      emitBgm({
-        enabled: true,
-        trackId: first.id,
-        url: first.url,
-        volume: first.defaultVolume ?? bgmVolume.value,
-      })
-    }
+  const first = availableTracks.value[0]
+  if (first) {
+    emitBgm({
+      enabled: true,
+      trackId: first.id,
+      url: first.url,
+      loop: true,
+      volume: first.defaultVolume ?? bgmVolume.value,
+    })
+    return
   }
+  emitBgm({ enabled: true, loop: true })
 }
 
-function onTrackSelect(e) {
-  const value = e.target.value
-  if (!value) {
-    emitBgm({ trackId: '', url: '' })
-    return
-  }
-  if (value === '__custom__') {
-    emitBgm({ trackId: '' })
-    return
-  }
-  const track = findTrackById(value)
-  if (!track || !track.available) return
+function pickTrack(track) {
+  if (!track?.available) return
   emitBgm({
+    enabled: true,
     trackId: track.id,
     url: track.url,
+    loop: true,
     volume: track.defaultVolume ?? bgmVolume.value,
   })
-}
-
-function onBgmUrl(e) {
-  const url = e.target.value.trim()
-  const matched = findTrackByUrl(url)
-  emitBgm({
-    url,
-    trackId: matched?.id || '',
-  })
-}
-
-function onBgmLoop(e) {
-  emitBgm({ loop: e.target.checked })
-}
-
-function onBgmVolume(e) {
-  emitBgm({ volume: Number(e.target.value) })
 }
 
 const PREVIEW_MS = 700

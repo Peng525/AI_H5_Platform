@@ -13,5 +13,5 @@ async def list_tracks():
     return {
         "tracks": tracks,
         "availableCount": len(available),
-        "hint": "将 MP3 放入 backend/media/bgm/ 后刷新；运行 scripts/install-bgm.ps1 可安装测试曲",
+        "hint": "将 MP3 放入 backend/static/bgm/ 后刷新页面",
     }

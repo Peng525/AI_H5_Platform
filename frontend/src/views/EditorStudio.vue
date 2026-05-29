@@ -42,6 +42,10 @@
         :canvas-background="canvasBackground"
         :theme-id="settings.themeId || 'zjy-minimal'"
         :show-dialogue-preview="showDialoguePreview"
+        :show-bgm-player="bgmActive"
+        :bgm-muted="bgmMuted"
+        :bgm-spinning="bgmSpinning"
+        @toggle-bgm-mute="toggleBgmMute"
         @select="onSelectElement"
         @deselect="clearSelection"
         @marquee-select="onMarqueeSelect"
@@ -104,6 +108,7 @@ import { useAuth } from '../composables/useAuth'
 import { registerCanvasFlush, unregisterCanvasFlush } from '../composables/useEditorCanvasSave'
 import { useSlideCanvas } from '../composables/useSlideCanvas'
 import { useProjectEditorSettings } from '../composables/useProjectEditorSettings'
+import { useBgmPlayer } from '../composables/useBgmPlayer'
 import AiPanel from '../components/AiPanel.vue'
 import EditorPhoneCanvas from '../components/EditorPhoneCanvas.vue'
 import EditorToolbox from '../components/EditorToolbox.vue'
@@ -134,6 +139,15 @@ const wordCloudEditContent = ref(null)
 const showDialoguePreview = ref(false)
 
 const { settings, viewport, setViewport, setScrollEffect, getSlideBackground, setSlideBackground, applyFromServer, setBgm } = useProjectEditorSettings(projectId)
+
+const {
+  active: bgmActive,
+  muted: bgmMuted,
+  playing: bgmPlaying,
+  toggleMute: toggleBgmMute,
+} = useBgmPlayer(settings)
+
+const bgmSpinning = computed(() => bgmPlaying.value && !bgmMuted.value)
 
 const canvasBackground = computed(() => getSlideBackground(current.value?.id))
 

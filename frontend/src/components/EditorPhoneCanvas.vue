@@ -41,6 +41,12 @@
           <option v-for="v in webViewports" :key="v.id" :value="v.id">{{ v.label }}</option>
         </optgroup>
       </select>
+      <BgmPlayerButton
+        v-if="showBgmPlayer"
+        :muted="bgmMuted"
+        :spinning="bgmSpinning"
+        @toggle="$emit('toggle-bgm-mute')"
+      />
     </div>
 
     <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1 sm:gap-2 bg-white shadow-card rounded-full px-1.5 sm:px-2 py-1 border border-outline-variant z-20 max-w-[calc(100%-1rem)]" data-editor-chrome>
@@ -190,6 +196,7 @@ import { DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
 import { animationEnterClass } from '../utils/slideAnimation'
 import CanvasElement from './CanvasElement.vue'
 import EditorCanvasToolbar from './EditorCanvasToolbar.vue'
+import BgmPlayerButton from './BgmPlayerButton.vue'
 import DialoguePreviewCanvas from './dialogue/DialoguePreviewCanvas.vue'
 import { normalizeChatScript } from '../utils/chatScript.js'
 
@@ -205,6 +212,9 @@ const props = defineProps({
   canvasBackground: { type: String, default: DEFAULT_CANVAS_BG },
   themeId: { type: String, default: 'zjy-minimal' },
   showDialoguePreview: { type: Boolean, default: false },
+  showBgmPlayer: { type: Boolean, default: false },
+  bgmMuted: { type: Boolean, default: false },
+  bgmSpinning: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
@@ -226,6 +236,7 @@ const emit = defineEmits([
   'edit-wordcloud',
   'marquee-select',
   'update:show-dialogue-preview',
+  'toggle-bgm-mute',
 ])
 
 const DEFAULT_ZOOM = 90

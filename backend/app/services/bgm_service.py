@@ -28,13 +28,12 @@ def _load_catalog() -> list[dict[str, Any]]:
 
 
 def _discover_mp3_files() -> dict[str, Path]:
-    """filename -> first resolved path on disk."""
+    """filename -> path under backend/static/bgm."""
     found: dict[str, Path] = {}
-    for directory in (MEDIA_BGM, STATIC_BGM):
-        if not directory.is_dir():
-            continue
-        for path in sorted(directory.glob("*.mp3")):
-            found.setdefault(path.name, path)
+    if not STATIC_BGM.is_dir():
+        return found
+    for path in sorted(STATIC_BGM.glob("*.mp3")):
+        found[path.name] = path
     return found
 
 
@@ -80,11 +79,9 @@ def list_bgm_tracks() -> list[dict[str, Any]]:
 
 
 def resolve_bgm_dir() -> Path | None:
-    """优先挂载含 mp3 的目录，供 main.py StaticFiles 使用。"""
-    for directory in (MEDIA_BGM, STATIC_BGM):
-        if directory.is_dir() and any(directory.glob("*.mp3")):
-            return directory
-    for directory in (MEDIA_BGM, STATIC_BGM):
-        if directory.is_dir():
-            return directory
+    """挂载 backend/static/bgm 供 StaticFiles 使用。"""
+    if STATIC_BGM.is_dir():
+        return STATIC_BGM
+    if MEDIA_BGM.is_dir():
+        return MEDIA_BGM
     return None

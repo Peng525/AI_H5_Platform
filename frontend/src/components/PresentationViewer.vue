@@ -35,15 +35,13 @@
       </div>
 
       <div class="absolute top-4 right-4 z-20 flex items-center gap-2 flex-wrap justify-end">
-        <button
-          v-if="bgmConfig.enabled && !embedded"
-          type="button"
-          class="preview-toolbar-btn"
-          :title="bgmMuted ? '开启音乐' : '静音'"
-          @click.stop="toggleBgmMute"
-        >
-          <span class="material-symbols-outlined text-[18px]">{{ bgmMuted ? 'volume_off' : 'volume_up' }}</span>
-        </button>
+        <BgmPlayerButton
+          v-if="bgmConfig.enabled && bgmConfig.url && !embedded"
+          :muted="bgmMuted"
+          :spinning="bgmPlaying && !bgmMuted"
+          class="preview-bgm-player"
+          @toggle="toggleBgmMute"
+        />
         <template v-if="mode === 'preview'">
           <PreviewSelect v-model="scrollEffect" :options="scrollOptions" @change="onScrollModeChange" />
           <span class="text-sm text-white font-medium tabular-nums min-w-[44px] text-center drop-shadow">{{ Math.round(userZoom) }}%</span>
@@ -210,6 +208,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ChatStoryOverlay from './ChatStoryOverlay.vue'
+import BgmPlayerButton from './BgmPlayerButton.vue'
 import PreviewSlideFrame from './PreviewSlideFrame.vue'
 import PreviewSelect from './PreviewSelect.vue'
 import {
@@ -284,6 +283,7 @@ const {
   unlockBgmFromGesture,
   toggleBgmMute,
   bgmMuted,
+  bgmPlaying,
   bgmUnlocked,
   tryPlayBgm,
 } = playback
