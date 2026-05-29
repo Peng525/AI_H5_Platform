@@ -307,3 +307,20 @@ export function listLayoutBlocks(group = 'all') {
   if (group === 'story') return STORY_LAYOUT_BLOCKS
   return [...BUSINESS_LAYOUT_BLOCKS, ...STORY_LAYOUT_BLOCKS]
 }
+
+/** 素材面板主屏快捷版式 */
+export const PRIMARY_LAYOUT_SHORTCUTS = [
+  { id: 'cover-minimal', label: '标题', icon: 'title' },
+  { id: 'section-title', label: '章节页', icon: 'view_headline' },
+  { id: 'bullets-three', label: '三要点', icon: 'format_list_bulleted' },
+  { id: '__table__', label: '表格', icon: 'table_chart', addType: 'table' },
+]
+
+const PRIMARY_LAYOUT_IDS = new Set(['cover-minimal', 'section-title', 'bullets-three'])
+
+/** 「其他」弹框中的版式（商务 + 叙事，排除主屏三项） */
+export function getMoreLayoutBlocks() {
+  return [...BUSINESS_LAYOUT_BLOCKS, ...STORY_LAYOUT_BLOCKS].filter(
+    (b) => !PRIMARY_LAYOUT_IDS.has(b.id)
+  )
+}

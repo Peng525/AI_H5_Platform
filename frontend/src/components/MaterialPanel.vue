@@ -3,28 +3,22 @@
     <div>
       <p class="text-xs font-semibold text-on-surface mb-1.5">页面背景</p>
       <div class="bg-swatch-board">
-        <div
-          v-for="col in bgSwatchColumns"
-          :key="col.id"
-          class="bg-swatch-column"
-        >
-          <button
-            v-for="item in col.items"
-            :key="item.key"
-            type="button"
-            class="bg-swatch"
-            :class="[
-              item.white ? 'bg-swatch--white' : '',
-              isActiveBg(item.value) ? 'bg-swatch--active' : '',
-            ]"
-            :style="item.style"
-            :title="item.label"
-            :aria-label="item.label"
-            @click="pickCanvasBg(item.value)"
-          />
-        </div>
+        <button
+          v-for="item in bgSwatchItems"
+          :key="item.key"
+          type="button"
+          class="bg-swatch"
+          :class="[
+            item.white ? 'bg-swatch--white' : '',
+            isActiveBg(item.value) ? 'bg-swatch--active' : '',
+          ]"
+          :style="item.style"
+          :title="item.label"
+          :aria-label="item.label"
+          @click="pickCanvasBg(item.value)"
+        />
         <label
-          class="bg-swatch-column bg-swatch--picker"
+          class="bg-swatch bg-swatch--picker"
           title="自定义纯色"
           aria-label="自定义纯色"
         >
@@ -39,35 +33,51 @@
     </div>
 
     <div>
-      <p class="text-xs font-semibold text-on-surface mb-1.5">商务版式</p>
+      <p class="text-xs font-semibold text-on-surface mb-1.5">版式</p>
       <div class="material-grid">
         <button
-          v-for="item in businessBlocks"
+          v-for="item in primaryLayouts"
           :key="item.id"
           type="button"
           class="material-card group"
-          @click="emitLayout(item.id)"
+          @click="onPrimaryLayoutClick(item)"
         >
           <div class="material-preview">
-            <span class="material-symbols-outlined text-xl text-primary">{{ item.icon }}</span>
+            <div
+              v-if="item.addType === 'table'"
+              class="w-10 h-8 grid grid-cols-3 grid-rows-2 gap-px bg-outline-variant p-px rounded-sm overflow-hidden"
+            >
+              <span v-for="n in 6" :key="n" class="bg-white" :class="n <= 3 ? 'bg-primary' : ''" />
+            </div>
+            <span v-else class="material-symbols-outlined text-xl text-primary">{{ item.icon }}</span>
           </div>
           <span class="material-label">{{ item.label }}</span>
+        </button>
+        <button
+          type="button"
+          class="material-card group"
+          @click="layoutMoreOpen = true"
+        >
+          <div class="material-preview">
+            <span class="material-symbols-outlined text-xl text-on-surface-variant">more_horiz</span>
+          </div>
+          <span class="material-label">其他</span>
         </button>
       </div>
     </div>
 
     <div>
-      <p class="text-xs font-semibold text-on-surface mb-1.5">叙事版式</p>
+      <p class="text-xs font-semibold text-on-surface mb-1.5">特殊组件</p>
       <div class="material-grid">
         <button
-          v-for="item in storyBlocks"
+          v-for="item in specialComponents"
           :key="item.id"
           type="button"
           class="material-card group"
-          @click="emitLayout(item.id)"
+          @click="onSpecialClick(item)"
         >
           <div class="material-preview">
-            <span class="material-symbols-outlined text-xl text-secondary">{{ item.icon }}</span>
+            <span class="material-symbols-outlined text-2xl" :class="item.colorClass">{{ item.icon }}</span>
           </div>
           <span class="material-label">{{ item.label }}</span>
         </button>
@@ -82,7 +92,7 @@
           :key="item.id"
           type="button"
           class="material-card group"
-          @click="onBasicComponentClick(item)"
+          @click="$emit('add', item)"
         >
           <div class="material-preview">
             <span
@@ -95,16 +105,9 @@
               v-else-if="item.kind === 'rect'"
               class="w-9 h-7 rounded-sm border border-black/10 bg-primary"
             />
-            <div
-              v-else-if="item.kind === 'table'"
-              class="w-10 h-8 grid grid-cols-3 grid-rows-2 gap-px bg-outline-variant p-px rounded-sm overflow-hidden"
-            >
-              <span v-for="n in 6" :key="n" class="bg-white" :class="n <= 3 ? 'bg-primary' : ''" />
-            </div>
             <span
-              v-else-if="item.kind === 'icon' || item.kind === 'dialogue' || item.kind === 'wordcloud'"
-              class="material-symbols-outlined text-2xl"
-              :class="item.colorClass || 'text-primary'"
+              v-else-if="item.kind === 'icon'"
+              class="material-symbols-outlined text-2xl text-primary"
             >{{ item.icon }}</span>
             <span
               v-else-if="item.kind === 'image'"
@@ -123,13 +126,20 @@
         </button>
       </div>
     </div>
+
+    <LayoutMoreModal
+      :open="layoutMoreOpen"
+      @close="layoutMoreOpen = false"
+      @pick="emitLayout"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import LayoutMoreModal from './LayoutMoreModal.vue'
 import { getTheme, getThemeGradients } from '../constants/designThemes.js'
-import { BUSINESS_LAYOUT_BLOCKS, STORY_LAYOUT_BLOCKS } from '../constants/layoutBlocks.js'
+import { PRIMARY_LAYOUT_SHORTCUTS } from '../constants/layoutBlocks.js'
 import { themePaletteColors } from '../constants/textFormats.js'
 import { CANVAS_BACKGROUND_PRESETS, DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
 import { normalizeSlideBackground, slideBackgroundCSSValue } from '../utils/slideBackground.js'
@@ -141,10 +151,9 @@ const props = defineProps({
 
 const emit = defineEmits(['add', 'canvas-bg-change', 'apply-layout', 'open-dialogue-generator', 'open-wordcloud-editor'])
 
+const layoutMoreOpen = ref(false)
+const primaryLayouts = PRIMARY_LAYOUT_SHORTCUTS
 const themeGradients = computed(() => getThemeGradients(props.themeId))
-const businessBlocks = BUSINESS_LAYOUT_BLOCKS
-const storyBlocks = STORY_LAYOUT_BLOCKS
-
 const canvasBgPresets = CANVAS_BACKGROUND_PRESETS
 
 const extraQuickColors = computed(() => {
@@ -156,42 +165,31 @@ const extraQuickColors = computed(() => {
   ].filter((c, i, a) => a.indexOf(c) === i).slice(0, 4)
 })
 
-const bgSwatchColumns = computed(() => {
-  const cols = [
-    {
-      id: 'pastel',
-      items: canvasBgPresets.map((p) => ({
-        key: `bg-${p.value}`,
-        label: p.label,
-        style: { background: p.value },
-        value: p.value,
-        white: false,
-      })),
-    },
-    {
-      id: 'solids',
-      items: extraQuickColors.value.map((c) => ({
-        key: `c-${c}`,
-        label: quickColorLabel(c),
-        style: { background: c },
-        value: c,
-        white: c === '#FFFFFF',
-      })),
-    },
+const bgSwatchItems = computed(() => {
+  const items = [
+    ...canvasBgPresets.map((p) => ({
+      key: `bg-${p.value}`,
+      label: p.label,
+      style: { background: p.value },
+      value: p.value,
+      white: false,
+    })),
+    ...extraQuickColors.value.map((c) => ({
+      key: `c-${c}`,
+      label: quickColorLabel(c),
+      style: { background: c },
+      value: c,
+      white: c === '#FFFFFF',
+    })),
+    ...themeGradients.value.map((g) => ({
+      key: g.id,
+      label: g.label,
+      style: { background: g.value },
+      value: { type: 'gradient', value: g.value },
+      white: false,
+    })),
   ]
-  if (themeGradients.value.length) {
-    cols.push({
-      id: 'gradients',
-      items: themeGradients.value.map((g) => ({
-        key: g.id,
-        label: g.label,
-        style: { background: g.value },
-        value: { type: 'gradient', value: g.value },
-        white: false,
-      })),
-    })
-  }
-  return cols
+  return items
 })
 
 const solidPickerValue = computed(() => {
@@ -219,29 +217,32 @@ function emitLayout(blockId) {
   emit('apply-layout', blockId)
 }
 
-function onBasicComponentClick(item) {
-  if (item.action === 'dialogue') {
-    emit('open-dialogue-generator')
+function onPrimaryLayoutClick(item) {
+  if (item.addType === 'table') {
+    emit('add', { id: 'table', kind: 'table', label: '表格', type: 'table' })
     return
   }
-  if (item.action === 'wordcloud') {
-    emit('open-wordcloud-editor')
-    return
-  }
-  emit('add', item)
+  emitLayout(item.id)
+}
+
+function onSpecialClick(item) {
+  if (item.action === 'dialogue') emit('open-dialogue-generator')
+  else if (item.action === 'wordcloud') emit('open-wordcloud-editor')
 }
 
 const chartPreviewBars = [10, 18, 12, 22]
 
+const specialComponents = [
+  { id: 'dialogue', label: '对话生成器', icon: 'forum', colorClass: 'text-primary', action: 'dialogue' },
+  { id: 'wordcloud', label: '文字云', icon: 'cloud', colorClass: 'text-secondary', action: 'wordcloud' },
+]
+
 const basicComponents = [
-  { id: 'textbox', kind: 'text', label: '文本框', action: 'add', type: 'text' },
-  { id: 'rect', kind: 'rect', label: '矩形', action: 'add', type: 'shape' },
-  { id: 'table', kind: 'table', label: '表格', action: 'add', type: 'table' },
-  { id: 'icon', kind: 'icon', label: '图标', action: 'add', type: 'icon', icon: 'emoji_objects' },
-  { id: 'image', kind: 'image', label: '图片', action: 'add', type: 'image' },
-  { id: 'chart', kind: 'chart', label: '图表', action: 'add', type: 'chart' },
-  { id: 'dialogue', kind: 'dialogue', label: '对话生成器', action: 'dialogue', icon: 'forum', colorClass: 'text-primary' },
-  { id: 'wordcloud', kind: 'wordcloud', label: '文字云', action: 'wordcloud', icon: 'cloud', colorClass: 'text-secondary' },
+  { id: 'textbox', kind: 'text', label: '文本框', type: 'text' },
+  { id: 'rect', kind: 'rect', label: '矩形', type: 'shape' },
+  { id: 'icon', kind: 'icon', label: '图标', type: 'icon', icon: 'emoji_objects' },
+  { id: 'image', kind: 'image', label: '图片', type: 'image' },
+  { id: 'chart', kind: 'chart', label: '图表', type: 'chart' },
 ]
 </script>
 
@@ -306,13 +307,7 @@ const basicComponents = [
 .bg-swatch-board {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 6px;
-}
-
-.bg-swatch-column {
-  display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 6px;
 }
 
@@ -345,6 +340,8 @@ const basicComponents = [
   justify-content: center;
   overflow: hidden;
   background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
+  cursor: pointer;
+  vertical-align: top;
 }
 
 .bg-swatch__color-input {
