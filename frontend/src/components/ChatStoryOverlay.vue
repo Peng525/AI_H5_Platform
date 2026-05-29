@@ -1,51 +1,60 @@
 <template>
   <div
-    v-if="active && script?.enabled && messages.length"
-    class="chat-overlay absolute inset-0 z-30 flex flex-col bg-[#ededed]/95 backdrop-blur-[2px] cursor-pointer select-none"
+    v-if="active && script?.enabled && timeline.length"
+    class="chat-overlay absolute inset-0 z-30 flex flex-col backdrop-blur-[2px] cursor-pointer select-none"
+    :style="overlayBgStyle"
     @click="onTap"
     @contextmenu.prevent="skipAll"
   >
-    <div class="flex-1 overflow-y-auto px-3 py-4 space-y-4 min-h-0 chat-messages">
+    <div class="flex-1 overflow-y-auto px-3 py-4 space-y-3 min-h-0 chat-messages">
       <TransitionGroup name="chat-msg">
-        <div
-          v-for="(msg, i) in visibleMessages"
-          :key="msg.id || i"
-          class="flex gap-2 items-start"
-          :class="msg.side === 'right' ? 'flex-row-reverse' : 'flex-row'"
-        >
+        <template v-for="(item, i) in visibleItems" :key="item.id || i">
           <div
-            class="shrink-0 w-10 h-10 rounded overflow-hidden bg-gray-300 flex items-center justify-center text-sm font-semibold text-gray-700"
-            :class="msg.side === 'right' ? 'bg-[#95EC69]/30' : 'bg-white'"
+            v-if="item.type === 'timestamp'"
+            class="text-center text-xs py-1"
+            :style="timestampStyle(script.style)"
           >
-            <img
-              v-if="msg.avatar"
-              :src="msg.avatar"
-              alt=""
-              class="w-full h-full object-cover"
-              @error="($event.target.style.display = 'none')"
-            />
-            <span v-else>{{ avatarInitial(msg) }}</span>
+            {{ item.text }}
           </div>
-          <div class="max-w-[72%] min-w-0">
-            <p
-              v-if="msg.name"
-              class="text-[11px] text-gray-500 mb-0.5"
-              :class="msg.side === 'right' ? 'text-right' : 'text-left'"
-            >
-              {{ msg.name }}
-            </p>
+          <div
+            v-else
+            class="flex gap-2 items-start"
+            :class="item.side === 'right' ? 'flex-row-reverse' : 'flex-row'"
+          >
             <div
-              class="relative px-3 py-2.5 text-[15px] leading-relaxed break-words shadow-sm"
-              :class="bubbleClass(msg.side)"
+              class="shrink-0 w-10 h-10 overflow-hidden bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600"
+              :style="avatarInlineStyle(script.style)"
             >
-              {{ msg.text }}
+              <img
+                v-if="item.avatar"
+                :src="item.avatar"
+                alt=""
+                class="w-full h-full object-cover"
+                @error="($event.target.style.display = 'none')"
+              />
+              <span v-else>{{ avatarInitial(item.name, item.side) }}</span>
+            </div>
+            <div class="max-w-[72%] min-w-0">
+              <p
+                v-if="item.name"
+                class="text-[11px] mb-0.5 opacity-70"
+                :class="item.side === 'right' ? 'text-right' : 'text-left'"
+              >
+                {{ item.name }}
+              </p>
+              <div
+                class="px-3 py-2.5 text-[15px] leading-relaxed break-words shadow-sm"
+                :style="bubbleInlineStyle(item.isOwner, script.style)"
+              >
+                {{ item.text }}
+              </div>
             </div>
           </div>
-        </div>
+        </template>
       </TransitionGroup>
     </div>
 
-    <div class="shrink-0 py-3 text-center text-xs text-gray-500 animate-pulse">
+    <div class="shrink-0 py-3 text-center text-xs opacity-60 animate-pulse" :style="{ color: script.style?.dateTextColor || '#666' }">
       {{ hintText }}
     </div>
   </div>
@@ -53,6 +62,15 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { normalizeChatScript } from '../utils/chatScript.js'
+import {
+  avatarInlineStyle,
+  avatarInitial,
+  bubbleInlineStyle,
+  buildRenderableTimeline,
+  dialogueBackgroundStyle,
+  timestampStyle,
+} from '../utils/dialogueRender.js'
 
 const props = defineProps({
   script: { type: Object, default: null },
@@ -64,33 +82,23 @@ const emit = defineEmits(['complete', 'progress'])
 const visibleCount = ref(0)
 let autoTimer = null
 
-const messages = computed(() => {
-  const list = props.script?.messages
-  return Array.isArray(list) ? list : []
-})
+const normalized = computed(() => normalizeChatScript(props.script || {}))
+const script = computed(() => normalized.value)
+const timeline = computed(() => buildRenderableTimeline(normalized.value))
+const visibleItems = computed(() => timeline.value.slice(0, visibleCount.value))
+const allVisible = computed(() => visibleCount.value >= timeline.value.length)
 
-const visibleMessages = computed(() => messages.value.slice(0, visibleCount.value))
-
-const allVisible = computed(() => visibleCount.value >= messages.value.length)
+const overlayBgStyle = computed(() => ({
+  ...dialogueBackgroundStyle(script.value.style),
+  backgroundColor: `${dialogueBackgroundStyle(script.value.style).background}f2`,
+}))
 
 const hintText = computed(() => {
-  if (!messages.value.length) return ''
+  if (!timeline.value.length) return ''
   if (visibleCount.value === 0) return '点击开始对话'
   if (!allVisible.value) return '点击继续'
   return '点击进入下一页'
 })
-
-function avatarInitial(msg) {
-  const name = (msg.name || (msg.side === 'right' ? '我' : 'TA')).trim()
-  return name.slice(0, 1).toUpperCase()
-}
-
-function bubbleClass(side) {
-  if (side === 'right') {
-    return 'bg-[#95EC69] text-gray-900 rounded-lg rounded-tr-sm'
-  }
-  return 'bg-white text-gray-900 rounded-lg rounded-tl-sm'
-}
 
 function clearAutoTimer() {
   if (autoTimer) {
@@ -101,10 +109,10 @@ function clearAutoTimer() {
 
 function scheduleAutoAdvance() {
   clearAutoTimer()
-  const ms = Number(props.script?.autoAdvanceMs || 0)
+  const ms = Number(script.value.autoAdvanceMs || 0)
   if (!ms || !props.active || allVisible.value) return
   autoTimer = setTimeout(() => {
-    if (visibleCount.value < messages.value.length) {
+    if (visibleCount.value < timeline.value.length) {
       visibleCount.value += 1
       emit('progress', visibleCount.value)
       scheduleAutoAdvance()
@@ -115,7 +123,7 @@ function scheduleAutoAdvance() {
 function reset() {
   clearAutoTimer()
   visibleCount.value = 0
-  if (props.active && messages.value.length && Number(props.script?.autoAdvanceMs || 0) > 0) {
+  if (props.active && timeline.value.length && Number(script.value.autoAdvanceMs || 0) > 0) {
     visibleCount.value = 1
     emit('progress', 1)
     scheduleAutoAdvance()
@@ -123,11 +131,11 @@ function reset() {
 }
 
 function onTap() {
-  if (!messages.value.length) {
+  if (!timeline.value.length) {
     emit('complete')
     return
   }
-  if (visibleCount.value < messages.value.length) {
+  if (visibleCount.value < timeline.value.length) {
     visibleCount.value += 1
     emit('progress', visibleCount.value)
     scheduleAutoAdvance()
@@ -137,7 +145,7 @@ function onTap() {
 }
 
 function skipAll() {
-  visibleCount.value = messages.value.length
+  visibleCount.value = timeline.value.length
   emit('progress', visibleCount.value)
   clearAutoTimer()
 }

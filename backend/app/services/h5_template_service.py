@@ -142,6 +142,27 @@ def _to_dict(row: H5Template) -> dict[str, Any]:
     }
 
 
+def _enrich_from_file_template(data: dict[str, Any]) -> dict[str, Any]:
+    """数据库 slides 为空时，用 data/h5_templates 下的 JSON 补全试看内容。"""
+    if len(data.get("slides_json") or []) > 0:
+        return data
+    from app.services.template_loader import get_file_template_by_id
+
+    file_data = get_file_template_by_id(data["id"])
+    if not file_data:
+        return data
+    slides = file_data.get("slides_json") or []
+    if not slides:
+        return data
+    enriched = {**data}
+    enriched["slides_json"] = slides
+    enriched["settings_json"] = file_data.get("settings_json") or data.get("settings_json") or {}
+    enriched["featured"] = True
+    if file_data.get("pages"):
+        enriched["pages"] = int(file_data["pages"])
+    return enriched
+
+
 def _filter_items(items: list[dict], category: str, device: str, q: str) -> list[dict]:
     result = items
     if category and category != "全部":
@@ -189,8 +210,9 @@ async def seed_default_templates(db: AsyncSession) -> None:
 
 
 async def sync_flagship_templates(db: AsyncSession) -> None:
-    from app.services.template_loader import load_all_file_templates
+    from app.services.template_loader import clear_file_template_cache, load_all_file_templates
 
+    clear_file_template_cache()
     base_order = -100
     for offset, data in enumerate(load_all_file_templates()):
         tid = data["id"]
@@ -228,7 +250,7 @@ async def list_for_user(
     result = await db.execute(
         select(H5Template).where(H5Template.enabled == 1).order_by(H5Template.sort_order, H5Template.id)
     )
-    items = [_to_dict(r) for r in result.scalars().all()]
+    items = [_enrich_from_file_template(_to_dict(r)) for r in result.scalars().all()]
     public = [{k: v for k, v in t.items() if k != "slides_json"} for t in items]
     return _filter_items(public, category, device, q)
 
@@ -240,7 +262,30 @@ async def admin_list(db: AsyncSession) -> list[dict]:
 
 async def get_template(db: AsyncSession, template_id: str) -> dict | None:
     row = await db.get(H5Template, template_id)
-    return _to_dict(row) if row else None
+    if row:
+        return _enrich_from_file_template(_to_dict(row))
+    from app.services.template_loader import get_file_template_by_id
+
+    file_data = get_file_template_by_id(template_id)
+    if not file_data:
+        return None
+    slides = file_data.get("slides_json") or []
+    return {
+        "id": file_data["id"],
+        "title": file_data.get("title", template_id),
+        "description": file_data.get("description", ""),
+        "category": file_data.get("category", ""),
+        "device": file_data.get("device", "mobile"),
+        "pages": int(file_data.get("pages", len(slides) or 1)),
+        "premium": bool(file_data.get("premium")),
+        "cover_gradient": file_data.get("cover_gradient", ""),
+        "default_viewport": file_data.get("default_viewport", "mobile-375"),
+        "slides_json": slides,
+        "settings_json": file_data.get("settings_json") or {},
+        "sort_order": 0,
+        "enabled": True,
+        "featured": len(slides) > 0,
+    }
 
 
 async def create_template(db: AsyncSession, data: dict[str, Any]) -> dict:

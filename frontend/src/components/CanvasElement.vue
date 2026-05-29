@@ -124,6 +124,19 @@
       <span v-else class="material-symbols-outlined text-3xl text-on-surface-variant/50 pointer-events-none">image</span>
     </div>
 
+    <div
+      v-else-if="element.type === 'wordcloud'"
+      class="w-full h-full cursor-move overflow-hidden"
+      @dblclick.stop="openWordCloudEditor"
+    >
+      <canvas
+        ref="wordCloudCanvasRef"
+        :width="Math.max(100, element.width)"
+        :height="Math.max(80, element.height)"
+        class="w-full h-full pointer-events-none"
+      />
+    </div>
+
     <template v-if="selected && !readonly">
       <div
         class="absolute -bottom-1 -right-1 w-3 h-3 bg-primary rounded-sm cursor-se-resize"
@@ -134,7 +147,8 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { renderWordCloud } from './wordcloud/WordCloudRenderer.js'
 
 const props = defineProps({
   element: { type: Object, required: true },
@@ -144,7 +158,9 @@ const props = defineProps({
   staggerIndex: { type: Number, default: -1 },
 })
 
-const emit = defineEmits(['select', 'update', 'remove', 'batch-start', 'batch-end'])
+const emit = defineEmits(['select', 'update', 'remove', 'batch-start', 'batch-end', 'edit-wordcloud'])
+
+const wordCloudCanvasRef = ref(null)
 
 const editing = ref(false)
 const editText = ref('')
@@ -326,4 +342,28 @@ watch(
     }
   }
 )
+
+function paintWordCloud() {
+  if (props.element.type !== 'wordcloud' || !wordCloudCanvasRef.value) return
+  const c = props.element.content
+  if (!c || typeof c !== 'object') return
+  renderWordCloud(wordCloudCanvasRef.value, c, 'zjy-minimal')
+}
+
+function openWordCloudEditor() {
+  if (props.readonly) return
+  emit('edit-wordcloud', props.element)
+}
+
+watch(
+  () => [props.element.type, props.element.content, props.element.width, props.element.height],
+  () => {
+    if (props.element.type === 'wordcloud') nextTick(() => paintWordCloud())
+  },
+  { deep: true }
+)
+
+onMounted(() => {
+  if (props.element.type === 'wordcloud') paintWordCloud()
+})
 </script>

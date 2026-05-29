@@ -112,16 +112,37 @@ function defaultChartContent() {
   return { chartType: 'bar', values: [35, 65, 45, 80, 55] }
 }
 
+function defaultWordCloudContent() {
+  return {
+    words: [
+      { text: '年轻人', weight: 120 },
+      { text: '性价比', weight: 95 },
+      { text: '文旅', weight: 80 },
+    ],
+    shapeId: 'cloud',
+    customMaskUrl: '',
+    fontFamily: 'system',
+    maxFontSize: 80,
+    minFontSize: 14,
+    density: 'normal',
+    rotation: 'random',
+    colorMode: 'auto',
+    colors: [],
+    backgroundColor: '#ffffff',
+    backgroundAlpha: 1,
+  }
+}
+
 export function defaultElement(type, overrides = {}) {
   const base = {
     id: genId(),
     type,
     x: 24,
     y: 120,
-    height: type === 'shape' ? 80 : type === 'image' ? 120 : type === 'table' ? 100 : type === 'chart' ? 120 : type === 'icon' ? 64 : 48,
-    width: type === 'table' ? 220 : type === 'chart' ? 200 : type === 'icon' ? 64 : type === 'shape' ? 120 : 200,
+    height: type === 'shape' ? 80 : type === 'image' ? 120 : type === 'table' ? 100 : type === 'chart' ? 120 : type === 'wordcloud' ? 200 : type === 'icon' ? 64 : 48,
+    width: type === 'table' ? 220 : type === 'chart' ? 200 : type === 'wordcloud' ? 280 : type === 'icon' ? 64 : type === 'shape' ? 120 : 200,
     zIndex: 1,
-    content: type === 'text' ? '双击编辑文本' : type === 'icon' ? 'star' : type === 'table' ? defaultTableContent() : type === 'chart' ? defaultChartContent() : type === 'image' ? '' : '',
+    content: type === 'text' ? '双击编辑文本' : type === 'icon' ? 'star' : type === 'table' ? defaultTableContent() : type === 'chart' ? defaultChartContent() : type === 'wordcloud' ? defaultWordCloudContent() : type === 'image' ? '' : '',
     style: {
       fontSize: 16,
       color: '#1b1b1c',

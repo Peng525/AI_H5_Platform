@@ -26,6 +26,8 @@
         @preview-animation="onPreviewAnimation"
         @open-help="shortcutsHelpOpen = true"
         @bgm-change="onBgmChange"
+        @open-dialogue-generator="openDialogueGenerator"
+        @open-wordcloud-editor="wordCloudOpen = true"
       />
 
       <EditorPhoneCanvas
@@ -53,6 +55,7 @@
         @viewport-change="setViewport"
         @batch-start="beginHistoryBatch"
         @batch-end="endHistoryBatch"
+        @edit-wordcloud="onEditWordCloud"
       />
 
       <AiPanel
@@ -72,6 +75,20 @@
       @pick="onLayoutPickedForNewSlide"
       @blank="onLayoutBlankForNewSlide"
     />
+    <DialogueGeneratorModal
+      :open="dialogueGeneratorOpen"
+      :initial-script="current?.chat_script"
+      @close="dialogueGeneratorOpen = false"
+      @insert="onInsertDialogue"
+    />
+    <WordCloudEditorModal
+      :open="wordCloudOpen"
+      :theme-id="settings.themeId || 'zjy-minimal'"
+      :initial-content="wordCloudEditContent"
+      @close="wordCloudOpen = false; wordCloudEditContent = null"
+      @insert-vector="onInsertWordCloud"
+      @insert-image="onInsertWordCloudImage"
+    />
   </div>
 </template>
 
@@ -89,7 +106,11 @@ import EditorToolbox from '../components/EditorToolbox.vue'
 import EditorTopBar from '../components/EditorTopBar.vue'
 import EditorShortcutsHelp from '../components/EditorShortcutsHelp.vue'
 import LayoutPickerModal from '../components/LayoutPickerModal.vue'
+import DialogueGeneratorModal from '../components/dialogue/DialogueGeneratorModal.vue'
+import WordCloudEditorModal from '../components/wordcloud/WordCloudEditorModal.vue'
 import { buildBlock, getDefaultBlockBackground } from '../constants/layoutBlocks.js'
+import { normalizeChatScript, serializeChatScript } from '../utils/chatScript.js'
+import { slideBackgroundToStorage } from '../utils/slideBackground.js'
 
 const route = useRoute()
 const { user } = useAuth()
@@ -104,6 +125,9 @@ const previewAnimationTick = ref(0)
 const shortcutsHelpOpen = ref(false)
 const layoutPickerOpen = ref(false)
 const pendingNewSlide = ref(null)
+const dialogueGeneratorOpen = ref(false)
+const wordCloudOpen = ref(false)
+const wordCloudEditContent = ref(null)
 
 const { settings, viewport, setViewport, setScrollEffect, getSlideBackground, setSlideBackground, applyFromServer, setBgm } = useProjectEditorSettings(projectId)
 
@@ -299,7 +323,63 @@ function addMaterial(item) {
     addElement('chart', {
       style: { background: '#ffffff', chartColor: '#005daa' },
     })
+  } else if (item.type === 'wordcloud') {
+    wordCloudOpen.value = true
   }
+}
+
+function openDialogueGenerator() {
+  dialogueGeneratorOpen.value = true
+}
+
+async function onInsertDialogue(script) {
+  if (!current.value) return
+  const serialized = serializeChatScript({ ...normalizeChatScript(script), enabled: true })
+  const bg = slideBackgroundToStorage(script.style?.background || '#ededed')
+  setSlideBackground(current.value.id, bg)
+  dialogueGeneratorOpen.value = false
+  await saveSlideFields({
+    chat_script: serialized,
+    layout: 'chat',
+  })
+}
+
+function onInsertWordCloud(content) {
+  wordCloudOpen.value = false
+  wordCloudEditContent.value = null
+  if (selectedId.value) {
+    const el = elements.value.find((e) => e.id === selectedId.value)
+    if (el?.type === 'wordcloud') {
+      updateElement(selectedId.value, { content })
+      return
+    }
+  }
+  const vp = viewport.value
+  addElement('wordcloud', {
+    x: Math.round((vp.width - 280) / 2),
+    y: 80,
+    width: 280,
+    height: 200,
+    content,
+  })
+}
+
+function onEditWordCloud(el) {
+  wordCloudEditContent.value = el.content
+  wordCloudOpen.value = true
+}
+
+function onInsertWordCloudImage(dataUrl) {
+  wordCloudOpen.value = false
+  const vp = viewport.value
+  addElement('image', {
+    x: Math.round((vp.width - 280) / 2),
+    y: 80,
+    width: 280,
+    height: 200,
+    content: dataUrl,
+    style: { background: 'transparent', objectFit: 'contain' },
+  })
 }
 
 function onCanvasBgChange(color) {

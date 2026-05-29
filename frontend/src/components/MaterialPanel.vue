@@ -73,6 +73,24 @@
       </div>
     </div>
 
+    <div>
+      <p class="text-[11px] font-semibold text-on-surface-variant mb-1.5">互动组件</p>
+      <div class="material-grid">
+        <button
+          v-for="item in interactiveTools"
+          :key="item.id"
+          type="button"
+          class="material-card group"
+          @click="$emit(item.event)"
+        >
+          <div class="material-preview">
+            <span class="material-symbols-outlined text-2xl" :class="item.colorClass">{{ item.icon }}</span>
+          </div>
+          <span class="material-label">{{ item.label }}</span>
+        </button>
+      </div>
+    </div>
+
     <p class="text-[11px] font-semibold text-on-surface-variant">基础组件</p>
 
     <div class="material-grid">
@@ -116,6 +134,10 @@
               :style="{ height: h + 'px' }"
             />
           </div>
+          <span
+            v-else-if="item.kind === 'wordcloud'"
+            class="material-symbols-outlined text-2xl text-secondary"
+          >cloud</span>
         </div>
         <span class="material-label">{{ item.label }}</span>
       </button>
@@ -135,7 +157,7 @@ const props = defineProps({
   themeId: { type: String, default: 'zjy-minimal' },
 })
 
-const emit = defineEmits(['add', 'canvas-bg-change', 'apply-layout'])
+const emit = defineEmits(['add', 'canvas-bg-change', 'apply-layout', 'open-dialogue-generator', 'open-wordcloud-editor'])
 
 const themeGradients = computed(() => getThemeGradients(props.themeId))
 const businessBlocks = BUSINESS_LAYOUT_BLOCKS
@@ -175,6 +197,11 @@ function emitLayout(blockId) {
 
 const chartPreviewBars = [10, 18, 12, 22]
 
+const interactiveTools = [
+  { id: 'dialogue', label: '对话生成器', icon: 'forum', colorClass: 'text-primary', event: 'open-dialogue-generator' },
+  { id: 'wordcloud', label: '文字云', icon: 'cloud', colorClass: 'text-secondary', event: 'open-wordcloud-editor' },
+]
+
 const presets = [
   { id: 'textbox', kind: 'text', label: '文本框', type: 'text' },
   { id: 'rect', kind: 'rect', label: '矩形', type: 'shape' },
@@ -182,6 +209,7 @@ const presets = [
   { id: 'icon', kind: 'icon', label: '图标', type: 'icon', icon: 'emoji_objects' },
   { id: 'image', kind: 'image', label: '图片', type: 'image' },
   { id: 'chart', kind: 'chart', label: '图表', type: 'chart' },
+  { id: 'wordcloud', kind: 'wordcloud', label: '文字云', type: 'wordcloud' },
 ]
 </script>
 

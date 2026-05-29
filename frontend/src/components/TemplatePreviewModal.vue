@@ -28,6 +28,13 @@
         >
           {{ loadError }}
         </div>
+        <div
+          v-else-if="!hasPreviewSlides"
+          class="absolute inset-0 flex flex-col items-center justify-center text-white/80 text-sm px-6 text-center z-10 gap-2"
+        >
+          <span class="material-symbols-outlined text-4xl text-white/40">slideshow</span>
+          <p>该模板试看内容尚未就绪，可先「使用此模板」在编辑器中编辑。</p>
+        </div>
         <PresentationViewer
           v-else-if="previewProject"
           :project="previewProject"

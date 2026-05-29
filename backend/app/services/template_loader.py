@@ -34,6 +34,22 @@ def load_all_file_templates() -> list[dict[str, Any]]:
     return items
 
 
+_FILE_TEMPLATE_BY_ID: dict[str, dict[str, Any]] | None = None
+
+
+def clear_file_template_cache() -> None:
+    global _FILE_TEMPLATE_BY_ID
+    _FILE_TEMPLATE_BY_ID = None
+
+
+def get_file_template_by_id(template_id: str) -> dict[str, Any] | None:
+    """按 ID 读取磁盘 JSON 模板（带进程内缓存）。"""
+    global _FILE_TEMPLATE_BY_ID
+    if _FILE_TEMPLATE_BY_ID is None:
+        _FILE_TEMPLATE_BY_ID = {item["id"]: item for item in load_all_file_templates()}
+    return _FILE_TEMPLATE_BY_ID.get(template_id)
+
+
 def load_all_flagship_templates() -> list[dict[str, Any]]:
     """兼容旧接口：等同于 load_all_file_templates。"""
     return load_all_file_templates()

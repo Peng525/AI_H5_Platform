@@ -18,7 +18,16 @@
     />
 
     <!-- 分辨率选择 -->
-    <div class="absolute top-4 right-4 z-20" data-editor-chrome>
+    <div class="absolute top-4 right-4 z-20 flex items-center gap-2" data-editor-chrome>
+      <button
+        v-if="slide?.chat_script?.enabled"
+        type="button"
+        class="text-xs border border-outline-variant rounded-lg px-2 py-1.5 bg-white shadow-card"
+        :class="dialoguePreviewOn ? 'text-primary border-primary' : ''"
+        @click="dialoguePreviewOn = !dialoguePreviewOn"
+      >
+        {{ dialoguePreviewOn ? '隐藏对话' : '预览对话' }}
+      </button>
       <select
         :value="viewportId"
         class="text-xs border border-outline-variant rounded-lg px-2 py-1.5 bg-white shadow-card max-w-[160px]"
@@ -132,6 +141,7 @@
               @update="(id, patch) => $emit('update-element', id, patch)"
               @batch-start="$emit('batch-start')"
               @batch-end="$emit('batch-end')"
+              @edit-wordcloud="$emit('edit-wordcloud', $event)"
             />
 
             <div
@@ -144,6 +154,13 @@
               <ul v-if="slide.bullets?.length" class="mt-4 space-y-2 text-sm">
                 <li v-for="(b, j) in slide.bullets" :key="j">• {{ b }}</li>
               </ul>
+            </div>
+
+            <div
+              v-if="dialoguePreviewOn && chatScriptForPreview"
+              class="absolute inset-0 z-20 pointer-events-none"
+            >
+              <DialoguePreviewCanvas :model-value="chatScriptForPreview" :editable="false" />
             </div>
           </div>
         </div>
@@ -158,6 +175,8 @@ import { VIEWPORT_PRESETS, getViewportPreset } from '../constants/editorPresets'
 import { animationEnterClass } from '../utils/slideAnimation'
 import CanvasElement from './CanvasElement.vue'
 import EditorCanvasToolbar from './EditorCanvasToolbar.vue'
+import DialoguePreviewCanvas from './dialogue/DialoguePreviewCanvas.vue'
+import { normalizeChatScript } from '../utils/chatScript.js'
 
 const props = defineProps({
   elements: { type: Array, default: () => [] },
@@ -187,6 +206,7 @@ const emit = defineEmits([
   'viewport-change',
   'batch-start',
   'batch-end',
+  'edit-wordcloud',
 ])
 
 const DEFAULT_ZOOM = 90
@@ -196,6 +216,19 @@ const ZOOM_STEP = 10
 
 const zoomPercent = ref(DEFAULT_ZOOM)
 const zoomEditing = ref(false)
+const dialoguePreviewOn = ref(false)
+
+const chatScriptForPreview = computed(() => {
+  if (!props.slide?.chat_script?.enabled) return null
+  return normalizeChatScript(props.slide.chat_script)
+})
+
+watch(
+  () => props.slide?.id,
+  () => {
+    dialoguePreviewOn.value = false
+  }
+)
 const zoomInput = ref(String(DEFAULT_ZOOM))
 const zoomInputRef = ref(null)
 const transitionKey = ref(0)

@@ -53,7 +53,11 @@
     <p class="text-center text-[10px] text-on-surface-variant">可重复点击预览，演示期间请稍候</p>
 
     <section class="border-t border-outline-variant pt-4">
-      <ChatScriptEditor :slide="slide" @save="$emit('save', $event)" />
+      <ChatScriptEditor
+        :slide="slide"
+        @save="$emit('save', $event)"
+        @open-generator="$emit('open-dialogue-generator')"
+      />
     </section>
 
     <section v-if="showBgm" class="border-t border-outline-variant pt-4 space-y-3">
@@ -149,7 +153,7 @@ const props = defineProps({
   showBgm: { type: Boolean, default: true },
 })
 
-const emit = defineEmits(['save', 'scroll-change', 'preview-animation', 'bgm-change'])
+const emit = defineEmits(['save', 'scroll-change', 'preview-animation', 'bgm-change', 'open-dialogue-generator'])
 
 const animation = ref('fade')
 const previewing = ref(false)
