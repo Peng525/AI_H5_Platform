@@ -2,50 +2,57 @@
   <div class="material-panel p-3 flex flex-col gap-3 min-h-0">
     <div>
       <p class="text-xs font-semibold text-on-surface mb-1.5">页面背景</p>
-      <div class="flex flex-wrap gap-1 mb-2">
+      <div class="flex flex-wrap gap-1.5 mb-2">
         <button
           v-for="preset in canvasBgPresets"
           :key="'bg-' + preset.value"
           type="button"
-          class="h-7 px-2 rounded border border-outline-variant shrink-0 hover:border-primary transition-colors text-[11px] font-medium text-on-surface"
-          :class="isActiveBg(preset.value) ? 'ring-2 ring-primary ring-offset-1' : ''"
+          class="bg-swatch"
+          :class="isActiveBg(preset.value) ? 'bg-swatch--active' : ''"
           :style="{ background: preset.value }"
           :title="preset.label"
+          :aria-label="preset.label"
           @click="pickCanvasBg(preset.value)"
-        >
-          {{ preset.label }}
-        </button>
+        />
         <button
           v-for="c in extraQuickColors"
           :key="'c-' + c"
           type="button"
-          class="w-7 h-7 rounded border border-outline-variant shrink-0 hover:border-primary transition-colors"
-          :class="[c === '#FFFFFF' ? 'ring-1 ring-inset ring-gray-300' : '', isActiveBg(c) ? 'ring-2 ring-primary ring-offset-1' : '']"
+          class="bg-swatch"
+          :class="[
+            c === '#FFFFFF' ? 'bg-swatch--white' : '',
+            isActiveBg(c) ? 'bg-swatch--active' : '',
+          ]"
           :style="{ background: c }"
-          :title="c"
+          :title="quickColorLabel(c)"
+          :aria-label="quickColorLabel(c)"
           @click="pickCanvasBg(c)"
         />
-        <input
-          :value="solidPickerValue"
-          type="color"
-          class="w-5 h-5 border-0 cursor-pointer p-0 shrink-0"
+        <label
+          class="bg-swatch bg-swatch--picker"
           title="自定义纯色"
-          @input="pickCanvasBg($event.target.value)"
-        />
+          aria-label="自定义纯色"
+        >
+          <input
+            :value="solidPickerValue"
+            type="color"
+            class="bg-swatch__color-input"
+            @input="pickCanvasBg($event.target.value)"
+          />
+        </label>
       </div>
-      <div v-if="themeGradients.length" class="flex flex-wrap gap-1">
+      <div v-if="themeGradients.length" class="flex flex-wrap gap-1.5">
         <button
           v-for="g in themeGradients"
           :key="g.id"
           type="button"
-          class="h-7 px-2 rounded border text-[11px] font-medium shrink-0 hover:border-primary transition-colors"
-          :class="isActiveBg(g.value) ? 'ring-2 ring-primary ring-offset-1 border-primary' : 'border-outline-variant'"
+          class="bg-swatch"
+          :class="isActiveBg(g.value) ? 'bg-swatch--active' : ''"
           :style="{ background: g.value }"
           :title="g.label"
+          :aria-label="g.label"
           @click="pickCanvasBg({ type: 'gradient', value: g.value })"
-        >
-          {{ g.label }}
-        </button>
+        />
       </div>
     </div>
 
@@ -86,73 +93,53 @@
     </div>
 
     <div>
-      <p class="text-xs font-semibold text-on-surface mb-1.5">互动组件</p>
+      <p class="text-xs font-semibold text-on-surface mb-1.5">基础组件</p>
       <div class="material-grid">
         <button
-          v-for="item in interactiveTools"
+          v-for="item in basicComponents"
           :key="item.id"
           type="button"
           class="material-card group"
-          @click="$emit(item.event)"
+          @click="onBasicComponentClick(item)"
         >
           <div class="material-preview">
-            <span class="material-symbols-outlined text-2xl" :class="item.colorClass">{{ item.icon }}</span>
+            <span
+              v-if="item.kind === 'text'"
+              class="text-[10px] text-on-surface-variant px-1 border border-dashed border-outline-variant rounded w-full text-center py-1 bg-white"
+            >
+              Aa
+            </span>
+            <span
+              v-else-if="item.kind === 'rect'"
+              class="w-9 h-7 rounded-sm border border-black/10 bg-primary"
+            />
+            <div
+              v-else-if="item.kind === 'table'"
+              class="w-10 h-8 grid grid-cols-3 grid-rows-2 gap-px bg-outline-variant p-px rounded-sm overflow-hidden"
+            >
+              <span v-for="n in 6" :key="n" class="bg-white" :class="n <= 3 ? 'bg-primary' : ''" />
+            </div>
+            <span
+              v-else-if="item.kind === 'icon' || item.kind === 'dialogue' || item.kind === 'wordcloud'"
+              class="material-symbols-outlined text-2xl"
+              :class="item.colorClass || 'text-primary'"
+            >{{ item.icon }}</span>
+            <span
+              v-else-if="item.kind === 'image'"
+              class="material-symbols-outlined text-2xl text-primary"
+            >image</span>
+            <div v-else-if="item.kind === 'chart'" class="flex items-end gap-0.5 h-8 px-1">
+              <span
+                v-for="(h, i) in chartPreviewBars"
+                :key="i"
+                class="w-1.5 rounded-t-sm bg-primary"
+                :style="{ height: h + 'px' }"
+              />
+            </div>
           </div>
           <span class="material-label">{{ item.label }}</span>
         </button>
       </div>
-    </div>
-
-    <p class="text-xs font-semibold text-on-surface">基础组件</p>
-
-    <div class="material-grid">
-      <button
-        v-for="item in presets"
-        :key="item.id"
-        type="button"
-        class="material-card group"
-        @click="$emit('add', item)"
-      >
-        <div class="material-preview">
-          <span
-            v-if="item.kind === 'text'"
-            class="text-[10px] text-on-surface-variant px-1 border border-dashed border-outline-variant rounded w-full text-center py-1 bg-white"
-          >
-            Aa
-          </span>
-          <span
-            v-else-if="item.kind === 'rect'"
-            class="w-9 h-7 rounded-sm border border-black/10 bg-primary"
-          />
-          <div
-            v-else-if="item.kind === 'table'"
-            class="w-10 h-8 grid grid-cols-3 grid-rows-2 gap-px bg-outline-variant p-px rounded-sm overflow-hidden"
-          >
-            <span v-for="n in 6" :key="n" class="bg-white" :class="n <= 3 ? 'bg-primary' : ''" />
-          </div>
-          <span
-            v-else-if="item.kind === 'icon'"
-            class="material-symbols-outlined text-2xl text-primary"
-          >{{ item.icon }}</span>
-          <span
-            v-else-if="item.kind === 'image'"
-            class="material-symbols-outlined text-2xl text-primary"
-          >image</span>
-          <div v-else-if="item.kind === 'chart'" class="flex items-end gap-0.5 h-8 px-1">
-            <span
-              v-for="(h, i) in chartPreviewBars"
-              :key="i"
-              class="w-1.5 rounded-t-sm bg-primary"
-              :style="{ height: h + 'px' }"
-            />
-          </div>
-          <span
-            v-else-if="item.kind === 'wordcloud'"
-            class="material-symbols-outlined text-2xl text-secondary"
-          >cloud</span>
-        </div>
-        <span class="material-label">{{ item.label }}</span>
-      </button>
     </div>
   </div>
 </template>
@@ -203,25 +190,38 @@ function pickCanvasBg(color) {
   emit('canvas-bg-change', color)
 }
 
+function quickColorLabel(color) {
+  if (color === '#FFFFFF') return '纯白'
+  return color
+}
+
 function emitLayout(blockId) {
   emit('apply-layout', blockId)
 }
 
+function onBasicComponentClick(item) {
+  if (item.action === 'dialogue') {
+    emit('open-dialogue-generator')
+    return
+  }
+  if (item.action === 'wordcloud') {
+    emit('open-wordcloud-editor')
+    return
+  }
+  emit('add', item)
+}
+
 const chartPreviewBars = [10, 18, 12, 22]
 
-const interactiveTools = [
-  { id: 'dialogue', label: '对话生成器', icon: 'forum', colorClass: 'text-primary', event: 'open-dialogue-generator' },
-  { id: 'wordcloud', label: '文字云', icon: 'cloud', colorClass: 'text-secondary', event: 'open-wordcloud-editor' },
-]
-
-const presets = [
-  { id: 'textbox', kind: 'text', label: '文本框', type: 'text' },
-  { id: 'rect', kind: 'rect', label: '矩形', type: 'shape' },
-  { id: 'table', kind: 'table', label: '表格', type: 'table' },
-  { id: 'icon', kind: 'icon', label: '图标', type: 'icon', icon: 'emoji_objects' },
-  { id: 'image', kind: 'image', label: '图片', type: 'image' },
-  { id: 'chart', kind: 'chart', label: '图表', type: 'chart' },
-  { id: 'wordcloud', kind: 'wordcloud', label: '文字云', type: 'wordcloud' },
+const basicComponents = [
+  { id: 'textbox', kind: 'text', label: '文本框', action: 'add', type: 'text' },
+  { id: 'rect', kind: 'rect', label: '矩形', action: 'add', type: 'shape' },
+  { id: 'table', kind: 'table', label: '表格', action: 'add', type: 'table' },
+  { id: 'icon', kind: 'icon', label: '图标', action: 'add', type: 'icon', icon: 'emoji_objects' },
+  { id: 'image', kind: 'image', label: '图片', action: 'add', type: 'image' },
+  { id: 'chart', kind: 'chart', label: '图表', action: 'add', type: 'chart' },
+  { id: 'dialogue', kind: 'dialogue', label: '对话生成器', action: 'dialogue', icon: 'forum', colorClass: 'text-primary' },
+  { id: 'wordcloud', kind: 'wordcloud', label: '文字云', action: 'wordcloud', icon: 'cloud', colorClass: 'text-secondary' },
 ]
 </script>
 
@@ -281,5 +281,45 @@ const presets = [
 
 .group:hover .material-label {
   color: #005daa;
+}
+
+.bg-swatch {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.25rem;
+  border: 1px solid #c0c7d6;
+  flex-shrink: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.bg-swatch:hover {
+  border-color: #005daa;
+}
+
+.bg-swatch--active {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #005daa;
+}
+
+.bg-swatch--white {
+  background: #fff !important;
+}
+
+.bg-swatch--picker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
+}
+
+.bg-swatch__color-input {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
 }
 </style>
