@@ -6,7 +6,7 @@
       </div>
       <div class="min-w-0 flex-1">
         <div class="text-sm font-bold truncate">工具箱</div>
-        <div class="text-[10px] text-on-surface-variant">编辑器</div>
+        <div class="text-xs text-on-surface-variant">编辑器</div>
       </div>
       <button
         type="button"
@@ -19,13 +19,13 @@
       </button>
     </div>
 
-    <div class="grid grid-cols-3 border-b border-outline-variant">
+    <div class="toolbox-tab-grid grid grid-cols-3 gap-px bg-outline-variant border-b border-outline-variant">
       <button
         v-for="t in tabs"
         :key="t.id"
         type="button"
-        class="flex flex-col items-center justify-center py-2 px-1 text-[10px] transition-colors min-w-0"
-        :class="activeTab === t.id ? 'bg-surface-container-highest text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container'"
+        class="toolbox-tab-btn flex flex-col items-center justify-center py-2.5 px-1 text-xs font-medium transition-colors min-w-0 bg-surface-container-low"
+        :class="activeTab === t.id ? 'toolbox-tab-btn--active text-primary' : 'text-on-surface hover:bg-surface-container'"
         @click="activeTab = t.id"
       >
         <span class="material-symbols-outlined text-[20px] shrink-0" :style="activeTab === t.id ? { fontVariationSettings: '\'FILL\' 1' } : {}">{{ t.icon }}</span>
@@ -118,3 +118,15 @@ const tabs = [
   { id: 'material', label: '素材', icon: 'cloud_upload' },
 ]
 </script>
+
+<style scoped>
+.editor-toolbox-panel {
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+}
+
+.toolbox-tab-btn--active {
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px #005daa;
+}
+</style>
