@@ -19,12 +19,12 @@
       </button>
     </div>
 
-    <div class="flex border-b border-outline-variant overflow-x-auto">
+    <div class="grid grid-cols-3 border-b border-outline-variant">
       <button
         v-for="t in tabs"
         :key="t.id"
         type="button"
-        class="flex-1 min-w-[3.25rem] max-w-[4.5rem] flex flex-col items-center py-2 px-0.5 text-[10px] transition-colors"
+        class="flex flex-col items-center justify-center py-2 px-1 text-[10px] transition-colors min-w-0"
         :class="activeTab === t.id ? 'bg-surface-container-highest text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container'"
         @click="activeTab = t.id"
       >
