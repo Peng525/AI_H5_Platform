@@ -6,7 +6,6 @@
         :slides="project?.slides || []"
         :current-id="current?.id"
         :current-slide="current"
-        :theme="project?.theme"
         :scroll-effect="settings.scrollEffect"
         :canvas-background="canvasBackground"
         :project-settings="settings"

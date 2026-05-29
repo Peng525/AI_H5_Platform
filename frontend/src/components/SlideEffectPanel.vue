@@ -1,17 +1,17 @@
 <template>
-  <div class="p-4 space-y-5 text-sm">
+  <div class="slide-effect-panel p-4 space-y-5 text-sm">
     <section>
-      <h3 class="text-xs font-semibold text-on-surface-variant mb-2 flex items-center gap-1">
+      <h3 class="text-xs font-semibold text-on-surface mb-2 flex items-center gap-1">
         <span class="material-symbols-outlined text-[16px]">animation</span>
         页面切换动效
       </h3>
-      <p class="text-[11px] text-on-surface-variant mb-2">应用于预览与分享时的翻页过渡</p>
+      <p class="text-xs text-on-surface/75 mb-2 leading-relaxed">应用于预览与分享时的翻页过渡</p>
       <div class="grid grid-cols-2 gap-2">
         <button
           v-for="a in PAGE_ANIMATIONS"
           :key="a.id"
-          class="flex items-center gap-2 px-2 py-2 rounded-lg border text-left text-xs transition"
-          :class="animation === a.id ? 'border-primary bg-primary/5 text-primary font-medium' : 'border-outline-variant hover:border-outline'"
+          class="effect-option-btn flex items-center gap-2 px-2.5 py-2.5 rounded-lg border text-left text-xs font-medium transition-colors"
+          :class="animation === a.id ? 'border-primary bg-white text-primary shadow-[inset_0_0_0_1px_#005daa]' : 'border-outline-variant bg-white text-on-surface hover:border-primary/50'"
           @click="pickAnimation(a.id)"
         >
           <span class="material-symbols-outlined text-[16px]">{{ a.icon }}</span>
@@ -21,36 +21,36 @@
     </section>
 
     <section>
-      <h3 class="text-xs font-semibold text-on-surface-variant mb-2 flex items-center gap-1">
+      <h3 class="text-xs font-semibold text-on-surface mb-2 flex items-center gap-1">
         <span class="material-symbols-outlined text-[16px]">swap_vert</span>
         浏览滚动效果
       </h3>
-      <p class="text-[11px] text-on-surface-variant mb-2">全局演示浏览方式（保存后，在顶部「预览」中体验）</p>
+      <p class="text-xs text-on-surface/75 mb-2 leading-relaxed">全局演示浏览方式（保存后，在顶部「预览」中体验）</p>
       <div class="space-y-2">
         <button
           v-for="s in SCROLL_EFFECTS"
           :key="s.id"
-          class="w-full text-left px-3 py-2 rounded-lg border transition"
-          :class="scrollEffect === s.id ? 'border-primary bg-primary/5' : 'border-outline-variant hover:bg-white'"
+          class="effect-option-btn w-full text-left px-3 py-2.5 rounded-lg border bg-white transition-colors"
+          :class="scrollEffect === s.id ? 'border-primary shadow-[inset_0_0_0_1px_#005daa]' : 'border-outline-variant hover:border-primary/50'"
           @click="pickScrollEffect(s.id)"
         >
-          <div class="font-medium text-xs flex items-center gap-1.5" :class="scrollEffect === s.id ? 'text-primary' : ''">
+          <div class="font-medium text-xs flex items-center gap-1.5" :class="scrollEffect === s.id ? 'text-primary' : 'text-on-surface'">
             <span class="material-symbols-outlined text-[14px]">{{ scrollModeIcon(s.id) }}</span>
             {{ s.label }}
           </div>
-          <div class="text-[10px] text-on-surface-variant mt-0.5">{{ s.desc }}</div>
+          <div class="text-[11px] text-on-surface/70 mt-0.5 leading-snug">{{ s.desc }}</div>
         </button>
       </div>
     </section>
 
     <button
-      class="w-full py-2 text-xs border border-dashed border-outline-variant rounded-lg hover:bg-white disabled:opacity-60"
+      class="w-full py-2.5 text-xs font-medium border border-dashed border-outline-variant rounded-lg bg-white hover:border-primary/50 disabled:opacity-60"
       :disabled="previewing"
       @click="previewTransition"
     >
       {{ previewing ? '动效演示中…' : '预览当前页动效' }}
     </button>
-    <p class="text-center text-[10px] text-on-surface-variant">可重复点击预览，演示期间请稍候</p>
+    <p class="text-center text-[11px] text-on-surface/70 leading-relaxed">可重复点击预览，演示期间请稍候</p>
 
     <section class="border-t border-outline-variant pt-4">
       <ChatScriptEditor
@@ -61,11 +61,11 @@
     </section>
 
     <section v-if="showBgm" class="border-t border-outline-variant pt-4 space-y-3">
-      <h3 class="text-xs font-semibold text-on-surface-variant flex items-center gap-1">
+      <h3 class="text-xs font-semibold text-on-surface flex items-center gap-1">
         <span class="material-symbols-outlined text-[16px]">music_note</span>
         背景音乐
       </h3>
-      <p class="text-[11px] text-on-surface-variant leading-relaxed">
+      <p class="text-xs text-on-surface/75 leading-relaxed">
         可选配置。关闭后预览与分享页不播放音乐；开启后请选择曲目或填写自定义地址。
       </p>
 
@@ -76,9 +76,9 @@
 
       <template v-if="bgmEnabled">
         <div class="space-y-1.5">
-          <label class="text-[11px] text-on-surface-variant">选择曲目</label>
+          <label class="text-xs font-medium text-on-surface">选择曲目</label>
           <select
-            class="w-full text-xs border border-outline-variant rounded-lg px-2 py-2 bg-white"
+            class="w-full text-xs border border-outline-variant rounded-lg px-2 py-2 bg-white text-on-surface"
             :value="selectedTrackKey"
             @change="onTrackSelect"
           >
@@ -93,16 +93,16 @@
             </option>
             <option value="__custom__">自定义 URL…</option>
           </select>
-          <p v-if="catalogLoading" class="text-[10px] text-on-surface-variant">加载曲目列表…</p>
-          <p v-else-if="!availableTrackCount" class="text-[10px] text-amber-700 leading-relaxed">
-            暂无可用 MP3。将文件放入 <code class="text-[10px]">backend/media/bgm/</code> 或运行
-            <code class="text-[10px]">scripts/install-bgm.ps1</code>
+          <p v-if="catalogLoading" class="text-[11px] text-on-surface/70">加载曲目列表…</p>
+          <p v-else-if="!availableTrackCount" class="text-[11px] text-amber-800 leading-relaxed">
+            暂无可用 MP3。将文件放入 <code class="text-[11px]">backend/media/bgm/</code> 或运行
+            <code class="text-[11px]">scripts/install-bgm.ps1</code>
           </p>
-          <p v-else-if="catalogHint" class="text-[10px] text-on-surface-variant">{{ catalogHint }}</p>
+          <p v-else-if="catalogHint" class="text-[11px] text-on-surface/70">{{ catalogHint }}</p>
         </div>
 
         <div v-if="showCustomUrl" class="space-y-1">
-          <label class="text-[11px] text-on-surface-variant">自定义音频地址</label>
+          <label class="text-xs font-medium text-on-surface">自定义音频地址</label>
           <input
             :value="bgmUrl"
             class="w-full text-xs border border-outline-variant rounded-lg px-2 py-1.5"
@@ -111,10 +111,10 @@
           />
         </div>
 
-        <p v-if="bgmEnabled && !bgmUrl" class="text-[10px] text-amber-700">
+        <p v-if="bgmEnabled && !bgmUrl" class="text-[11px] text-amber-800">
           已启用但未选择曲目，预览时将无音乐。
         </p>
-        <p v-else-if="currentTrackLabel" class="text-[10px] text-on-surface-variant">
+        <p v-else-if="currentTrackLabel" class="text-[11px] text-on-surface/70">
           当前：{{ currentTrackLabel }}
         </p>
 
@@ -123,7 +123,7 @@
           循环播放
         </label>
 
-        <label class="block text-[11px] text-on-surface-variant">
+        <label class="block text-xs font-medium text-on-surface">
           音量 {{ Math.round(bgmVolume * 100) }}%
           <input
             type="range"
@@ -297,3 +297,14 @@ function playPreview(id) {
   }, PREVIEW_MS)
 }
 </script>
+
+<style scoped>
+.slide-effect-panel {
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+}
+
+.effect-option-btn {
+  line-height: 1.35;
+}
+</style>

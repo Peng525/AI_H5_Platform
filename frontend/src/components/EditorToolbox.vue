@@ -19,7 +19,7 @@
       </button>
     </div>
 
-    <div class="toolbox-tab-grid grid grid-cols-3 gap-px bg-outline-variant border-b border-outline-variant">
+    <div class="toolbox-tab-grid grid grid-cols-2 gap-px bg-outline-variant border-b border-outline-variant">
       <button
         v-for="t in tabs"
         :key="t.id"
@@ -74,12 +74,6 @@
         @open-dialogue-generator="$emit('open-dialogue-generator')"
         @open-wordcloud-editor="$emit('open-wordcloud-editor')"
       />
-      <div v-else-if="activeTab === 'template'" class="p-4 text-sm">
-        <p class="text-on-surface-variant mb-3">当前主题：{{ theme }}</p>
-        <router-link to="/templates" class="block w-full py-2 text-center bg-primary text-on-primary rounded-lg text-sm">
-          浏览更多模板
-        </router-link>
-      </div>
     </div>
   </aside>
 </template>
@@ -97,7 +91,6 @@ defineProps({
   slides: { type: Array, default: () => [] },
   currentId: { type: Number, default: null },
   currentSlide: { type: Object, default: null },
-  theme: { type: String, default: 'default' },
   scrollEffect: { type: String, default: 'page' },
   canvasBackground: { type: String, default: DEFAULT_CANVAS_BG },
   projectSettings: { type: Object, default: null },
@@ -111,7 +104,6 @@ defineEmits(['select-slide', 'add-slide', 'remove-slide', 'save-slide', 'sync-ca
 
 const activeTab = ref('pages')
 const tabs = [
-  { id: 'template', label: '模板', icon: 'dashboard' },
   { id: 'pages', label: '页面', icon: 'layers' },
   { id: 'text', label: '文本', icon: 'title' },
   { id: 'effect', label: '动效', icon: 'animation' },

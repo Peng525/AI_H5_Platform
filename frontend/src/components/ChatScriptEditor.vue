@@ -1,22 +1,22 @@
 <template>
-  <div class="space-y-3 text-sm">
+  <div class="chat-script-editor space-y-3 text-sm">
     <div class="flex items-center justify-between">
-      <h3 class="text-xs font-semibold text-on-surface-variant flex items-center gap-1">
+      <h3 class="text-xs font-semibold text-on-surface flex items-center gap-1">
         <span class="material-symbols-outlined text-[16px]">forum</span>
         微信对话脚本
       </h3>
-      <label class="flex items-center gap-1.5 text-xs cursor-pointer">
+      <label class="flex items-center gap-1.5 text-xs font-medium text-on-surface cursor-pointer">
         <input v-model="enabled" type="checkbox" class="rounded" @change="emitSave" />
         启用
       </label>
     </div>
 
-    <p class="text-[11px] text-on-surface-variant leading-relaxed">
+    <p class="text-xs text-on-surface/75 leading-relaxed">
       预览/分享时以气泡逐句弹出。使用全屏对话生成器编辑样式、参与者与时间戳。
     </p>
 
     <div v-if="enabled" class="space-y-2">
-      <div class="text-[11px] text-on-surface-variant bg-white border border-outline-variant rounded-lg p-2">
+      <div class="text-xs text-on-surface bg-white border border-outline-variant rounded-lg p-2.5 leading-relaxed">
         <p>{{ summary }}</p>
       </div>
       <button
@@ -77,3 +77,10 @@ watch(
   { deep: true }
 )
 </script>
+
+<style scoped>
+.chat-script-editor {
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+}
+</style>
