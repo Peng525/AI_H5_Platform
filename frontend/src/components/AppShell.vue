@@ -1,10 +1,15 @@
 <template>
   <header
-    class="h-16 border-b border-outline-variant bg-surface flex items-center justify-between px-4 md:px-6 shrink-0 z-50"
+    class="min-h-14 sm:h-16 border-b border-outline-variant bg-surface flex items-center justify-between gap-2 px-3 sm:px-4 md:px-6 shrink-0 z-50"
   >
-    <div class="flex items-center gap-3 md:gap-4 min-w-0">
-      <router-link to="/templates" class="text-base md:text-lg font-bold text-primary shrink-0">
-        AI智能H5演示平台
+    <div class="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0 flex-1">
+      <router-link
+        to="/templates"
+        class="text-sm sm:text-base md:text-lg font-bold text-primary truncate min-w-0"
+        title="AI智能H5演示平台"
+      >
+        <span class="sm:hidden">AI H5</span>
+        <span class="hidden sm:inline">AI智能H5演示平台</span>
       </router-link>
       <span class="hidden lg:block h-5 w-px bg-outline-variant" />
       <nav class="hidden lg:flex items-center gap-1 text-sm">
@@ -20,10 +25,10 @@
       </nav>
     </div>
 
-    <div class="flex items-center gap-2 shrink-0">
+    <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
       <span
         v-if="showQuota"
-        class="hidden sm:inline-flex items-center gap-1 text-xs text-on-surface-variant bg-surface-container-low px-2 py-1 rounded-full"
+        class="hidden md:inline-flex items-center gap-1 text-xs text-on-surface-variant bg-surface-container-low px-2 py-1 rounded-full whitespace-nowrap"
       >
         配额 {{ quota.remaining }}/{{ quota.total }}
       </span>
@@ -41,7 +46,7 @@
       <button
         v-if="projectId"
         type="button"
-        class="px-3 py-2 rounded-lg border border-outline-variant text-sm hover:bg-surface-container-high"
+        class="px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg border border-outline-variant text-xs sm:text-sm hover:bg-surface-container-high whitespace-nowrap"
         @click="goPreview"
       >
         预览
@@ -49,28 +54,37 @@
       <router-link
         v-if="projectId"
         :to="`/publish/${projectId}`"
-        class="px-3 py-2 rounded-lg bg-primary text-on-primary text-sm font-medium shadow-card flex items-center gap-1"
+        class="px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg bg-primary text-on-primary text-xs sm:text-sm font-medium shadow-card whitespace-nowrap"
       >
-        <span class="material-symbols-outlined text-[18px]">ios_share</span>
-        <span class="hidden sm:inline">导出/分享</span>
+        导出
       </router-link>
 
       <div ref="menuRef" class="relative">
         <button
-          class="flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-surface-container-high text-sm"
+          type="button"
+          class="flex items-center gap-1 sm:gap-1.5 max-w-[5.5rem] sm:max-w-[9.5rem] md:max-w-[12rem] pl-1 pr-1.5 sm:pr-2 py-1 rounded-lg hover:bg-surface-container-high text-sm min-w-0"
+          :title="displayName"
           @click="menuOpen = !menuOpen"
         >
-          <span class="w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center text-xs font-bold">
+          <span class="w-7 h-7 shrink-0 rounded-full bg-primary text-on-primary flex items-center justify-center text-xs font-bold">
             {{ avatarLetter }}
           </span>
-          <span class="material-symbols-outlined text-[18px] text-on-surface-variant hidden sm:block">expand_more</span>
+          <span class="truncate text-xs sm:text-sm text-on-surface font-medium min-w-0 hidden min-[420px]:inline">{{ displayName }}</span>
+          <span
+            class="shrink-0 text-[10px] text-on-surface-variant transition-transform"
+            :class="menuOpen ? 'rotate-180' : ''"
+            aria-hidden="true"
+          >▼</span>
         </button>
         <div
           v-if="menuOpen"
-          class="absolute right-0 top-full mt-1 w-44 bg-white border border-outline-variant rounded-lg shadow-lg py-1 z-50"
+          class="absolute right-0 top-full mt-1 w-48 sm:w-52 bg-white border border-outline-variant rounded-lg shadow-lg py-1 z-50"
         >
+          <p v-if="showQuota" class="px-3 py-2 text-xs text-on-surface-variant border-b border-outline-variant md:hidden">
+            配额 {{ quota.remaining }}/{{ quota.total }}
+          </p>
           <p class="px-3 py-2 text-xs text-on-surface-variant border-b border-outline-variant truncate">
-            {{ user?.username || user?.email || '用户' }}
+            {{ displayName }}
           </p>
           <router-link
             to="/dashboard"
@@ -141,10 +155,9 @@ const navLinks = computed(() => {
   return links
 })
 
-const avatarLetter = computed(() => {
-  const name = user.value?.username || user.value?.email || 'U'
-  return name.charAt(0).toUpperCase()
-})
+const displayName = computed(() => user.value?.username || user.value?.email || '用户')
+
+const avatarLetter = computed(() => displayName.value.charAt(0).toUpperCase())
 
 function isActive(match) {
   return route.path.startsWith(match)

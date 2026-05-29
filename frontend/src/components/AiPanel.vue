@@ -1,5 +1,5 @@
 <template>
-  <aside class="w-[300px] border-l border-outline-variant bg-surface-container-low flex flex-col h-full min-h-0 shrink-0 overflow-hidden">
+  <aside class="w-full h-full border-l border-outline-variant bg-surface-container-low flex flex-col min-h-0 shrink-0 overflow-hidden">
     <div class="p-4 border-b border-outline-variant shrink-0">
       <h2 class="font-semibold text-sm">AI 智能面板</h2>
     </div>

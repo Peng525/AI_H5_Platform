@@ -157,7 +157,7 @@ const props = defineProps({
   themeId: { type: String, default: 'zjy-minimal' },
 })
 
-const emit = defineEmits(['select', 'update', 'remove', 'batch-start', 'batch-end', 'edit-wordcloud'])
+const emit = defineEmits(['select', 'update', 'remove', 'batch-start', 'batch-end', 'edit-wordcloud', 'move-delta'])
 
 const wordCloudCanvasRef = ref(null)
 
@@ -250,8 +250,14 @@ function onRootMouseDown(e) {
 }
 
 function onSelect(e) {
-  emit('select', props.element.id)
+  const payload = {
+    id: props.element.id,
+    ctrlKey: e.ctrlKey || e.metaKey,
+    shiftKey: e.shiftKey,
+  }
+  emit('select', payload)
   if (e.target.closest('.cursor-se-resize')) return
+  if (payload.ctrlKey || payload.shiftKey) return
   startDrag(e)
 }
 
@@ -287,17 +293,15 @@ function commitCellEdit() {
 }
 
 function startDrag(e) {
-  emit('batch-start')
+  emit('batch-start', props.element.id)
   const startX = e.clientX
   const startY = e.clientY
-  const origX = props.element.x
-  const origY = props.element.y
   const s = props.scale
 
   function onMove(ev) {
-    emit('update', props.element.id, {
-      x: Math.max(0, origX + (ev.clientX - startX) / s),
-      y: Math.max(0, origY + (ev.clientY - startY) / s),
+    emit('move-delta', {
+      dx: (ev.clientX - startX) / s,
+      dy: (ev.clientY - startY) / s,
     })
   }
   function onUp() {
@@ -310,7 +314,7 @@ function startDrag(e) {
 }
 
 function startResize(e) {
-  emit('batch-start')
+  emit('batch-start', props.element.id)
   const startX = e.clientX
   const startY = e.clientY
   const origW = props.element.width

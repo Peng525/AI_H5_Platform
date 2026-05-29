@@ -2,14 +2,14 @@
   <div class="min-h-screen bg-background flex flex-col">
     <AppShell />
 
-    <div class="max-w-7xl mx-auto p-6 md:p-10 flex-1 w-full">
-      <div class="mb-8">
-        <h1 class="text-2xl md:text-3xl font-bold">探索模板</h1>
+    <div class="max-w-7xl mx-auto px-3 py-4 sm:p-6 md:p-10 flex-1 w-full min-w-0">
+      <div class="mb-5 sm:mb-8">
+        <h1 class="text-xl sm:text-2xl md:text-3xl font-bold">探索模板</h1>
       </div>
 
-      <div class="flex flex-wrap gap-2 mb-5">
-        <div class="flex-1 min-w-[220px] relative">
-          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">search</span>
+      <div class="flex flex-col sm:flex-row gap-2 mb-5">
+        <div class="flex-1 min-w-0 relative">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg pointer-events-none">search</span>
           <input
             v-model="search"
             class="w-full border border-outline-variant rounded-lg pl-10 pr-3 py-2.5 text-sm"
@@ -17,35 +17,41 @@
             @keyup.enter="load"
           />
         </div>
-        <button class="px-5 py-2.5 bg-primary text-on-primary rounded-lg text-sm font-medium" @click="load">
+        <button
+          type="button"
+          class="w-full sm:w-auto shrink-0 px-5 py-2.5 bg-primary text-on-primary rounded-lg text-sm font-medium"
+          @click="load"
+        >
           搜索
         </button>
       </div>
 
       <div class="mb-4">
         <p class="text-xs font-medium text-on-surface-variant mb-2">终端类型</p>
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap gap-1.5 sm:gap-2">
           <button
             v-for="d in devices"
             :key="d.id"
-            class="px-3 py-1.5 rounded-full text-sm border inline-flex items-center gap-1"
-            :class="device === d.id ? 'bg-secondary text-white border-secondary' : 'border-outline-variant hover:bg-white'"
+            type="button"
+            class="px-2.5 sm:px-3 py-1.5 rounded-full text-xs sm:text-sm border inline-flex items-center gap-1"
+            :class="device === d.id ? 'bg-secondary text-white border-secondary' : 'border-outline-variant hover:bg-white bg-white'"
             @click="device = d.id; load()"
           >
-            <span class="material-symbols-outlined text-[16px]">{{ d.id === 'web' ? 'desktop_windows' : d.id === 'mobile' ? 'smartphone' : 'devices' }}</span>
-            {{ d.label }}
+            <span class="material-symbols-outlined text-[16px] shrink-0">{{ deviceIcon(d.id) }}</span>
+            <span class="whitespace-nowrap">{{ d.label }}</span>
           </button>
         </div>
       </div>
 
       <div class="mb-6">
         <p class="text-xs font-medium text-on-surface-variant mb-2">模板类型</p>
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap gap-1.5 sm:gap-2">
           <button
             v-for="c in categories"
             :key="c"
-            class="px-3 py-1.5 rounded-full text-sm border"
-            :class="category === c ? 'bg-primary text-on-primary border-primary' : 'border-outline-variant hover:bg-white'"
+            type="button"
+            class="px-2.5 sm:px-3 py-1.5 rounded-full text-xs sm:text-sm border whitespace-nowrap"
+            :class="category === c ? 'bg-primary text-on-primary border-primary' : 'border-outline-variant hover:bg-white bg-white'"
             @click="category = c; load()"
           >
             {{ c }}
@@ -163,6 +169,12 @@ onMounted(async () => {
   if (cats.devices?.length) devices.value = cats.devices
   await load()
 })
+
+function deviceIcon(id) {
+  if (id === 'web') return 'desktop_windows'
+  if (id === 'mobile') return 'smartphone'
+  return 'devices'
+}
 
 async function load() {
   loading.value = true

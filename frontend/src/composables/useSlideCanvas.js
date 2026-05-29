@@ -1,4 +1,4 @@
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { api } from '../api/client'
 
 const STORAGE_PREFIX = 'ai_h5_canvas_'
@@ -164,17 +164,25 @@ export function defaultElement(type, overrides = {}) {
 
 export function useSlideCanvas(projectIdRef, slideIdRef) {
   const elements = ref([])
-  const selectedId = ref(null)
+  const selectedIds = ref([])
+  const selectedId = computed(() => selectedIds.value[selectedIds.value.length - 1] || null)
+  const clipboard = ref([])
   let saveTimer = null
   const undoStack = []
   const redoStack = []
   const MAX_HISTORY = 50
   let historyBatching = false
 
+  function normalizeSelectedIds(snapshot) {
+    if (Array.isArray(snapshot?.selectedIds)) return [...snapshot.selectedIds]
+    if (snapshot?.selectedId) return [snapshot.selectedId]
+    return []
+  }
+
   function snapshotState() {
     return {
       elements: JSON.parse(JSON.stringify(elements.value)),
-      selectedId: selectedId.value,
+      selectedIds: [...selectedIds.value],
     }
   }
 
@@ -200,7 +208,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     redoStack.push(snapshotState())
     const prev = undoStack.pop()
     elements.value = prev.elements
-    selectedId.value = prev.selectedId
+    selectedIds.value = normalizeSelectedIds(prev)
     persistLocal()
     scheduleServerSave()
     return true
@@ -211,7 +219,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     undoStack.push(snapshotState())
     const next = redoStack.pop()
     elements.value = next.elements
-    selectedId.value = next.selectedId
+    selectedIds.value = normalizeSelectedIds(next)
     persistLocal()
     scheduleServerSave()
     return true
@@ -248,8 +256,30 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     } catch {
       elements.value = serverCanvas?.length ? serverCanvas : []
     }
-    selectedId.value = null
+    selectedIds.value = []
     clearHistory()
+  }
+
+  function selectElement(id, { toggle = false, additive = false } = {}) {
+    if (toggle) {
+      if (selectedIds.value.includes(id)) {
+        selectedIds.value = selectedIds.value.filter((x) => x !== id)
+      } else {
+        selectedIds.value = [...selectedIds.value, id]
+      }
+      return
+    }
+    if (additive) {
+      if (!selectedIds.value.includes(id)) {
+        selectedIds.value = [...selectedIds.value, id]
+      }
+      return
+    }
+    selectedIds.value = [id]
+  }
+
+  function clearSelection() {
+    selectedIds.value = []
   }
 
   function persistLocal() {
@@ -281,7 +311,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
   function replaceAllElements(newElements) {
     if (!historyBatching) pushHistory()
     elements.value = Array.isArray(newElements) ? newElements : []
-    selectedId.value = null
+    selectedIds.value = []
     saveElements()
   }
 
@@ -308,7 +338,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     const maxZ = elements.value.reduce((m, el) => Math.max(m, el.zIndex || 0), 0)
     const el = defaultElement(type, { ...overrides, zIndex: maxZ + 1 })
     elements.value.push(el)
-    selectedId.value = el.id
+    selectedIds.value = [el.id]
     saveElements()
     return el
   }
@@ -329,7 +359,16 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
   function removeElement(id) {
     if (!historyBatching) pushHistory()
     elements.value = elements.value.filter((el) => el.id !== id)
-    if (selectedId.value === id) selectedId.value = null
+    selectedIds.value = selectedIds.value.filter((sid) => sid !== id)
+    saveElements()
+  }
+
+  function removeSelected() {
+    if (!selectedIds.value.length) return
+    if (!historyBatching) pushHistory()
+    const set = new Set(selectedIds.value)
+    elements.value = elements.value.filter((el) => !set.has(el.id))
+    selectedIds.value = []
     saveElements()
   }
 
@@ -345,9 +384,62 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
       zIndex: (src.zIndex || 0) + 1,
     }
     elements.value.push(copy)
-    selectedId.value = copy.id
+    selectedIds.value = [copy.id]
     saveElements()
     return copy
+  }
+
+  function duplicateSelected() {
+    if (!selectedIds.value.length) return []
+    if (!historyBatching) pushHistory()
+    const maxZ = elements.value.reduce((m, el) => Math.max(m, el.zIndex || 0), 0)
+    const newIds = []
+    selectedIds.value.forEach((id, i) => {
+      const src = elements.value.find((el) => el.id === id)
+      if (!src) return
+      const copy = {
+        ...JSON.parse(JSON.stringify(src)),
+        id: genId(),
+        x: src.x + 12,
+        y: src.y + 12,
+        zIndex: maxZ + 1 + i,
+      }
+      elements.value.push(copy)
+      newIds.push(copy.id)
+    })
+    selectedIds.value = newIds
+    saveElements()
+    return newIds
+  }
+
+  function copySelected() {
+    if (!selectedIds.value.length) return false
+    clipboard.value = selectedIds.value
+      .map((id) => elements.value.find((el) => el.id === id))
+      .filter(Boolean)
+      .map((el) => JSON.parse(JSON.stringify(el)))
+    return clipboard.value.length > 0
+  }
+
+  function pasteClipboard() {
+    if (!clipboard.value.length) return false
+    if (!historyBatching) pushHistory()
+    const maxZ = elements.value.reduce((m, el) => Math.max(m, el.zIndex || 0), 0)
+    const newIds = []
+    clipboard.value.forEach((src, i) => {
+      const copy = {
+        ...JSON.parse(JSON.stringify(src)),
+        id: genId(),
+        x: src.x + 12,
+        y: src.y + 12,
+        zIndex: maxZ + 1 + i,
+      }
+      elements.value.push(copy)
+      newIds.push(copy.id)
+    })
+    selectedIds.value = newIds
+    saveElements()
+    return true
   }
 
   function bringToFront(id) {
@@ -356,6 +448,19 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     const idx = elements.value.findIndex((el) => el.id === id)
     if (idx < 0) return
     elements.value[idx] = { ...elements.value[idx], zIndex: maxZ + 1 }
+    saveElements()
+  }
+
+  function bringSelectedToFront() {
+    if (!selectedIds.value.length) return
+    if (!historyBatching) pushHistory()
+    let maxZ = elements.value.reduce((m, el) => Math.max(m, el.zIndex || 0), 0)
+    for (const id of selectedIds.value) {
+      const idx = elements.value.findIndex((el) => el.id === id)
+      if (idx < 0) continue
+      maxZ += 1
+      elements.value[idx] = { ...elements.value[idx], zIndex: maxZ }
+    }
     saveElements()
   }
 
@@ -413,13 +518,14 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     } else {
       elements.value.push(el)
     }
-    selectedId.value = el.id
+    selectedIds.value = [el.id]
     saveElements()
     return el
   }
 
   return {
     elements,
+    selectedIds,
     selectedId,
     loadElements,
     saveElements,
@@ -429,8 +535,15 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     addImageFromAi,
     updateElement,
     removeElement,
+    removeSelected,
     duplicateElement,
+    duplicateSelected,
+    copySelected,
+    pasteClipboard,
+    selectElement,
+    clearSelection,
     bringToFront,
+    bringSelectedToFront,
     syncFromSlide,
     undo,
     redo,

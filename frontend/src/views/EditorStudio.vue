@@ -1,38 +1,46 @@
 <template>
   <div class="h-screen flex flex-col bg-background overflow-hidden">
     <EditorTopBar :project-id="projectId" />
-    <div class="flex flex-1 min-h-0">
-      <EditorToolbox
-        :slides="project?.slides || []"
-        :current-id="current?.id"
-        :current-slide="current"
-        :theme="project?.theme"
-        :scroll-effect="settings.scrollEffect"
-        :canvas-background="canvasBackground"
-        :project-settings="settings"
-        :project-id="projectId"
-        :viewport="viewport"
-        :live-slide-id="current?.id ?? null"
-        :live-elements="elements"
-        @select-slide="selectSlide"
-        @add-slide="addSlide"
-        @remove-slide="removeSlide"
-        @save-slide="saveSlideFields"
-        @sync-canvas="syncCanvasFromSlide"
-        @add-material="addMaterial"
-        @apply-layout="applyLayoutBlock"
-        @canvas-bg-change="onCanvasBgChange"
-        @scroll-change="setScrollEffect"
-        @preview-animation="onPreviewAnimation"
-        @open-help="shortcutsHelpOpen = true"
-        @bgm-change="onBgmChange"
-        @open-dialogue-generator="openDialogueGenerator"
-        @open-wordcloud-editor="wordCloudOpen = true"
-      />
+    <div class="flex flex-1 min-h-0 relative">
+      <!-- 左侧工具箱：大屏内嵌，小屏抽屉 -->
+      <div
+        class="editor-side-panel editor-side-panel--left z-50"
+        :class="leftDrawerOpen ? 'is-open' : ''"
+      >
+        <EditorToolbox
+          class="h-full"
+          :slides="project?.slides || []"
+          :current-id="current?.id"
+          :current-slide="current"
+          :theme="project?.theme"
+          :scroll-effect="settings.scrollEffect"
+          :canvas-background="canvasBackground"
+          :project-settings="settings"
+          :project-id="projectId"
+          :viewport="viewport"
+          :live-slide-id="current?.id ?? null"
+          :live-elements="elements"
+          @select-slide="onSelectSlideFromToolbox"
+          @add-slide="addSlide"
+          @remove-slide="removeSlide"
+          @save-slide="saveSlideFields"
+          @sync-canvas="syncCanvasFromSlide"
+          @add-material="addMaterial"
+          @apply-layout="applyLayoutBlock"
+          @canvas-bg-change="onCanvasBgChange"
+          @scroll-change="setScrollEffect"
+          @preview-animation="onPreviewAnimation"
+          @open-help="shortcutsHelpOpen = true"
+          @bgm-change="onBgmChange"
+          @open-dialogue-generator="openDialogueGeneratorFromToolbox"
+          @open-wordcloud-editor="openWordCloudFromToolbox"
+        />
+      </div>
 
       <EditorPhoneCanvas
+        class="flex-1 min-w-0"
         :elements="elements"
-        :selected-id="selectedId"
+        :selected-ids="selectedIds"
         :slide="current"
         :slide-index="slideIndex"
         :viewport="viewport"
@@ -42,8 +50,8 @@
         :canvas-background="canvasBackground"
         :theme-id="settings.themeId || 'zjy-minimal'"
         :show-dialogue-preview="showDialoguePreview"
-        @select="selectedId = $event"
-        @deselect="selectedId = null"
+        @select="onSelectElement"
+        @deselect="clearSelection"
         @update-element="updateElement"
         @add-text="addElement('text')"
         @add-shape="addElement('shape')"
@@ -54,20 +62,53 @@
         @bring-front="onBringFront"
         @center-element="onCenterElement"
         @viewport-change="setViewport"
-        @batch-start="beginHistoryBatch"
-        @batch-end="endHistoryBatch"
+        @batch-start="onBatchStart"
+        @batch-end="onBatchEnd"
+        @move-delta="onMoveDelta"
         @edit-wordcloud="onEditWordCloud"
         @update:show-dialogue-preview="showDialoguePreview = $event"
       />
 
-      <AiPanel
-        ref="aiPanelRef"
-        :image-loading="imageLoading"
-        :quota-remaining="quota.remaining"
-        :quota-total="quota.total"
-        @generate-image="onGenerateImage"
-        @add-image-to-page="onAddImageToPage"
+      <!-- 右侧 AI 面板：大屏内嵌，小屏抽屉 -->
+      <div
+        class="editor-side-panel editor-side-panel--right z-50"
+        :class="rightDrawerOpen ? 'is-open' : ''"
+      >
+        <AiPanel
+          ref="aiPanelRef"
+          class="h-full"
+          :image-loading="imageLoading"
+          :quota-remaining="quota.remaining"
+          :quota-total="quota.total"
+          @generate-image="onGenerateImage"
+          @add-image-to-page="onAddImageToPage"
+        />
+      </div>
+
+      <div
+        v-if="leftDrawerOpen || rightDrawerOpen"
+        class="editor-drawer-backdrop xl:hidden"
+        @click="closeDrawers"
       />
+
+      <nav class="editor-mobile-dock xl:hidden" aria-label="编辑器面板切换">
+        <button
+          type="button"
+          class="editor-mobile-dock__btn"
+          :class="leftDrawerOpen ? 'is-active' : ''"
+          @click="toggleLeftDrawer"
+        >
+          工具箱
+        </button>
+        <button
+          type="button"
+          class="editor-mobile-dock__btn"
+          :class="rightDrawerOpen ? 'is-active' : ''"
+          @click="toggleRightDrawer"
+        >
+          AI 生图
+        </button>
+      </nav>
     </div>
 
     <EditorShortcutsHelp v-model:open="shortcutsHelpOpen" />
@@ -138,14 +179,22 @@ const canvasBackground = computed(() => getSlideBackground(current.value?.id))
 const slideIdRef = computed(() => current.value?.id ?? null)
 const {
   elements,
+  selectedIds,
   selectedId,
   saveElements,
   loadElements,
   addElement,
   updateElement,
   removeElement,
+  removeSelected,
   duplicateElement,
+  duplicateSelected,
+  copySelected,
+  pasteClipboard,
+  selectElement,
+  clearSelection,
   bringToFront,
+  bringSelectedToFront,
   syncFromSlide,
   replaceAllElements,
   addImageFromAi,
@@ -155,6 +204,11 @@ const {
   beginHistoryBatch,
   endHistoryBatch,
 } = useSlideCanvas(projectId, slideIdRef)
+
+const dragState = ref(null)
+const pendingDragElementId = ref(null)
+const leftDrawerOpen = ref(false)
+const rightDrawerOpen = ref(false)
 
 const slideIndex = computed(() => {
   if (!project.value?.slides || !current.value) return 0
@@ -176,9 +230,13 @@ function onBgmChange(patch) {
   setBgm(patch)
 }
 
+let xlMediaQuery = null
+
 onMounted(() => {
   registerCanvasFlush(flushCanvasSave)
   window.addEventListener('keydown', onKeyDown)
+  xlMediaQuery = window.matchMedia('(min-width: 1280px)')
+  xlMediaQuery.addEventListener('change', onViewportChange)
   load()
 })
 watch(() => route.params.id, load)
@@ -426,15 +484,18 @@ function onStyleChange(patch) {
 }
 
 function onDuplicate() {
-  if (selectedId.value) duplicateElement(selectedId.value)
+  if (selectedIds.value.length > 1) duplicateSelected()
+  else if (selectedId.value) duplicateElement(selectedId.value)
 }
 
 function onDeleteSelected() {
-  if (selectedId.value) removeElement(selectedId.value)
+  if (selectedIds.value.length > 1) removeSelected()
+  else if (selectedId.value) removeElement(selectedId.value)
 }
 
 function onBringFront() {
-  if (selectedId.value) bringToFront(selectedId.value)
+  if (selectedIds.value.length > 1) bringSelectedToFront()
+  else if (selectedId.value) bringToFront(selectedId.value)
 }
 
 function onCenterElement(axis) {
@@ -452,6 +513,57 @@ function onCenterElement(axis) {
     patch.y = Math.max(0, Math.round((canvasH - el.height) / 2))
   }
   updateElement(selectedId.value, patch)
+}
+
+function onSelectElement({ id, ctrlKey, shiftKey }) {
+  if (ctrlKey) {
+    selectElement(id, { toggle: true })
+    return
+  }
+  if (shiftKey) {
+    selectElement(id, { additive: true })
+    return
+  }
+  if (!selectedIds.value.includes(id)) {
+    selectElement(id)
+  }
+}
+
+function onBatchStart(dragElementId) {
+  beginHistoryBatch()
+  pendingDragElementId.value = dragElementId || null
+}
+
+function onMoveDelta({ dx, dy }) {
+  if (!pendingDragElementId.value) return
+  if (!dragState.value) {
+    const dragElementId = pendingDragElementId.value
+    const ids = selectedIds.value.includes(dragElementId) ? [...selectedIds.value] : [dragElementId]
+    dragState.value = {
+      ids,
+      origins: Object.fromEntries(
+        ids.map((sid) => {
+          const el = elements.value.find((e) => e.id === sid)
+          return [sid, { x: el?.x ?? 0, y: el?.y ?? 0 }]
+        })
+      ),
+    }
+  }
+  const { ids, origins } = dragState.value
+  for (const sid of ids) {
+    const origin = origins[sid]
+    if (!origin) continue
+    updateElement(sid, {
+      x: Math.max(0, origin.x + dx),
+      y: Math.max(0, origin.y + dy),
+    })
+  }
+}
+
+function onBatchEnd() {
+  pendingDragElementId.value = null
+  dragState.value = null
+  endHistoryBatch()
 }
 
 function onKeyDown(e) {
@@ -479,13 +591,27 @@ function onKeyDown(e) {
     redo()
     return
   }
-  if (e.key === 'Delete' && selectedId.value && !editing) {
-    removeElement(selectedId.value)
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && !editing) {
+    if (!selectedIds.value.length) return
+    e.preventDefault()
+    copySelected()
+    return
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v' && !editing) {
+    e.preventDefault()
+    pasteClipboard()
+    return
+  }
+  if (e.key === 'Delete' && selectedIds.value.length && !editing) {
+    e.preventDefault()
+    if (selectedIds.value.length > 1) removeSelected()
+    else removeElement(selectedId.value)
   }
 }
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeyDown)
+  xlMediaQuery?.removeEventListener('change', onViewportChange)
   unregisterCanvasFlush()
 })
 
@@ -523,4 +649,134 @@ function onPreviewAnimation(anim) {
   previewAnimation.value = anim
   previewAnimationTick.value += 1
 }
+
+function closeDrawers() {
+  leftDrawerOpen.value = false
+  rightDrawerOpen.value = false
+}
+
+function toggleLeftDrawer() {
+  rightDrawerOpen.value = false
+  leftDrawerOpen.value = !leftDrawerOpen.value
+}
+
+function toggleRightDrawer() {
+  leftDrawerOpen.value = false
+  rightDrawerOpen.value = !rightDrawerOpen.value
+}
+
+function onSelectSlideFromToolbox(slide) {
+  selectSlide(slide)
+  closeDrawers()
+}
+
+function openDialogueGeneratorFromToolbox() {
+  openDialogueGenerator()
+  closeDrawers()
+}
+
+function openWordCloudFromToolbox() {
+  wordCloudOpen.value = true
+  closeDrawers()
+}
+
+function onViewportChange(e) {
+  if (e.matches) closeDrawers()
+}
+</script>
+
+<style scoped>
+.editor-side-panel {
+  display: none;
+  position: fixed;
+  top: 3.5rem;
+  bottom: 3.25rem;
+  width: min(calc(100vw - 1.5rem), 20rem);
+  max-width: 20rem;
+  transition: transform 0.2s ease-out;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+
+.editor-side-panel--left {
+  left: 0;
+  transform: translateX(-105%);
+}
+
+.editor-side-panel--right {
+  right: 0;
+  transform: translateX(105%);
+}
+
+.editor-side-panel.is-open {
+  display: flex;
+}
+
+.editor-side-panel--left.is-open {
+  transform: translateX(0);
+}
+
+.editor-side-panel--right.is-open {
+  transform: translateX(0);
+}
+
+.editor-drawer-backdrop {
+  position: fixed;
+  inset: 3.5rem 0 3.25rem;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 40;
+}
+
+.editor-mobile-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  border-top: 1px solid #c0c7d6;
+  background: #fcf9f8;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.editor-mobile-dock__btn {
+  flex: 1;
+  padding: 0.75rem 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #404753;
+  text-align: center;
+}
+
+.editor-mobile-dock__btn.is-active {
+  color: #005daa;
+  background: rgba(0, 93, 170, 0.08);
+}
+
+@media (min-width: 1280px) {
+  .editor-side-panel {
+    display: flex;
+    position: static;
+    top: auto;
+    bottom: auto;
+    width: auto;
+    max-width: none;
+    transform: none;
+    box-shadow: none;
+    flex-shrink: 0;
+  }
+
+  .editor-side-panel--left {
+    width: 15rem;
+  }
+
+  .editor-side-panel--right {
+    width: 18.75rem;
+  }
+
+  .editor-drawer-backdrop,
+  .editor-mobile-dock {
+    display: none;
+  }
+}
+</style>
 </script>

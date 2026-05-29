@@ -1,34 +1,35 @@
 <template>
-  <aside class="w-[240px] border-r border-outline-variant bg-surface-container-low flex flex-col shrink-0 overflow-hidden">
-    <div class="p-3 border-b border-outline-variant flex items-center gap-2">
+  <aside class="w-full h-full border-r border-outline-variant bg-surface-container-low flex flex-col shrink-0 overflow-hidden min-w-0">
+    <div class="p-2 sm:p-3 border-b border-outline-variant flex items-center gap-2 min-w-0">
       <div class="w-8 h-8 rounded bg-primary-container text-on-primary-container flex items-center justify-center shrink-0">
         <span class="material-symbols-outlined text-[20px]">widgets</span>
       </div>
       <div class="min-w-0 flex-1">
-        <div class="text-sm font-bold">工具箱</div>
+        <div class="text-sm font-bold truncate">工具箱</div>
         <div class="text-[10px] text-on-surface-variant">编辑器</div>
       </div>
       <button
         type="button"
-        class="shrink-0 h-8 px-2.5 rounded-lg bg-primary text-on-primary text-xs font-medium inline-flex items-center gap-1 hover:bg-primary-container hover:text-on-primary-container transition-colors"
+        class="shrink-0 h-8 px-2 rounded-lg bg-primary text-on-primary text-xs font-medium inline-flex items-center gap-1 hover:bg-primary-container hover:text-on-primary-container transition-colors"
         title="快捷键说明 (F1)"
         @click="$emit('open-help')"
       >
         <span class="material-symbols-outlined text-[16px]">help</span>
-        帮助
+        <span class="hidden sm:inline">帮助</span>
       </button>
     </div>
 
-    <div class="flex border-b border-outline-variant">
+    <div class="flex border-b border-outline-variant overflow-x-auto">
       <button
         v-for="t in tabs"
         :key="t.id"
-        class="flex-1 flex flex-col items-center py-2 text-[10px] transition-colors"
+        type="button"
+        class="flex-1 min-w-[3.25rem] max-w-[4.5rem] flex flex-col items-center py-2 px-0.5 text-[10px] transition-colors"
         :class="activeTab === t.id ? 'bg-surface-container-highest text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container'"
         @click="activeTab = t.id"
       >
-        <span class="material-symbols-outlined text-[20px]" :style="activeTab === t.id ? { fontVariationSettings: '\'FILL\' 1' } : {}">{{ t.icon }}</span>
-        {{ t.label }}
+        <span class="material-symbols-outlined text-[20px] shrink-0" :style="activeTab === t.id ? { fontVariationSettings: '\'FILL\' 1' } : {}">{{ t.icon }}</span>
+        <span class="truncate w-full text-center leading-tight">{{ t.label }}</span>
       </button>
     </div>
 

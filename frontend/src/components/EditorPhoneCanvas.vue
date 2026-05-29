@@ -1,6 +1,6 @@
 <template>
   <section
-    class="flex-1 bg-surface-container-low overflow-hidden relative select-none"
+    class="flex-1 bg-surface-container-low overflow-hidden relative select-none pb-14 xl:pb-0"
     @wheel.prevent="onWheelZoom"
   >
     <EditorCanvasToolbar
@@ -18,11 +18,11 @@
     />
 
     <!-- 分辨率选择 -->
-    <div class="absolute top-4 right-4 z-20 flex items-center gap-2" data-editor-chrome>
+    <div class="absolute top-2 right-2 sm:top-4 sm:right-4 z-20 flex items-center gap-1.5 sm:gap-2 max-w-[calc(100%-1rem)]" data-editor-chrome>
       <button
         v-if="slide?.chat_script?.enabled"
         type="button"
-        class="text-xs border border-outline-variant rounded-lg px-2 py-1.5 bg-white shadow-card"
+        class="text-[10px] sm:text-xs border border-outline-variant rounded-lg px-1.5 sm:px-2 py-1 sm:py-1.5 bg-white shadow-card whitespace-nowrap"
         :class="dialoguePreviewOn ? 'text-primary border-primary' : ''"
         @click="toggleDialoguePreview"
       >
@@ -30,7 +30,7 @@
       </button>
       <select
         :value="viewportId"
-        class="text-xs border border-outline-variant rounded-lg px-2 py-1.5 bg-white shadow-card max-w-[160px]"
+        class="text-[10px] sm:text-xs border border-outline-variant rounded-lg px-1.5 sm:px-2 py-1 sm:py-1.5 bg-white shadow-card max-w-[7.5rem] sm:max-w-[10rem] min-w-0"
         @change="$emit('viewport-change', $event.target.value)"
       >
         <optgroup label="手机">
@@ -42,7 +42,7 @@
       </select>
     </div>
 
-    <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white shadow-card rounded-full px-2 py-1 border border-outline-variant z-20" data-editor-chrome>
+    <div class="absolute bottom-16 xl:bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1 sm:gap-2 bg-white shadow-card rounded-full px-1.5 sm:px-2 py-1 border border-outline-variant z-20 max-w-[calc(100%-1rem)]" data-editor-chrome>
       <button
         type="button"
         class="p-1.5 rounded-full transition-colors"
@@ -83,7 +83,7 @@
       <button type="button" class="p-1.5 hover:bg-surface-container rounded-full" title="放大" @click="zoomIn">
         <span class="material-symbols-outlined text-[18px]">add</span>
       </button>
-      <span class="text-[10px] text-on-surface-variant pl-1 border-l border-outline-variant whitespace-nowrap">
+      <span class="hidden sm:inline text-[10px] text-on-surface-variant pl-1 border-l border-outline-variant whitespace-nowrap">
         {{ safeViewport.width }}×{{ safeViewport.height }}
       </span>
     </div>
@@ -135,13 +135,14 @@
               v-for="el in elements"
               :key="el.id"
               :element="el"
-              :selected="el.id === selectedId"
+              :selected="selectedIds.includes(el.id)"
               :scale="1"
               :theme-id="themeId"
               @select="$emit('select', $event)"
               @update="(id, patch) => $emit('update-element', id, patch)"
-              @batch-start="$emit('batch-start')"
+              @batch-start="(id) => $emit('batch-start', id)"
               @batch-end="$emit('batch-end')"
+              @move-delta="$emit('move-delta', $event)"
               @edit-wordcloud="$emit('edit-wordcloud', $event)"
             />
 
@@ -181,7 +182,7 @@ import { normalizeChatScript } from '../utils/chatScript.js'
 
 const props = defineProps({
   elements: { type: Array, default: () => [] },
-  selectedId: { type: String, default: null },
+  selectedIds: { type: Array, default: () => [] },
   slide: { type: Object, default: null },
   slideIndex: { type: Number, default: 0 },
   viewport: { type: Object, default: null },
@@ -208,6 +209,7 @@ const emit = defineEmits([
   'viewport-change',
   'batch-start',
   'batch-end',
+  'move-delta',
   'edit-wordcloud',
   'update:show-dialogue-preview',
 ])
@@ -257,7 +259,10 @@ const panActive = computed(() => panMode.value || spaceHeld.value)
 const mobileViewports = VIEWPORT_PRESETS.filter((v) => v.device === 'mobile')
 const webViewports = VIEWPORT_PRESETS.filter((v) => v.device === 'web')
 
-const selectedElement = computed(() => props.elements.find((el) => el.id === props.selectedId) || null)
+const selectedElement = computed(() => {
+  const primaryId = props.selectedIds[props.selectedIds.length - 1]
+  return props.elements.find((el) => el.id === primaryId) || null
+})
 
 /** 防御：viewport 未正确传入时使用默认预设 */
 const safeViewport = computed(() => {
