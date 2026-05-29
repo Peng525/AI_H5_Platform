@@ -89,15 +89,7 @@
                 :class="bubbleClass(item.side)"
                 :style="bubbleInlineStyle(item.isOwner, script.style)"
               >
-                <textarea
-                  v-if="editable && selectedIndex === i"
-                  :value="item.text"
-                  rows="1"
-                  class="dialogue-bubble__input"
-                  @click.stop
-                  @input="updateText(i, $event.target.value)"
-                />
-                <span v-else class="dialogue-bubble__text">{{ item.text || (editable ? '点击编辑…' : '') }}</span>
+                <span class="dialogue-bubble__text">{{ item.text || (editable ? '点击编辑…' : '') }}</span>
               </div>
             </div>
           </div>
@@ -117,9 +109,9 @@
           <button
             type="button"
             class="px-4 py-2 text-sm bg-primary text-on-primary rounded-full"
-            @click="addMessageAt(0)"
+            @click="addUserAt(0)"
           >
-            添加消息
+            添加用户
           </button>
         </div>
       </div>
@@ -144,9 +136,9 @@
           <button
             type="button"
             class="block w-full text-left px-3 py-2 text-sm hover:bg-surface-container-low"
-            @click="confirmAddMessage"
+            @click="confirmAddUser"
           >
-            添加消息
+            添加用户
           </button>
           <button
             type="button"
@@ -174,6 +166,7 @@ import {
 } from '../../utils/dialogueRender.js'
 import {
   createParticipantAtIndex,
+  DEFAULT_MESSAGE_TEXT,
   genChatId,
   nextTimestampAfterTimeline,
   normalizeChatScript,
@@ -209,11 +202,6 @@ function emitScript(patch) {
 function selectIndex(i) {
   selectedIndex.value = i
   emit('select-index', i)
-}
-
-function updateText(i, text) {
-  const timeline = script.value.timeline.map((t, idx) => (idx === i ? { ...t, text } : t))
-  emitScript({ timeline })
 }
 
 function updateTimestamp(i, text) {
@@ -256,7 +244,7 @@ function addTimestampAt(at) {
   emitScript({ timeline })
 }
 
-function addMessageAt(at) {
+function addUserAt(at) {
   const participants = [...script.value.participants]
   const participant = createParticipantAtIndex(participants.length)
   participants.push(participant)
@@ -267,7 +255,7 @@ function addMessageAt(at) {
     type: 'message',
     participantId: participant.id,
     side: sideForParticipantIndex(participants.length - 1),
-    text: '',
+    text: DEFAULT_MESSAGE_TEXT,
   }
   timeline.splice(insertAt, 0, message)
   selectedIndex.value = insertAt
@@ -280,8 +268,8 @@ function confirmAddTimestamp() {
   closeInsertMenu()
 }
 
-function confirmAddMessage() {
-  addMessageAt(insertIndex())
+function confirmAddUser() {
+  addUserAt(insertIndex())
   closeInsertMenu()
 }
 

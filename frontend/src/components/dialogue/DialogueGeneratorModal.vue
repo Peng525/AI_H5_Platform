@@ -130,15 +130,24 @@
               </div>
               <input
                 v-model="selectedParticipant.name"
-                class="w-full border rounded px-2 py-1 text-xs"
+                class="w-full border rounded px-2 py-1 text-xs mb-2"
                 placeholder="昵称"
-                @input="syncParticipant"
+                @input="syncScript"
               />
+              <label class="block">
+                <span class="text-[10px] text-on-surface-variant">内容</span>
+                <textarea
+                  v-model="selectedMessageText"
+                  rows="3"
+                  class="mt-0.5 w-full border rounded px-2 py-1.5 text-xs resize-y min-h-[4.5rem]"
+                  placeholder="你好，小文"
+                />
+              </label>
             </section>
             <section v-else>
               <h3 class="font-semibold text-on-surface-variant mb-2">参与者</h3>
               <p class="text-[10px] text-on-surface-variant leading-relaxed">
-                选中一条消息后，可上传头像或使用默认头像。点击消息旁的 + 可单独添加时间戳（+1 分钟）或添加消息（自动新建用户）。
+                选中一条消息后，右侧可编辑昵称与内容（实时同步到气泡）。点击 + 可添加时间戳或添加用户。
               </p>
             </section>
 
@@ -198,6 +207,23 @@ const selectedParticipant = computed(() => {
   return localScript.value.participants?.find((p) => p.id === item.participantId) || null
 })
 
+const selectedMessageText = computed({
+  get() {
+    const idx = selectedTimelineIndex.value
+    const item = localScript.value.timeline?.[idx]
+    if (!item || item.type !== 'message') return ''
+    return item.text ?? ''
+  },
+  set(text) {
+    const idx = selectedTimelineIndex.value
+    if (idx < 0) return
+    const timeline = localScript.value.timeline.map((t, i) =>
+      i === idx && t.type === 'message' ? { ...t, text } : t
+    )
+    localScript.value = { ...localScript.value, timeline }
+  },
+})
+
 watch(
   () => [props.open, props.initialScript],
   () => {
@@ -221,7 +247,7 @@ function applyPreset(preset) {
   }
 }
 
-function syncParticipant() {
+function syncScript() {
   localScript.value = { ...localScript.value }
 }
 
@@ -234,7 +260,7 @@ function onAvatarUpload(e) {
   reader.onload = () => {
     p.avatar = reader.result
     p.useDefaultAvatar = false
-    syncParticipant()
+    syncScript()
   }
   reader.readAsDataURL(file)
 }
@@ -244,7 +270,7 @@ function useDefaultAvatar() {
   if (!p) return
   p.avatar = ''
   p.useDefaultAvatar = true
-  syncParticipant()
+  syncScript()
 }
 
 async function downloadImage() {

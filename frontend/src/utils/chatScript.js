@@ -4,6 +4,8 @@ export function genChatId(prefix = 'c') {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 }
 
+export const DEFAULT_MESSAGE_TEXT = '你好，小文'
+
 export function defaultParticipants() {
   return [
     { id: 'p_a', name: '用户A', avatar: '', useDefaultAvatar: true },
@@ -19,14 +21,14 @@ export function defaultTimeline() {
       type: 'message',
       participantId: 'p_a',
       side: 'right',
-      text: '你好，易企秀。',
+      text: DEFAULT_MESSAGE_TEXT,
     },
     {
       id: genChatId('m'),
       type: 'message',
       participantId: 'p_b',
       side: 'left',
-      text: '你好，海报。',
+      text: DEFAULT_MESSAGE_TEXT,
     },
   ]
 }
