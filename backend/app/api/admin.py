@@ -11,7 +11,15 @@ from app.api.auth import pwd_context
 from app.database import get_db
 from app.deps.auth import require_admin
 from app.models import Order, User
-from app.schemas import H5TemplateCreate, H5TemplateOut, H5TemplateUpdate, RelayQuotaOut
+from app.schemas import (
+    H5TemplateCreate,
+    H5TemplateOut,
+    H5TemplateUpdate,
+    LayoutBlockCreate,
+    LayoutBlockOut,
+    LayoutBlockUpdate,
+    RelayQuotaOut,
+)
 from app.services.h5_template_service import (
     H5TemplateError,
     admin_list,
@@ -19,6 +27,14 @@ from app.services.h5_template_service import (
     delete_template,
     get_template,
     update_template,
+)
+from app.services.layout_block_service import (
+    LayoutBlockError,
+    admin_list as admin_list_layouts,
+    create_block,
+    delete_block,
+    get_block,
+    update_block,
 )
 from app.services.pptx_template_parser import PptxParseError, parse_pptx_bytes
 from app.services.order_service import (
@@ -347,6 +363,70 @@ async def admin_delete_template(
         await delete_template(db, template_id)
         await db.commit()
     except H5TemplateError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"message": "已删除"}
+
+
+@router.get("/版式", response_model=list[LayoutBlockOut], summary="版式块列表（管理）")
+async def admin_list_layout_blocks(
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    rows = await admin_list_layouts(db)
+    return [LayoutBlockOut(**{**r, "enabled": bool(r.get("enabled"))}) for r in rows]
+
+
+@router.get("/版式/{block_id}", response_model=LayoutBlockOut, summary="版式块详情")
+async def admin_get_layout_block(
+    block_id: str,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    row = await get_block(db, block_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="版式不存在")
+    return LayoutBlockOut(**{**row, "enabled": bool(row.get("enabled"))})
+
+
+@router.post("/版式", response_model=LayoutBlockOut, summary="创建版式块")
+async def admin_create_layout_block(
+    body: LayoutBlockCreate,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        row = await create_block(db, body.model_dump())
+        await db.commit()
+    except LayoutBlockError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return LayoutBlockOut(**{**row, "enabled": bool(row.get("enabled"))})
+
+
+@router.put("/版式/{block_id}", response_model=LayoutBlockOut, summary="更新版式块")
+async def admin_update_layout_block(
+    block_id: str,
+    body: LayoutBlockUpdate,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        row = await update_block(db, block_id, body.model_dump(exclude_unset=True))
+        await db.commit()
+    except LayoutBlockError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return LayoutBlockOut(**{**row, "enabled": bool(row.get("enabled"))})
+
+
+@router.delete("/版式/{block_id}", summary="删除版式块")
+async def admin_delete_layout_block(
+    block_id: str,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        await delete_block(db, block_id)
+        await db.commit()
+    except LayoutBlockError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"message": "已删除"}
 

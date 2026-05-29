@@ -129,6 +129,7 @@
 
     <LayoutMoreModal
       :open="layoutMoreOpen"
+      :blocks="moreLayoutsForModal"
       @close="layoutMoreOpen = false"
       @pick="emitLayout"
     />
@@ -147,12 +148,15 @@ import { normalizeSlideBackground, slideBackgroundCSSValue } from '../utils/slid
 const props = defineProps({
   canvasBackground: { type: String, default: DEFAULT_CANVAS_BG },
   themeId: { type: String, default: 'zjy-minimal' },
+  primaryLayouts: { type: Array, default: null },
+  moreLayouts: { type: Array, default: null },
 })
 
 const emit = defineEmits(['add', 'canvas-bg-change', 'apply-layout', 'open-dialogue-generator', 'open-wordcloud-editor'])
 
 const layoutMoreOpen = ref(false)
-const primaryLayouts = PRIMARY_LAYOUT_SHORTCUTS
+const primaryLayouts = computed(() => props.primaryLayouts || PRIMARY_LAYOUT_SHORTCUTS)
+const moreLayoutsForModal = computed(() => props.moreLayouts)
 const themeGradients = computed(() => getThemeGradients(props.themeId))
 const canvasBgPresets = CANVAS_BACKGROUND_PRESETS
 

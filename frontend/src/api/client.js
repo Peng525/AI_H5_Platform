@@ -156,6 +156,14 @@ export const api = {
     request(`/api/v1/管理/模板/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   parseAdminPptxTemplate: (formData) => uploadForm('/api/v1/管理/模板/解析-pptx', formData),
   importAdminPptxTemplate: (formData) => uploadForm('/api/v1/管理/模板/导入-pptx', formData),
+  listLayoutBlocks: () => request('/api/v1/版式'),
+  getLayoutBlock: (id) => request(`/api/v1/版式/${encodeURIComponent(id)}`),
+  listAdminLayouts: () => request('/api/v1/管理/版式'),
+  getAdminLayout: (id) => request(`/api/v1/管理/版式/${encodeURIComponent(id)}`),
+  createAdminLayout: (body) => request('/api/v1/管理/版式', { method: 'POST', body: JSON.stringify(body) }),
+  updateAdminLayout: (id, body) =>
+    request(`/api/v1/管理/版式/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteAdminLayout: (id) => request(`/api/v1/管理/版式/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   testLlm: (channel, tier = 'free') => {
     const q = new URLSearchParams()
     if (channel) q.set('channel', channel)

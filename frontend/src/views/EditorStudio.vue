@@ -13,6 +13,8 @@
         :viewport="viewport"
         :live-slide-id="current?.id ?? null"
         :live-elements="elements"
+        :primary-layouts="primaryLayoutItems"
+        :more-layouts="moreLayoutItems"
         @select-slide="selectSlide"
         @add-slide="addSlide"
         @remove-slide="removeSlide"
@@ -82,6 +84,7 @@
     <EditorShortcutsHelp v-model:open="shortcutsHelpOpen" />
     <LayoutPickerModal
       :open="layoutPickerOpen"
+      :blocks="pickerLayoutItems"
       @close="layoutPickerOpen = false"
       @pick="onLayoutPickedForNewSlide"
       @blank="onLayoutBlankForNewSlide"
@@ -120,7 +123,8 @@ import EditorShortcutsHelp from '../components/EditorShortcutsHelp.vue'
 import LayoutPickerModal from '../components/LayoutPickerModal.vue'
 import DialogueGeneratorModal from '../components/dialogue/DialogueGeneratorModal.vue'
 import WordCloudEditorModal from '../components/wordcloud/WordCloudEditorModal.vue'
-import { buildBlock, getDefaultBlockBackground, resetLayoutBlockIds } from '../constants/layoutBlocks.js'
+import { buildBlock, getDefaultBlockBackground, resetLayoutBlockIds, resolveStoredLayoutElements } from '../constants/layoutBlocks.js'
+import { useLayoutCatalog } from '../composables/useLayoutCatalog.js'
 import { normalizeChatScript, serializeChatScript } from '../utils/chatScript.js'
 
 const route = useRoute()
@@ -142,6 +146,11 @@ const wordCloudEditContent = ref(null)
 const showDialoguePreview = ref(false)
 
 const { settings, viewport, setViewport, setScrollEffect, getSlideBackground, setSlideBackground, applyFromServer, setBgm } = useProjectEditorSettings(projectId)
+
+const layoutCatalog = useLayoutCatalog()
+const primaryLayoutItems = computed(() => layoutCatalog.getPrimaryLayoutItems())
+const moreLayoutItems = computed(() => layoutCatalog.getMoreLayoutItems())
+const pickerLayoutItems = computed(() => layoutCatalog.getPickerLayoutItems())
 
 const {
   active: bgmActive,
@@ -214,6 +223,7 @@ function onBgmChange(patch) {
 onMounted(() => {
   registerCanvasFlush(flushCanvasSave)
   window.addEventListener('keydown', onKeyDown)
+  layoutCatalog.load()
   load()
 })
 watch(() => route.params.id, load)
@@ -274,10 +284,15 @@ function applyLayoutBlock(blockId, slideId = null, { mode = 'append' } = {}) {
     loadElements([])
   }
   resetLayoutBlockIds()
-  const els = buildBlock(blockId, settings.value.viewportId, settings.value.themeId || 'zjy-minimal')
+  const catalogItem = layoutCatalog.getCatalogBlock(blockId)
+  const stored = resolveStoredLayoutElements(catalogItem, settings.value.viewportId)
+  const els = stored ?? buildBlock(blockId, settings.value.viewportId, settings.value.themeId || 'zjy-minimal')
   if (mode === 'replace') {
     replaceAllElements(els)
-    setSlideBackground(sid, getDefaultBlockBackground(settings.value.themeId || 'zjy-minimal'))
+    const bg =
+      catalogItem?.canvas_background ||
+      getDefaultBlockBackground(settings.value.themeId || 'zjy-minimal')
+    setSlideBackground(sid, bg)
   } else {
     appendLayoutElements(els)
   }

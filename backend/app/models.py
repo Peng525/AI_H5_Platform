@@ -128,6 +128,26 @@ class H5Template(Base):
     )
 
 
+class LayoutBlock(Base):
+    __tablename__ = "layout_blocks"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    label: Mapped[str] = mapped_column(String(128))
+    icon: Mapped[str] = mapped_column(String(64), default="dashboard")
+    group: Mapped[str] = mapped_column(String(32), default="custom")
+    placement: Mapped[str] = mapped_column(String(16), default="more")
+    elements_json: Mapped[str] = mapped_column(Text, default="[]")
+    elements_web_json: Mapped[str] = mapped_column(Text, default="[]")
+    canvas_background: Mapped[str] = mapped_column(String(256), default="")
+    sort_order: Mapped[int] = mapped_column(Integer, default=100)
+    enabled: Mapped[int] = mapped_column(Integer, default=1)
+    source: Mapped[str] = mapped_column(String(16), default="admin")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class GenerationLog(Base):
     __tablename__ = "generation_logs"
 

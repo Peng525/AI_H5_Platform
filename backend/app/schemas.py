@@ -201,6 +201,45 @@ class H5TemplateUpdate(BaseModel):
     enabled: bool | None = None
 
 
+class LayoutBlockOut(BaseModel):
+    id: str
+    label: str
+    icon: str = "dashboard"
+    group: str = "custom"
+    placement: str = "more"
+    elements: list[dict[str, Any]] = Field(default_factory=list)
+    elements_web: list[dict[str, Any]] = Field(default_factory=list)
+    canvas_background: str = ""
+    sort_order: int = 100
+    enabled: bool = True
+    source: str = "admin"
+
+
+class LayoutBlockCreate(BaseModel):
+    id: str = Field(..., min_length=2, max_length=64)
+    label: str
+    icon: str = "dashboard"
+    group: str = "custom"
+    placement: str = "more"
+    elements: list[dict[str, Any]] = Field(default_factory=list)
+    elements_web: list[dict[str, Any]] = Field(default_factory=list)
+    canvas_background: str = ""
+    sort_order: int = 100
+    enabled: bool = True
+
+
+class LayoutBlockUpdate(BaseModel):
+    label: str | None = None
+    icon: str | None = None
+    group: str | None = None
+    placement: str | None = None
+    elements: list[dict[str, Any]] | None = None
+    elements_web: list[dict[str, Any]] | None = None
+    canvas_background: str | None = None
+    sort_order: int | None = None
+    enabled: bool | None = None
+
+
 class PromptTemplateOut(BaseModel):
     id: str
     name: str

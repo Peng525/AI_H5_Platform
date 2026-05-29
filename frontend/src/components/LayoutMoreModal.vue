@@ -44,15 +44,18 @@
 </template>
 
 <script setup>
+import { computed, ref } from 'vue'
 import { getMoreLayoutBlocks } from '../constants/layoutBlocks.js'
 
-defineProps({
+const props = defineProps({
   open: { type: Boolean, default: false },
+  blocks: { type: Array, default: null },
 })
 
 const emit = defineEmits(['close', 'pick'])
 
-const blocks = getMoreLayoutBlocks()
+const fallbackBlocks = computed(() => getMoreLayoutBlocks())
+const blocks = computed(() => props.blocks || fallbackBlocks.value)
 
 function onPick(id) {
   emit('pick', id)

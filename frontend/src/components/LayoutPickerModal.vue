@@ -52,12 +52,16 @@ import { BUSINESS_LAYOUT_BLOCKS, STORY_LAYOUT_BLOCKS } from '../constants/layout
 
 const props = defineProps({
   open: { type: Boolean, default: false },
+  blocks: { type: Array, default: null },
 })
 
 const emit = defineEmits(['close', 'pick', 'blank'])
 
 const selected = ref('cover-minimal')
-const blocks = computed(() => [...BUSINESS_LAYOUT_BLOCKS, ...STORY_LAYOUT_BLOCKS])
+const blocks = computed(() => {
+  if (props.blocks?.length) return props.blocks
+  return [...BUSINESS_LAYOUT_BLOCKS, ...STORY_LAYOUT_BLOCKS]
+})
 
 watch(
   () => props.open,

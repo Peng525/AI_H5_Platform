@@ -64,6 +64,8 @@
         v-else-if="activeTab === 'material'"
         :canvas-background="canvasBackground"
         :theme-id="projectSettings?.themeId || 'zjy-minimal'"
+        :primary-layouts="primaryLayouts"
+        :more-layouts="moreLayouts"
         @add="$emit('add-material', $event)"
         @canvas-bg-change="$emit('canvas-bg-change', $event)"
         @apply-layout="$emit('apply-layout', $event)"
@@ -94,6 +96,8 @@ defineProps({
   viewport: { type: Object, default: null },
   liveSlideId: { type: Number, default: null },
   liveElements: { type: Array, default: null },
+  primaryLayouts: { type: Array, default: null },
+  moreLayouts: { type: Array, default: null },
 })
 
 defineEmits(['select-slide', 'add-slide', 'remove-slide', 'save-slide', 'add-material', 'apply-layout', 'canvas-bg-change', 'scroll-change', 'preview-animation', 'open-help', 'bgm-change', 'open-dialogue-generator', 'open-wordcloud-editor'])

@@ -324,3 +324,15 @@ export function getMoreLayoutBlocks() {
     (b) => !PRIMARY_LAYOUT_IDS.has(b.id)
   )
 }
+
+/** 从管理端保存的版式记录解析画布元素 */
+export function resolveStoredLayoutElements(catalogItem, viewportId) {
+  if (!catalogItem) return null
+  const web = isWebViewport(viewportId)
+  const raw =
+    web && Array.isArray(catalogItem.elements_web) && catalogItem.elements_web.length
+      ? catalogItem.elements_web
+      : catalogItem.elements
+  if (!Array.isArray(raw) || !raw.length) return null
+  return JSON.parse(JSON.stringify(raw))
+}
