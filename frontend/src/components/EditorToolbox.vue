@@ -1,5 +1,5 @@
 <template>
-  <aside class="w-full h-full border-r border-outline-variant bg-surface-container-low flex flex-col shrink-0 overflow-hidden min-w-0">
+  <aside class="w-[240px] border-r border-outline-variant bg-surface-container-low flex flex-col shrink-0 overflow-hidden">
     <div class="p-2 sm:p-3 border-b border-outline-variant flex items-center gap-2 min-w-0">
       <div class="w-8 h-8 rounded bg-primary-container text-on-primary-container flex items-center justify-center shrink-0">
         <span class="material-symbols-outlined text-[20px]">widgets</span>

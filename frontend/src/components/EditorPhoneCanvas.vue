@@ -1,6 +1,6 @@
 <template>
   <section
-    class="flex-1 bg-surface-container-low overflow-hidden relative select-none pb-14 xl:pb-0"
+    class="flex-1 bg-surface-container-low overflow-hidden relative select-none"
     @wheel.prevent="onWheelZoom"
   >
     <EditorCanvasToolbar
@@ -42,7 +42,7 @@
       </select>
     </div>
 
-    <div class="absolute bottom-16 xl:bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1 sm:gap-2 bg-white shadow-card rounded-full px-1.5 sm:px-2 py-1 border border-outline-variant z-20 max-w-[calc(100%-1rem)]" data-editor-chrome>
+    <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1 sm:gap-2 bg-white shadow-card rounded-full px-1.5 sm:px-2 py-1 border border-outline-variant z-20 max-w-[calc(100%-1rem)]" data-editor-chrome>
       <button
         type="button"
         class="p-1.5 rounded-full transition-colors"
