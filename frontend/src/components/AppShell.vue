@@ -35,10 +35,9 @@
       <router-link
         v-if="user?.tier !== 'pro'"
         to="/upgrade"
-        class="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200"
+        class="hidden sm:inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200"
       >
-        <span class="material-symbols-outlined text-[14px]">stars</span>
-        升级
+        升级会员
       </router-link>
 
       <slot name="actions" />
@@ -184,7 +183,9 @@ function onClickOutside(e) {
 
 onMounted(async () => {
   document.addEventListener('click', onClickOutside)
-  await refreshProfile()
+  if (!user.value?.username) {
+    await refreshProfile()
+  }
   try {
     const q = await api.getQuota()
     quota.value = { remaining: q.quota_remaining, total: q.quota_total }

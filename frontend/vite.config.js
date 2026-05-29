@@ -14,5 +14,15 @@ export default defineConfig({
   build: {
     outDir: '../backend/static',
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/xlsx')) return 'vendor-xlsx'
+          if (id.includes('node_modules/html2canvas')) return 'vendor-html2canvas'
+          if (id.includes('node_modules/wordcloud')) return 'vendor-wordcloud'
+          if (id.includes('node_modules/vue') || id.includes('node_modules/vue-router')) return 'vendor-vue'
+        },
+      },
+    },
   },
 })
