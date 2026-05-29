@@ -3,47 +3,54 @@
     class="flex-1 bg-surface-container-low overflow-hidden relative select-none"
     @wheel.prevent="onWheelZoom"
   >
-    <EditorCanvasToolbar
-      :selected="selectedElement"
-      :theme-id="themeId"
-      :viewport-id="viewportId"
-      :slide-id="slide?.id || ''"
-      @add-text="$emit('add-text')"
-      @add-shape="$emit('add-shape')"
-      @add-image="$emit('add-image')"
-      @style-change="$emit('style-change', $event)"
-      @duplicate="$emit('duplicate')"
-      @delete="$emit('delete-selected')"
-      @bring-front="$emit('bring-front')"
-      @send-back="$emit('send-back')"
-      @bring-forward="$emit('bring-forward')"
-      @send-backward="$emit('send-backward')"
-      @center-element="$emit('center-element', $event)"
-    />
-
-    <!-- 分辨率选择 -->
-    <div class="absolute top-2 right-2 sm:top-4 sm:right-4 z-20 flex items-center gap-1.5 sm:gap-2 max-w-[calc(100%-1rem)]" data-editor-chrome>
-      <button
-        v-if="slide?.chat_script?.enabled"
-        type="button"
-        class="text-[10px] sm:text-xs border border-outline-variant rounded-lg px-1.5 sm:px-2 py-1 sm:py-1.5 bg-white shadow-card whitespace-nowrap"
-        :class="dialoguePreviewOn ? 'text-primary border-primary' : ''"
-        @click="toggleDialoguePreview"
-      >
-        {{ dialoguePreviewOn ? '隐藏对话' : '预览对话' }}
-      </button>
-      <select
-        :value="viewportId"
-        class="text-[10px] sm:text-xs border border-outline-variant rounded-lg px-1.5 sm:px-2 py-1 sm:py-1.5 bg-white shadow-card max-w-[7.5rem] sm:max-w-[10rem] min-w-0"
-        @change="onViewportChange($event.target.value)"
-      >
-        <optgroup label="手机">
-          <option v-for="v in mobileViewports" :key="v.id" :value="v.id">{{ v.label }}</option>
-        </optgroup>
-        <optgroup label="网页">
-          <option v-for="v in webViewports" :key="v.id" :value="v.id">{{ v.label }}</option>
-        </optgroup>
-      </select>
+    <!-- 顶部：分辨率独立一行，工具栏在其下方，避免窄屏横向重叠 -->
+    <div
+      class="absolute top-2 sm:top-4 left-2 right-2 sm:left-4 sm:right-4 z-20 flex flex-col gap-1.5 sm:gap-2 pointer-events-none"
+      data-editor-chrome
+    >
+      <div class="flex justify-end items-center gap-1.5 sm:gap-2 shrink-0 pointer-events-auto">
+        <button
+          v-if="slide?.chat_script?.enabled"
+          type="button"
+          class="text-[10px] sm:text-xs border border-outline-variant rounded-lg px-1.5 sm:px-2 py-1 sm:py-1.5 bg-white shadow-card whitespace-nowrap"
+          :class="dialoguePreviewOn ? 'text-primary border-primary' : ''"
+          @click="toggleDialoguePreview"
+        >
+          {{ dialoguePreviewOn ? '隐藏对话' : '预览对话' }}
+        </button>
+        <select
+          :value="viewportId"
+          class="text-[10px] sm:text-xs border border-outline-variant rounded-lg px-1.5 sm:px-2 py-1 sm:py-1.5 bg-white shadow-card min-w-0 max-w-[9.5rem] sm:max-w-[11rem]"
+          :title="currentViewportLabel"
+          @change="onViewportChange($event.target.value)"
+        >
+          <optgroup label="手机">
+            <option v-for="v in mobileViewports" :key="v.id" :value="v.id">{{ v.label }}</option>
+          </optgroup>
+          <optgroup label="网页">
+            <option v-for="v in webViewports" :key="v.id" :value="v.id">{{ v.label }}</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="flex justify-center min-w-0 pointer-events-auto w-full">
+        <EditorCanvasToolbar
+          :selected="selectedElement"
+          :theme-id="themeId"
+          :viewport-id="viewportId"
+          :slide-id="slide?.id || ''"
+          @add-text="$emit('add-text')"
+          @add-shape="$emit('add-shape')"
+          @add-image="$emit('add-image')"
+          @style-change="$emit('style-change', $event)"
+          @duplicate="$emit('duplicate')"
+          @delete="$emit('delete-selected')"
+          @bring-front="$emit('bring-front')"
+          @send-back="$emit('send-back')"
+          @bring-forward="$emit('bring-forward')"
+          @send-backward="$emit('send-backward')"
+          @center-element="$emit('center-element', $event)"
+        />
+      </div>
     </div>
 
     <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1 sm:gap-2 bg-white shadow-card rounded-full px-1.5 sm:px-2 py-1 border border-outline-variant z-20 max-w-[calc(100%-1rem)]" data-editor-chrome>
@@ -292,6 +299,10 @@ const panActive = computed(() => panMode.value || spaceHeld.value)
 
 const mobileViewports = VIEWPORT_PRESETS.filter((v) => v.device === 'mobile')
 const webViewports = VIEWPORT_PRESETS.filter((v) => v.device === 'web')
+
+const currentViewportLabel = computed(
+  () => getViewportPreset(props.viewportId || 'mobile-375').label
+)
 
 const selectedElement = computed(() => {
   const primaryId = props.selectedIds[props.selectedIds.length - 1]

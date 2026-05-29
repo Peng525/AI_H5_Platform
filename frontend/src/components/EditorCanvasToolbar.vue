@@ -1,6 +1,6 @@
 <template>
-  <div class="absolute top-2 sm:top-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 z-20 max-w-[calc(100%-0.5rem)] sm:max-w-[98%]" data-editor-chrome>
-    <div class="flex items-center gap-0.5 sm:gap-1 bg-white shadow-card rounded-lg px-1 sm:px-2 py-1 border border-outline-variant flex-wrap justify-center overflow-visible">
+  <div class="flex flex-col items-center gap-1 w-full max-w-full min-w-0" data-editor-chrome>
+    <div class="flex items-center gap-0.5 sm:gap-1 bg-white shadow-card rounded-lg px-1 sm:px-2 py-1 border border-outline-variant flex-wrap justify-center max-w-full overflow-x-auto">
       <!-- 添加 -->
       <div ref="addMenuRef" class="relative">
         <button
