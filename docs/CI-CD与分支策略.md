@@ -146,7 +146,7 @@ flowchart TB
 
 1. EC2 安全组 **22 端口** 尽量限制为你的办公 IP，不要对 `0.0.0.0/0` 长期开放
 2. 对外演示勿长期使用 `CAPTCHA_PROVIDER=mock`
-3. 修改默认 `demo` / `admin` 密码
+3. 使用强密码；`ADMIN_USERNAMES` 仅配置你自己的邮箱
 4. `JWT_SECRET` 使用 `openssl rand -hex 32` 生成
 5. 定期 `docker system prune`（注意勿删 `./data` 挂载目录）
 

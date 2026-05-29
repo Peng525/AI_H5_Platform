@@ -59,8 +59,15 @@ class Settings(BaseSettings):
     wechat_pay_private_key_path: str = "./certs/apiclient_key.pem"
     wechat_pay_notify_url: str = ""
 
-    # 逗号分隔的管理员账号（与 users.username 匹配）
-    admin_usernames: str = "admin@ai-h5.com"
+    # 逗号分隔的管理员账号（与 users.username 匹配，须在 .env 中配置）
+    admin_usernames: str = ""
+
+    # 可选：首次启动时创建种子用户（仅自建环境，勿写入公开文档）
+    seed_demo_username: str = ""
+    seed_demo_password: str = ""
+    seed_admin_username: str = ""
+    seed_admin_password: str = ""
+
     env_persist_path: str = "../.env"
 
     # 微信个人收款码（本地）：图片 URL 或 /static/wechat-pay-qr.png

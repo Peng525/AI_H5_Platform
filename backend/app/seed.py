@@ -1,20 +1,18 @@
-"""启动时写入演示账号。"""
+"""启动时可选写入种子用户与模板（凭证仅来自 .env，不进公开文档）。"""
 from datetime import date
 
 from sqlalchemy import select
 
 from app.api.auth import pwd_context
+from app.config import settings
 from app.database import SessionLocal
 from app.models import Order, Project, SiteVisitDaily, User
 from app.services.h5_template_service import seed_default_templates
 
-DEMO_ACCOUNT = "demo@ai-h5.com"
-DEMO_PASSWORD = "demo123456"
-ADMIN_ACCOUNT = "admin@ai-h5.com"
-ADMIN_PASSWORD = "admin123456"
-
 
 async def _ensure_user(db, username: str, password: str, tier: str = "free") -> None:
+    if not username or not password:
+        return
     result = await db.execute(select(User).where(User.username == username))
     if result.scalar_one_or_none():
         return
@@ -30,8 +28,15 @@ async def _ensure_user(db, username: str, password: str, tier: str = "free") -> 
 
 async def seed_demo_user() -> None:
     async with SessionLocal() as db:
-        await _ensure_user(db, DEMO_ACCOUNT, DEMO_PASSWORD)
-        await _ensure_user(db, ADMIN_ACCOUNT, ADMIN_PASSWORD)
+        await _ensure_user(
+            db,
+            settings.seed_demo_username.strip(),
+            settings.seed_demo_password,
+        )
+        admin_user = settings.seed_admin_username.strip()
+        if not admin_user and settings.admin_usernames.strip():
+            admin_user = settings.admin_usernames.split(",")[0].strip()
+        await _ensure_user(db, admin_user, settings.seed_admin_password)
         await seed_default_templates(db)
         await _assign_orphan_projects(db)
         await db.commit()
@@ -39,7 +44,10 @@ async def seed_demo_user() -> None:
 
 
 async def _assign_orphan_projects(db) -> None:
-    demo = await db.execute(select(User).where(User.username == DEMO_ACCOUNT))
+    seed_user = settings.seed_demo_username.strip()
+    if not seed_user:
+        return
+    demo = await db.execute(select(User).where(User.username == seed_user))
     user = demo.scalar_one_or_none()
     if not user:
         return
@@ -49,11 +57,14 @@ async def _assign_orphan_projects(db) -> None:
 
 
 async def _seed_demo_orders() -> None:
+    seed_user = settings.seed_demo_username.strip()
+    if not seed_user:
+        return
     async with SessionLocal() as db:
         result = await db.execute(select(Order).limit(1))
         if result.scalar_one_or_none():
             return
-        demo = await db.execute(select(User).where(User.username == DEMO_ACCOUNT))
+        demo = await db.execute(select(User).where(User.username == seed_user))
         user = demo.scalar_one_or_none()
         if user:
             db.add(

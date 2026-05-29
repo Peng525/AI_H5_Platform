@@ -102,14 +102,18 @@ async def _migrate_sqlite_columns(conn) -> None:
         sync_conn.execute(text("CREATE INDEX IF NOT EXISTS ix_sms_codes_phone ON sms_codes (phone)"))
         orphan = sync_conn.execute(text("SELECT id FROM projects WHERE user_id IS NULL")).fetchall()
         if orphan:
-            demo = sync_conn.execute(
-                text("SELECT id FROM users WHERE username = :u LIMIT 1"),
-                {"u": "demo@ai-h5.com"},
-            ).fetchone()
-            if demo:
-                sync_conn.execute(
-                    text("UPDATE projects SET user_id = :uid WHERE user_id IS NULL"),
-                    {"uid": demo[0]},
-                )
+            from app.config import settings
+
+            seed_user = (settings.seed_demo_username or "").strip()
+            if seed_user:
+                demo = sync_conn.execute(
+                    text("SELECT id FROM users WHERE username = :u LIMIT 1"),
+                    {"u": seed_user},
+                ).fetchone()
+                if demo:
+                    sync_conn.execute(
+                        text("UPDATE projects SET user_id = :uid WHERE user_id IS NULL"),
+                        {"uid": demo[0]},
+                    )
 
     await conn.run_sync(_run)
