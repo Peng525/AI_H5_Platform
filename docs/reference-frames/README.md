@@ -32,7 +32,7 @@ reference-frames/
 
 ## 当前实现对照
 
-- 微信对话：左右气泡（左白 / 右 `#95EC69`）、圆角头像、点击逐句
+- 微信对话：左右气泡（左白 / 右 `#95EC69`）、圆角头像；**点击播放**或**自动逐句**
 - 滚动：旗舰模板默认 **纵向滚动**（`scrollEffect: vertical`）
 - BGM：`/static/bgm/happier-sakura-girl.mp3`（文件放 `backend/static/bgm/`，见 README 与 `scripts/install-bgm.ps1`）
 
