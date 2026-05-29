@@ -123,7 +123,7 @@ export function serializeChatScript(state) {
   return {
     enabled: n.enabled,
     playbackMode: n.playbackMode,
-    autoAdvanceMs: n.playbackMode === 'auto' ? Math.max(300, n.autoAdvanceMs || 1500) : 0,
+    autoAdvanceMs: n.playbackMode === 'auto' ? Math.max(100, n.autoAdvanceMs || 1500) : 0,
     style: { ...n.style },
     participants: n.participants.map((p) => ({
       id: p.id,

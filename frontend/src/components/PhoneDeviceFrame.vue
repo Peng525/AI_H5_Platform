@@ -37,6 +37,8 @@ const props = defineProps({
   device: { type: String, default: 'mobile' },
   label: { type: String, default: '网页预览' },
   maxHeight: { type: String, default: 'calc(100vh - 120px)' },
+  /** contain：在父容器内等比缩放，保持竖屏比例 */
+  fit: { type: String, default: '' },
 })
 
 const frameClass = computed(() =>
@@ -45,8 +47,19 @@ const frameClass = computed(() =>
     : 'rounded-lg border border-gray-300'
 )
 
-const frameStyle = computed(() => ({
-  width: `${props.width}px`,
-  height: `min(${props.height}px, ${props.maxHeight})`,
-}))
+const frameStyle = computed(() => {
+  if (props.fit === 'contain') {
+    return {
+      aspectRatio: `${props.width} / ${props.height}`,
+      height: '100%',
+      maxHeight: '100%',
+      maxWidth: '100%',
+      width: 'auto',
+    }
+  }
+  return {
+    width: `${props.width}px`,
+    height: `min(${props.height}px, ${props.maxHeight})`,
+  }
+})
 </script>

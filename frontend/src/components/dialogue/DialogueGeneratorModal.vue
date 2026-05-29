@@ -32,36 +32,37 @@
           </div>
         </header>
 
-        <div class="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
-          <aside class="order-3 lg:order-1 w-full lg:w-32 xl:w-36 shrink-0 border-t lg:border-t-0 lg:border-r border-outline-variant bg-white overflow-x-auto lg:overflow-y-auto p-2 flex lg:flex-col gap-2">
-            <p class="hidden lg:block text-[10px] font-semibold text-on-surface-variant px-1">样式预设</p>
-            <button
-              v-for="preset in CHAT_STYLE_PRESETS"
-              :key="preset.id"
-              type="button"
-              class="shrink-0 lg:w-full rounded-lg border p-2 text-left transition hover:border-primary min-w-[88px] lg:min-w-0"
-              :class="localScript.style?.presetId === preset.id ? 'border-primary ring-1 ring-primary' : 'border-outline-variant'"
-              @click="applyPreset(preset)"
-            >
-              <div class="flex gap-1 mb-1 h-5">
-                <span class="flex-1 rounded-full" :style="{ background: preset.thumb.owner }" />
-                <span class="flex-1 rounded-full border border-black/10" :style="{ background: preset.thumb.other }" />
-              </div>
-              <span class="text-[10px]">{{ preset.label }}</span>
-            </button>
-          </aside>
+        <div class="flex-1 min-h-0 overflow-auto">
+          <div class="dialogue-generator-body flex flex-row min-h-full min-w-[44rem]">
+            <aside class="w-28 xl:w-36 shrink-0 border-r border-outline-variant bg-white overflow-y-auto p-2 flex flex-col gap-2">
+              <p class="text-[10px] font-semibold text-on-surface-variant px-1 shrink-0">样式预设</p>
+              <button
+                v-for="preset in CHAT_STYLE_PRESETS"
+                :key="preset.id"
+                type="button"
+                class="w-full rounded-lg border p-2 text-left transition hover:border-primary"
+                :class="localScript.style?.presetId === preset.id ? 'border-primary ring-1 ring-primary' : 'border-outline-variant'"
+                @click="applyPreset(preset)"
+              >
+                <div class="flex gap-1 mb-1 h-5">
+                  <span class="flex-1 rounded-full" :style="{ background: preset.thumb.owner }" />
+                  <span class="flex-1 rounded-full border border-black/10" :style="{ background: preset.thumb.other }" />
+                </div>
+                <span class="text-[10px]">{{ preset.label }}</span>
+              </button>
+            </aside>
 
-          <main class="order-1 lg:order-2 flex-1 min-h-0 min-w-0 flex items-center justify-center p-3 sm:p-6 bg-[#e8eaed] overflow-hidden">
-            <PhoneDeviceFrame ref="phoneFrameRef" class="max-h-full w-full max-w-[min(100%,420px)]">
-              <DialoguePreviewCanvas
-                v-model="localScript"
-                editable
-                @select-index="onSelectTimelineIndex"
-              />
-            </PhoneDeviceFrame>
-          </main>
+            <main class="flex-1 min-w-[14rem] min-h-0 h-full flex items-center justify-center p-3 sm:p-6 bg-[#e8eaed] overflow-hidden">
+              <PhoneDeviceFrame ref="phoneFrameRef" class="shrink-0 h-full max-h-full" fit="contain">
+                <DialoguePreviewCanvas
+                  v-model="localScript"
+                  editable
+                  @select-index="onSelectTimelineIndex"
+                />
+              </PhoneDeviceFrame>
+            </main>
 
-          <aside class="order-2 lg:order-3 w-full lg:w-52 xl:w-56 shrink-0 border-b lg:border-b-0 lg:border-l border-outline-variant bg-white overflow-y-auto p-3 space-y-4 text-xs max-h-[38vh] lg:max-h-none">
+            <aside class="w-52 xl:w-56 shrink-0 border-l border-outline-variant bg-white overflow-y-auto p-3 space-y-4 text-xs">
             <section>
               <h3 class="font-semibold text-on-surface-variant mb-2">圆角</h3>
               <label class="block mb-2">
@@ -177,15 +178,19 @@
               <label v-if="playbackMode === 'auto'" class="block text-[10px] text-on-surface-variant">
                 逐句间隔 (ms)
                 <input
-                  v-model.number="autoIntervalMs"
-                  type="number"
-                  min="300"
-                  step="100"
+                  :value="autoIntervalDraft"
+                  type="text"
+                  inputmode="numeric"
                   class="w-full mt-0.5 border rounded px-2 py-1"
+                  placeholder="例如 200"
+                  @input="onAutoIntervalInput"
+                  @blur="commitAutoInterval"
+                  @keydown.enter="commitAutoInterval"
                 />
               </label>
             </section>
-          </aside>
+            </aside>
+          </div>
         </div>
       </div>
     </Transition>
@@ -211,6 +216,11 @@ const localScript = ref(emptyChatScript())
 const exporting = ref(false)
 const phoneFrameRef = ref(null)
 const selectedTimelineIndex = ref(-1)
+const autoIntervalDraft = ref('1500')
+
+const AUTO_INTERVAL_MIN = 100
+const AUTO_INTERVAL_MAX = 60000
+const AUTO_INTERVAL_DEFAULT = 1500
 
 const colorRows = [
   { key: 'ownerBgColor', label: '右侧气泡' },
@@ -257,19 +267,28 @@ const playbackMode = computed({
   },
 })
 
-const autoIntervalMs = computed({
-  get() {
-    const ms = Number(localScript.value.autoAdvanceMs || 0)
-    return ms > 0 ? ms : 1500
-  },
-  set(val) {
-    const ms = Math.max(300, Number(val) || 1500)
-    localScript.value = { ...localScript.value, playbackMode: 'auto', autoAdvanceMs: ms }
-  },
-})
+function syncAutoIntervalDraft() {
+  const ms = Number(localScript.value.autoAdvanceMs || 0)
+  autoIntervalDraft.value = String(ms > 0 ? ms : AUTO_INTERVAL_DEFAULT)
+}
+
+function onAutoIntervalInput(e) {
+  autoIntervalDraft.value = e.target.value.replace(/[^\d]/g, '')
+}
+
+function commitAutoInterval() {
+  const raw = autoIntervalDraft.value.trim()
+  const n = parseInt(raw, 10)
+  const ms = Number.isFinite(n)
+    ? Math.min(AUTO_INTERVAL_MAX, Math.max(AUTO_INTERVAL_MIN, n))
+    : AUTO_INTERVAL_DEFAULT
+  autoIntervalDraft.value = String(ms)
+  localScript.value = { ...localScript.value, playbackMode: 'auto', autoAdvanceMs: ms }
+}
 
 function setPlaybackMode(mode) {
   playbackMode.value = mode
+  if (mode === 'auto') syncAutoIntervalDraft()
 }
 
 watch(
@@ -280,6 +299,7 @@ watch(
     localScript.value = normalizeChatScript(
       props.initialScript?.enabled !== false ? props.initialScript : { ...emptyChatScript(), enabled: true }
     )
+    syncAutoIntervalDraft()
   },
   { immediate: true, deep: true }
 )
@@ -332,6 +352,7 @@ async function downloadImage() {
 }
 
 function getSerialized() {
+  if (playbackMode.value === 'auto') commitAutoInterval()
   return serializeChatScript({ ...localScript.value, enabled: true })
 }
 
@@ -350,5 +371,9 @@ defineExpose({ getSerialized, insertIntoSlide })
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+.dialogue-generator-body {
+  height: 100%;
 }
 </style>
