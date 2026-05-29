@@ -30,7 +30,7 @@ class SlideOut(BaseModel):
         chat_script = None
         try:
             parsed = json.loads(getattr(slide, "chat_script_json", None) or "{}")
-            if isinstance(parsed, dict) and parsed.get("enabled"):
+            if isinstance(parsed, dict) and (parsed.get("enabled") or parsed.get("timeline") or parsed.get("messages")):
                 chat_script = parsed
         except json.JSONDecodeError:
             chat_script = None

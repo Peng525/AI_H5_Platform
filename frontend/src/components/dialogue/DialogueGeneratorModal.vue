@@ -22,7 +22,7 @@
             <button
               type="button"
               class="px-3 py-1.5 text-sm bg-primary text-on-primary rounded-lg font-medium"
-              @click="$emit('insert', getSerialized())"
+              @click="insertIntoSlide"
             >
               插入当前页
             </button>
@@ -52,11 +52,9 @@
           </aside>
 
           <main class="flex-1 min-w-0 flex items-center justify-center p-6 bg-[#e8eaed]">
-            <div
-              class="w-full max-w-[375px] h-[min(640px,80vh)] bg-white shadow-2xl rounded-2xl overflow-hidden border border-outline-variant/50"
-            >
+            <PhoneDeviceFrame ref="phoneFrameRef">
               <DialoguePreviewCanvas v-model="localScript" editable />
-            </div>
+            </PhoneDeviceFrame>
           </main>
 
           <aside class="w-56 shrink-0 border-l border-outline-variant bg-white overflow-y-auto p-3 space-y-4 text-xs">
@@ -145,6 +143,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import DialoguePreviewCanvas from './DialoguePreviewCanvas.vue'
+import PhoneDeviceFrame from '../PhoneDeviceFrame.vue'
 import { CHAT_STYLE_PRESETS } from '../../constants/chatStylePresets.js'
 import { emptyChatScript, genChatId, normalizeChatScript, serializeChatScript } from '../../utils/chatScript.js'
 import { downloadElementAsPng } from '../../utils/exportCanvasImage.js'
@@ -154,10 +153,11 @@ const props = defineProps({
   initialScript: { type: Object, default: null },
 })
 
-defineEmits(['close', 'insert'])
+const emit = defineEmits(['close', 'insert'])
 
 const localScript = ref(emptyChatScript())
 const exporting = ref(false)
+const phoneFrameRef = ref(null)
 
 const colorRows = [
   { key: 'ownerBgColor', label: '主人气泡背景' },
@@ -200,7 +200,7 @@ function addParticipant() {
 async function downloadImage() {
   exporting.value = true
   try {
-    const el = document.querySelector('.dialogue-preview')
+    const el = phoneFrameRef.value?.$el || document.querySelector('.dialogue-preview')
     if (el) await downloadElementAsPng(el, 'dialogue.png')
   } finally {
     exporting.value = false
@@ -211,7 +211,11 @@ function getSerialized() {
   return serializeChatScript({ ...localScript.value, enabled: true })
 }
 
-defineExpose({ getSerialized })
+function insertIntoSlide() {
+  emit('insert', getSerialized())
+}
+
+defineExpose({ getSerialized, insertIntoSlide })
 </script>
 
 <style scoped>

@@ -131,9 +131,7 @@
     >
       <canvas
         ref="wordCloudCanvasRef"
-        :width="Math.max(100, element.width)"
-        :height="Math.max(80, element.height)"
-        class="w-full h-full pointer-events-none"
+        class="w-full h-full pointer-events-none block"
       />
     </div>
 
@@ -156,6 +154,7 @@ const props = defineProps({
   readonly: { type: Boolean, default: false },
   scale: { type: Number, default: 1 },
   staggerIndex: { type: Number, default: -1 },
+  themeId: { type: String, default: 'zjy-minimal' },
 })
 
 const emit = defineEmits(['select', 'update', 'remove', 'batch-start', 'batch-end', 'edit-wordcloud'])
@@ -328,6 +327,7 @@ function startResize(e) {
     window.removeEventListener('mousemove', onMove)
     window.removeEventListener('mouseup', onUp)
     emit('batch-end')
+    if (props.element.type === 'wordcloud') nextTick(() => paintWordCloud())
   }
   window.addEventListener('mousemove', onMove)
   window.addEventListener('mouseup', onUp)
@@ -347,7 +347,12 @@ function paintWordCloud() {
   if (props.element.type !== 'wordcloud' || !wordCloudCanvasRef.value) return
   const c = props.element.content
   if (!c || typeof c !== 'object') return
-  renderWordCloud(wordCloudCanvasRef.value, c, 'zjy-minimal')
+  const canvas = wordCloudCanvasRef.value
+  const w = Math.max(100, Math.round(props.element.width))
+  const h = Math.max(80, Math.round(props.element.height))
+  canvas.width = w
+  canvas.height = h
+  renderWordCloud(canvas, c, props.themeId)
 }
 
 function openWordCloudEditor() {
@@ -356,7 +361,7 @@ function openWordCloudEditor() {
 }
 
 watch(
-  () => [props.element.type, props.element.content, props.element.width, props.element.height],
+  () => [props.element.type, props.element.content],
   () => {
     if (props.element.type === 'wordcloud') nextTick(() => paintWordCloud())
   },

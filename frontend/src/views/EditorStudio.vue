@@ -41,6 +41,7 @@
         :preview-animation-tick="previewAnimationTick"
         :canvas-background="canvasBackground"
         :theme-id="settings.themeId || 'zjy-minimal'"
+        :show-dialogue-preview="showDialoguePreview"
         @select="selectedId = $event"
         @deselect="selectedId = null"
         @update-element="updateElement"
@@ -56,6 +57,7 @@
         @batch-start="beginHistoryBatch"
         @batch-end="endHistoryBatch"
         @edit-wordcloud="onEditWordCloud"
+        @update:show-dialogue-preview="showDialoguePreview = $event"
       />
 
       <AiPanel
@@ -110,7 +112,6 @@ import DialogueGeneratorModal from '../components/dialogue/DialogueGeneratorModa
 import WordCloudEditorModal from '../components/wordcloud/WordCloudEditorModal.vue'
 import { buildBlock, getDefaultBlockBackground } from '../constants/layoutBlocks.js'
 import { normalizeChatScript, serializeChatScript } from '../utils/chatScript.js'
-import { slideBackgroundToStorage } from '../utils/slideBackground.js'
 
 const route = useRoute()
 const { user } = useAuth()
@@ -128,6 +129,7 @@ const pendingNewSlide = ref(null)
 const dialogueGeneratorOpen = ref(false)
 const wordCloudOpen = ref(false)
 const wordCloudEditContent = ref(null)
+const showDialoguePreview = ref(false)
 
 const { settings, viewport, setViewport, setScrollEffect, getSlideBackground, setSlideBackground, applyFromServer, setBgm } = useProjectEditorSettings(projectId)
 
@@ -163,6 +165,7 @@ async function load() {
   project.value = await api.getProject(Number(projectId.value))
   applyFromServer(project.value.settings)
   current.value = project.value.slides?.[0] || null
+  showDialoguePreview.value = !!current.value?.chat_script?.enabled
   loadElements(current.value?.canvas_elements)
   if (current.value && !elements.value.length) syncFromSlide(current.value)
   const q = await api.getQuota()
@@ -188,6 +191,7 @@ function selectSlide(slide) {
   current.value = slide
   loadElements(slide.canvas_elements)
   if (!elements.value.length) syncFromSlide(slide)
+  showDialoguePreview.value = !!slide?.chat_script?.enabled
 }
 
 async function addSlide() {
@@ -265,8 +269,12 @@ async function saveSlideFields(fields) {
     const updated = await api.updateSlide(project.value.id, current.value.id, fields)
     const idx = project.value.slides.findIndex((s) => s.id === updated.id)
     if (idx >= 0) project.value.slides[idx] = updated
-    current.value = updated
+    current.value = {
+      ...updated,
+      chat_script: updated.chat_script ?? fields.chat_script ?? current.value.chat_script,
+    }
   } catch (e) {
+    alert(e.message || '保存页面失败')
     console.error(e)
   }
 }
@@ -335,13 +343,29 @@ function openDialogueGenerator() {
 async function onInsertDialogue(script) {
   if (!current.value) return
   const serialized = serializeChatScript({ ...normalizeChatScript(script), enabled: true })
-  const bg = slideBackgroundToStorage(script.style?.background || '#ededed')
+  const bg = serialized.style?.background || '#ededed'
+
   setSlideBackground(current.value.id, bg)
+  replaceAllElements([])
+  await flushCanvasSave()
   dialogueGeneratorOpen.value = false
-  await saveSlideFields({
-    chat_script: serialized,
-    layout: 'chat',
-  })
+
+  try {
+    const updated = await api.updateSlide(project.value.id, current.value.id, {
+      chat_script: serialized,
+      layout: 'chat',
+      title: current.value.title || '对话页',
+      subtitle: '',
+      bullets: [],
+    })
+    const idx = project.value.slides.findIndex((s) => s.id === updated.id)
+    if (idx >= 0) project.value.slides[idx] = updated
+    current.value = { ...updated, chat_script: serialized }
+    showDialoguePreview.value = true
+  } catch (e) {
+    alert(e.message || '插入对话失败，请重试')
+    console.error(e)
+  }
 }
 
 function onInsertWordCloud(content) {

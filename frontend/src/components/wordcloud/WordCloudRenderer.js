@@ -19,6 +19,18 @@ function pickColors(content, themeId) {
   ].filter(Boolean)
 }
 
+function hashWord(word) {
+  let h = 0
+  const s = String(word || '')
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0
+  return Math.abs(h)
+}
+
+/** 同一词条始终同色，避免拖拽/缩放重绘时闪烁 */
+function colorForWord(word, colors) {
+  return colors[hashWord(word) % colors.length]
+}
+
 export function renderWordCloud(canvas, content, themeId = 'zjy-minimal') {
   if (!canvas || !content) return
   const ctx = canvas.getContext('2d')
@@ -62,7 +74,8 @@ export function renderWordCloud(canvas, content, themeId = 'zjy-minimal') {
       content.fontFamily === 'system'
         ? '"Microsoft YaHei", "PingFang SC", sans-serif'
         : content.fontFamily,
-    color: () => colors[Math.floor(Math.random() * colors.length)],
+    shuffle: false,
+    color: (word) => colorForWord(word, colors),
     rotateRatio: rot.rotateRatio,
     minRotation: rot.minRotation,
     maxRotation: rot.maxRotation,
@@ -104,7 +117,8 @@ export async function renderWordCloudWithMask(canvas, content, maskUrl, themeId)
     gridSize: densityToGridSize(content.density || 'normal', w),
     weightFactor: (size) => size,
     fontFamily: '"Microsoft YaHei", "PingFang SC", sans-serif',
-    color: () => colors[Math.floor(Math.random() * colors.length)],
+    shuffle: false,
+    color: (word) => colorForWord(word, colors),
     rotateRatio: rot.rotateRatio,
     minRotation: rot.minRotation,
     maxRotation: rot.maxRotation,

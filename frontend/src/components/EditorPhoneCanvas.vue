@@ -24,7 +24,7 @@
         type="button"
         class="text-xs border border-outline-variant rounded-lg px-2 py-1.5 bg-white shadow-card"
         :class="dialoguePreviewOn ? 'text-primary border-primary' : ''"
-        @click="dialoguePreviewOn = !dialoguePreviewOn"
+        @click="toggleDialoguePreview"
       >
         {{ dialoguePreviewOn ? '隐藏对话' : '预览对话' }}
       </button>
@@ -137,6 +137,7 @@
               :element="el"
               :selected="el.id === selectedId"
               :scale="1"
+              :theme-id="themeId"
               @select="$emit('select', $event)"
               @update="(id, patch) => $emit('update-element', id, patch)"
               @batch-start="$emit('batch-start')"
@@ -145,7 +146,7 @@
             />
 
             <div
-              v-if="!elements.length && slide"
+              v-if="!elements.length && slide && !slide?.chat_script?.enabled"
               class="absolute inset-0 p-6 text-white pointer-events-none"
             >
               <span class="text-xs opacity-80">第 {{ slideIndex + 1 }} 页</span>
@@ -189,6 +190,7 @@ const props = defineProps({
   previewAnimationTick: { type: Number, default: 0 },
   canvasBackground: { type: String, default: '#005daa' },
   themeId: { type: String, default: 'zjy-minimal' },
+  showDialoguePreview: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
@@ -207,6 +209,7 @@ const emit = defineEmits([
   'batch-start',
   'batch-end',
   'edit-wordcloud',
+  'update:show-dialogue-preview',
 ])
 
 const DEFAULT_ZOOM = 90
@@ -216,7 +219,15 @@ const ZOOM_STEP = 10
 
 const zoomPercent = ref(DEFAULT_ZOOM)
 const zoomEditing = ref(false)
-const dialoguePreviewOn = ref(false)
+
+const dialoguePreviewOn = computed({
+  get: () => props.showDialoguePreview,
+  set: (v) => emit('update:show-dialogue-preview', v),
+})
+
+function toggleDialoguePreview() {
+  dialoguePreviewOn.value = !dialoguePreviewOn.value
+}
 
 const chatScriptForPreview = computed(() => {
   if (!props.slide?.chat_script?.enabled) return null
@@ -226,7 +237,9 @@ const chatScriptForPreview = computed(() => {
 watch(
   () => props.slide?.id,
   () => {
-    dialoguePreviewOn.value = false
+    if (props.slide?.chat_script?.enabled) {
+      emit('update:show-dialogue-preview', true)
+    }
   }
 )
 const zoomInput = ref(String(DEFAULT_ZOOM))
