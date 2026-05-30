@@ -1,8 +1,8 @@
 <template>
-  <div class="min-h-screen bg-surface-container-low flex">
-    <!-- 侧边栏 -->
-    <aside class="w-56 bg-surface border-r border-outline-variant flex flex-col shrink-0">
-      <div class="p-4 border-b border-outline-variant">
+  <div class="h-screen bg-surface-container-low flex overflow-hidden">
+    <!-- 侧边栏：固定视口高度，底部操作始终贴底 -->
+    <aside class="w-56 h-full bg-surface border-r border-outline-variant flex flex-col shrink-0">
+      <div class="p-4 border-b border-outline-variant shrink-0">
         <div class="flex items-center gap-2">
           <div class="w-9 h-9 rounded-lg bg-primary text-on-primary flex items-center justify-center font-bold text-sm">
             AD
@@ -14,7 +14,7 @@
         </div>
       </div>
 
-      <nav class="flex-1 p-3 space-y-1">
+      <nav class="flex-1 min-h-0 overflow-y-auto p-3 space-y-1">
         <router-link
           v-for="item in navItems"
           :key="item.to"
@@ -27,7 +27,7 @@
         </router-link>
       </nav>
 
-      <div class="p-3 border-t border-outline-variant space-y-1">
+      <div class="p-3 border-t border-outline-variant space-y-1 shrink-0">
         <router-link
           to="/templates"
           class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container-high"
@@ -47,7 +47,7 @@
     </aside>
 
     <!-- 主内容 -->
-    <div class="flex-1 flex flex-col min-w-0">
+    <div class="flex-1 flex flex-col min-h-0 min-w-0">
       <header class="h-14 border-b border-outline-variant bg-white flex items-center px-6 shrink-0">
         <h1 class="text-lg font-semibold">{{ title }}</h1>
       </header>

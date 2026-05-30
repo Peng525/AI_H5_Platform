@@ -83,6 +83,8 @@ RELAY_DASHBOARD_RECHARGE_URL=https://once-cf.novai.su/wallet
 
 **中转 API 充值：** 配置 `RELAY_DASHBOARD_RECHARGE_URL` 后，仪表盘显示「前往中转平台钱包」。余额须在中转站控制台用账号密码登录查看；`LLM_RELAY_API_KEY` 只负责调模型，不能代替网页登录查余额。
 
+侧栏「返回用户端 / 退出登录」固定于屏幕底部；右侧主内容区独立滚动，长页面无需滚到底部才能退出。
+
 ---
 
 ## 编辑器要点
