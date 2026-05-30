@@ -1,7 +1,9 @@
 <template>
   <AdminShell title="H5 模板管理">
     <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
-      <p class="text-sm text-on-surface-variant">创建、编辑模板并发布到「探索模板」页；支持上传 PPT 自动解析</p>
+      <p class="text-sm text-on-surface-variant">
+        可视化编辑模板（与用户端相同编辑器：版式、音乐、素材、AI）；保存为探索模板预设
+      </p>
       <div class="flex gap-2">
         <button
           type="button"
@@ -52,7 +54,7 @@
               </span>
             </td>
             <td class="px-4 py-3 text-right space-x-2 whitespace-nowrap">
-              <button type="button" class="text-primary hover:underline" @click="openEdit(t)">编辑</button>
+              <button type="button" class="text-primary hover:underline" @click="openVisualEdit(t)">编辑</button>
               <button type="button" class="text-red-600 hover:underline" @click="remove(t)">删除</button>
             </td>
           </tr>
@@ -63,10 +65,8 @@
     <AdminTemplateEditor
       :open="editor.open"
       :mode="editor.mode"
-      :initial="editor.data"
-      :initial-tab="editor.tab"
       @close="editor.open = false"
-      @saved="onSaved"
+      @open-editor="goEditor"
     />
     <ConfirmDialog
       :open="!!deleteConfirm"
@@ -83,19 +83,21 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { api } from '../../api/client'
 import AdminShell from '../../components/AdminShell.vue'
 import AdminTemplateEditor from '../../components/admin/AdminTemplateEditor.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import { useToast } from '../../composables/useToast.js'
 
+const router = useRouter()
 const { success: toastSuccess, error: toastError } = useToast()
 const deleteConfirm = ref(null)
 
 const templates = ref([])
 const loading = ref(true)
 const error = ref('')
-const editor = reactive({ open: false, mode: 'create', data: null, tab: 'meta' })
+const editor = reactive({ open: false, mode: 'create' })
 
 onMounted(load)
 
@@ -113,33 +115,28 @@ async function load() {
 
 function openCreate() {
   editor.mode = 'create'
-  editor.data = null
-  editor.tab = 'meta'
   editor.open = true
 }
 
 function openImport() {
-  editor.mode = 'create'
-  editor.data = null
-  editor.tab = 'import'
+  editor.mode = 'import'
   editor.open = true
 }
 
-async function openEdit(t) {
+async function openVisualEdit(t) {
   try {
-    const detail = await api.getAdminTemplate(t.id)
-    editor.mode = 'edit'
-    editor.data = detail
-    editor.tab = 'meta'
-    editor.open = true
+    const draft = await api.startTemplateDraft(t.id)
+    goEditor({ templateId: t.id, projectId: draft.project_id })
   } catch (e) {
-    error.value = e.message
+    toastError(e.message)
   }
 }
 
-function onSaved() {
-  editor.open = false
-  load()
+function goEditor({ templateId, projectId }) {
+  router.push({
+    path: `/editor/${projectId}`,
+    query: { adminPreset: templateId },
+  })
 }
 
 function remove(t) {

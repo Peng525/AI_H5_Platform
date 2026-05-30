@@ -154,6 +154,15 @@ export const api = {
     request(`/api/v1/管理/模板/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteAdminTemplate: (id) =>
     request(`/api/v1/管理/模板/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  startTemplateDraft: (templateId) =>
+    request(`/api/v1/管理/模板/${encodeURIComponent(templateId)}/编辑草稿`, { method: 'POST' }),
+  saveTemplatePreset: (templateId, body) =>
+    request(`/api/v1/管理/模板/${encodeURIComponent(templateId)}/保存预设`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  importPptxToTemplateDraft: (templateId, formData) =>
+    uploadForm(`/api/v1/管理/模板/${encodeURIComponent(templateId)}/导入-pptx`, formData),
   parseAdminPptxTemplate: (formData) => uploadForm('/api/v1/管理/模板/解析-pptx', formData),
   importAdminPptxTemplate: (formData) => uploadForm('/api/v1/管理/模板/导入-pptx', formData),
   listLayoutBlocks: () => request('/api/v1/版式'),

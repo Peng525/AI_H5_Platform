@@ -53,7 +53,7 @@
         预览
       </button>
       <router-link
-        v-if="projectId"
+        v-if="projectId && !hidePublish"
         :to="`/publish/${projectId}`"
         class="px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg bg-primary text-on-primary text-xs sm:text-sm font-medium shadow-card whitespace-nowrap"
       >
@@ -142,6 +142,7 @@ import { flushCanvasSave } from '../composables/useEditorCanvasSave'
 const props = defineProps({
   projectId: { type: [String, Number], default: null },
   showQuota: { type: Boolean, default: true },
+  hidePublish: { type: Boolean, default: false },
 })
 
 const route = useRoute()

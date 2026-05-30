@@ -1,6 +1,27 @@
 <template>
   <div class="h-screen flex flex-col bg-background overflow-hidden">
-    <EditorTopBar :project-id="projectId" />
+    <EditorTopBar :project-id="projectId" :hide-publish="!!adminPresetId">
+      <template v-if="adminPresetId" #actions>
+        <router-link
+          to="/admin/templates"
+          class="hidden sm:inline-flex items-center px-3 py-1.5 rounded-lg border border-outline-variant text-xs sm:text-sm hover:bg-surface-container-high whitespace-nowrap"
+        >
+          返回模板管理
+        </router-link>
+        <label class="inline-flex items-center px-3 py-1.5 rounded-lg border border-outline-variant text-xs sm:text-sm hover:bg-surface-container-high cursor-pointer whitespace-nowrap">
+          从 PPT 导入
+          <input type="file" accept=".pptx" class="hidden" :disabled="pptImporting" @change="onAdminPptxImport" />
+        </label>
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-lg bg-secondary text-on-secondary text-xs sm:text-sm font-medium whitespace-nowrap disabled:opacity-50"
+          :disabled="pptImporting"
+          @click="openPresetSave"
+        >
+          保存为预设
+        </button>
+      </template>
+    </EditorTopBar>
     <div v-if="projectLoading" class="flex-1 flex items-center justify-center min-h-0">
       <PageLoading message="加载项目中…" />
     </div>
@@ -170,6 +191,14 @@
       @confirm="onDeleteSlideConfirm"
       @cancel="deleteSlideConfirm = null"
     />
+    <AdminPresetSaveDialog
+      :open="presetSaveOpen"
+      :template-id="adminPresetId"
+      :project-id="projectId"
+      :initial="templateMeta"
+      @close="presetSaveOpen = false"
+      @saved="onPresetSaved"
+    />
   </div>
 </template>
 
@@ -193,6 +222,7 @@ import ImageCropModal from '../components/ImageCropModal.vue'
 import PageLoading from '../components/PageLoading.vue'
 import EmptyState from '../components/EmptyState.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import AdminPresetSaveDialog from '../components/admin/AdminPresetSaveDialog.vue'
 import { useToast } from '../composables/useToast.js'
 
 const COACH_KEY = 'ai_h5_editor_coach_seen'
@@ -204,6 +234,7 @@ import { normalizeChatScript, serializeChatScript } from '../utils/chatScript.js
 const route = useRoute()
 const { user } = useAuth()
 const projectId = computed(() => route.params.id)
+const adminPresetId = computed(() => (typeof route.query.adminPreset === 'string' ? route.query.adminPreset : ''))
 const project = ref(null)
 const current = ref(null)
 const imageLoading = ref(false)
@@ -223,7 +254,10 @@ const cropInitial = ref(null)
 const projectLoading = ref(true)
 const loadError = ref('')
 const deleteSlideConfirm = ref(null)
-const showEditorCoach = ref(!localStorage.getItem(COACH_KEY))
+const presetSaveOpen = ref(false)
+const pptImporting = ref(false)
+const templateMeta = ref(null)
+const showEditorCoach = ref(false)
 
 const { settings, viewport, setViewport, setScrollEffect, getSlideBackground, setSlideBackground, applyFromServer, setBgm } = useProjectEditorSettings(projectId)
 
@@ -287,6 +321,50 @@ const slideIndex = computed(() => {
   return project.value.slides.findIndex((s) => s.id === current.value.id)
 })
 
+async function loadTemplateMeta() {
+  if (!adminPresetId.value) {
+    templateMeta.value = null
+    return
+  }
+  try {
+    templateMeta.value = await api.getAdminTemplate(adminPresetId.value)
+  } catch {
+    templateMeta.value = null
+  }
+}
+
+async function openPresetSave() {
+  await flushCanvasSave()
+  presetSaveOpen.value = true
+}
+
+async function onPresetSaved() {
+  toastSuccess('模板预设已保存')
+  await loadTemplateMeta()
+}
+
+async function onAdminPptxImport(e) {
+  const file = e.target.files?.[0]
+  e.target.value = ''
+  if (!file || !adminPresetId.value) return
+  pptImporting.value = true
+  try {
+    await flushCanvasSave()
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('project_id', String(projectId.value))
+    fd.append('device', templateMeta.value?.device || 'mobile')
+    if (templateMeta.value?.title) fd.append('title', templateMeta.value.title)
+    await api.importPptxToTemplateDraft(adminPresetId.value, fd)
+    toastSuccess('PPT 已导入到当前草稿')
+    await load()
+  } catch (err) {
+    toastError(err.message)
+  } finally {
+    pptImporting.value = false
+  }
+}
+
 async function load() {
   projectLoading.value = true
   loadError.value = ''
@@ -319,8 +397,13 @@ onMounted(() => {
   registerCanvasFlush(flushCanvasSave)
   window.addEventListener('keydown', onKeyDown)
   layoutCatalog.load()
+  if (!adminPresetId.value) {
+    showEditorCoach.value = !localStorage.getItem(COACH_KEY)
+  }
+  loadTemplateMeta()
   load()
 })
+watch(() => route.query.adminPreset, loadTemplateMeta)
 watch(() => route.params.id, load)
 onBeforeRouteLeave(async () => {
   await flushCanvasSave()

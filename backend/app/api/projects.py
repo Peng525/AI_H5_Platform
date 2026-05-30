@@ -70,7 +70,7 @@ async def list_projects(
 ):
     result = await db.execute(
         select(Project)
-        .where(Project.user_id == user.id)
+        .where(Project.user_id == user.id, Project.template_source_id.is_(None))
         .options(selectinload(Project.slides))
         .order_by(Project.updated_at.desc())
     )

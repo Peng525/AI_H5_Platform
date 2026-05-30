@@ -22,6 +22,8 @@ from app.schemas import (
     LayoutBlockOut,
     LayoutBlockUpdate,
     RelayLinkOut,
+    TemplateDraftOut,
+    TemplatePresetSaveRequest,
 )
 from app.services.h5_template_service import (
     H5TemplateError,
@@ -48,6 +50,12 @@ from app.services.image_prompt_template_service import (
     update_template as update_image_prompt_template,
 )
 from app.services.pptx_template_parser import PptxParseError, parse_pptx_bytes
+from app.services.template_draft_service import (
+    TemplateDraftError,
+    apply_parsed_template_to_draft,
+    get_or_create_template_draft,
+    save_template_preset,
+)
 from app.services.order_service import (
     OrderServiceError,
     confirm_order_payment,
@@ -362,6 +370,66 @@ async def admin_update_template(
     except H5TemplateError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return H5TemplateOut(**{**row, "premium": bool(row.get("premium")), "enabled": bool(row.get("enabled"))})
+
+
+@router.post("/模板/{template_id}/编辑草稿", response_model=TemplateDraftOut, summary="获取或创建模板可视化编辑草稿")
+async def admin_template_edit_draft(
+    template_id: str,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        project = await get_or_create_template_draft(db, template_id, admin)
+        await db.commit()
+    except TemplateDraftError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return TemplateDraftOut(project_id=project.id, template_id=template_id)
+
+
+@router.post("/模板/{template_id}/保存预设", response_model=H5TemplateOut, summary="将草稿项目保存为 H5 模板预设")
+async def admin_template_save_preset(
+    template_id: str,
+    body: TemplatePresetSaveRequest,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    meta = body.model_dump(exclude={"project_id"}, exclude_unset=True)
+    try:
+        row = await save_template_preset(db, template_id, body.project_id, admin, meta or None)
+        await db.commit()
+    except TemplateDraftError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return H5TemplateOut(**{**row, "premium": bool(row.get("premium")), "enabled": bool(row.get("enabled"))})
+
+
+@router.post("/模板/{template_id}/导入-pptx", response_model=TemplateDraftOut, summary="PPTX 导入到模板编辑草稿")
+async def admin_template_import_pptx_to_draft(
+    template_id: str,
+    project_id: int = Form(...),
+    file: UploadFile = File(...),
+    device: str = Form("mobile"),
+    title: str = Form(""),
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    if not file.filename or not file.filename.lower().endswith(".pptx"):
+        raise HTTPException(status_code=400, detail="请上传 .pptx 文件")
+    raw = await file.read()
+    inferred_title = title.strip() or (file.filename.rsplit(".", 1)[0] if file.filename else "导入模板")
+    try:
+        parsed = parse_pptx_bytes(
+            raw,
+            device=device if device in ("mobile", "web") else "mobile",
+            title=inferred_title,
+            category="简约商务",
+        )
+        await apply_parsed_template_to_draft(db, template_id, project_id, admin, parsed)
+        await db.commit()
+    except PptxParseError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except TemplateDraftError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return TemplateDraftOut(project_id=project_id, template_id=template_id)
 
 
 @router.delete("/模板/{template_id}", summary="删除 H5 模板")

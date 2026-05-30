@@ -77,6 +77,7 @@ class Project(Base):
     title: Mapped[str] = mapped_column(String(255), default="未命名演示")
     theme: Mapped[str] = mapped_column(String(64), default="default")
     share_slug: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    template_source_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     settings_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

@@ -195,6 +195,25 @@ class H5TemplateUpdate(BaseModel):
     enabled: bool | None = None
 
 
+class TemplateDraftOut(BaseModel):
+    project_id: int
+    template_id: str
+
+
+class TemplatePresetSaveRequest(BaseModel):
+    project_id: int
+    title: str | None = None
+    description: str | None = None
+    category: str | None = None
+    device: str | None = None
+    pages: int | None = None
+    premium: bool | None = None
+    cover_gradient: str | None = None
+    default_viewport: str | None = None
+    sort_order: int | None = None
+    enabled: bool | None = None
+
+
 class LayoutBlockOut(BaseModel):
     id: str
     label: str

@@ -75,13 +75,15 @@ RELAY_DASHBOARD_RECHARGE_URL=https://once-cf.novai.su/wallet
 |------|------|
 | `/admin` | 今日/近 7 日访问、成交订单与成交额、近 14 日访问趋势图、待支付微信订单确认、近期订单列表、**中转 API 充值外链** |
 | `/admin/users` | 创建用户、改会员档位、调整 API 配额 |
-| `/admin/templates` | H5 探索模板 CRUD、PPTX 导入 |
+| `/admin/templates` | H5 探索模板 CRUD、可视化编辑（EditorStudio）、保存预设、PPTX 导入 |
 | `/admin/layouts` | 素材版式块管理 |
 | `/admin/prompts` | 文稿提示词（全量生成 / 单页改写） |
 | `/admin/image-prompts` | 生图提示词模板 |
 | `/settings` | 大模型通道与 `.env` 在线保存 |
 
 **中转 API 充值：** 配置 `RELAY_DASHBOARD_RECHARGE_URL` 后，仪表盘显示「前往中转平台钱包」。余额须在中转站控制台用账号密码登录查看；`LLM_RELAY_API_KEY` 只负责调模型，不能代替网页登录查余额。
+
+**H5 模板可视化编辑：** `/admin/templates` 点「编辑」进入与用户端相同的三栏编辑器（版式、音乐、素材、AI）；顶栏「保存为预设」写回探索模板库；「从 PPT 导入」可替换草稿内容。模板编辑草稿不会出现在「我的项目」列表。
 
 侧栏「返回用户端 / 退出登录」固定于屏幕底部；右侧主内容区独立滚动，长页面无需滚到底部才能退出。
 

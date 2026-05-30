@@ -34,7 +34,8 @@
 | 数据仪表盘（访问/订单/成交额/趋势图/待确认订单） | `/admin` | ✅ |
 | 中转 API 充值外链 | `/admin` | ✅ 不自动读余额，跳转钱包页 |
 | 用户管理（创建/编辑/配额） | `/admin/users` | ✅ |
-| H5 模板管理 | `/admin/templates` | ✅ |
+| H5 模板管理 | `/admin/templates` | ✅ 列表 + 可视化编辑（EditorStudio 复用） |
+| 模板保存预设 / PPT 导入 | 编辑器顶栏（adminPreset 模式） | ✅ |
 | 版式管理 | `/admin/layouts` | ✅ 自定义 `canvas_elements` 上架素材面板 |
 | 文稿提示词模板编辑 | `/admin/prompts` | ✅ |
 | 生图提示词模板 | `/admin/image-prompts` | ✅ |

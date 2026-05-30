@@ -57,6 +57,9 @@ async def _migrate_sqlite_columns(conn) -> None:
         proj_names = {row[1] for row in proj_cols}
         if "settings_json" not in proj_names:
             sync_conn.execute(text("ALTER TABLE projects ADD COLUMN settings_json TEXT DEFAULT '{}'"))
+        if "template_source_id" not in proj_names:
+            sync_conn.execute(text("ALTER TABLE projects ADD COLUMN template_source_id VARCHAR(64)"))
+            sync_conn.execute(text("CREATE INDEX IF NOT EXISTS ix_projects_template_source_id ON projects (template_source_id)"))
         tpl_cols = sync_conn.execute(text("PRAGMA table_info(h5_templates)")).fetchall()
         tpl_names = {row[1] for row in tpl_cols}
         if tpl_names and "settings_json" not in tpl_names:
