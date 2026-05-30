@@ -21,7 +21,7 @@ from app.schemas import (
     LayoutBlockCreate,
     LayoutBlockOut,
     LayoutBlockUpdate,
-    RelayQuotaOut,
+    RelayLinkOut,
 )
 from app.services.h5_template_service import (
     H5TemplateError,
@@ -57,7 +57,7 @@ from app.services.order_service import (
     reject_order_payment,
 )
 from app.services.quota import quota_remaining, quota_total
-from app.services.relay_quota_service import RelayQuotaError, fetch_relay_quota
+from app.services.relay_quota_service import get_relay_recharge_link
 from app.services.visits import visit_stats
 
 router = APIRouter(prefix="/api/v1/管理", tags=["管理"])
@@ -510,21 +510,12 @@ class OrderConfirmRequest(BaseModel):
     admin_remark: str = Field("", max_length=255)
 
 
-@router.get("/中转额度", response_model=RelayQuotaOut, summary="查询中转 API 账户余额")
-async def admin_relay_quota(_admin: User = Depends(require_admin)):
-    try:
-        info = await fetch_relay_quota()
-    except RelayQuotaError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-    return RelayQuotaOut(
-        profile=info.profile,
-        remaining_label=info.remaining_label,
-        remaining_usd=info.remaining_usd,
-        used_raw=info.used_raw,
-        request_count=info.request_count,
-        is_low=info.is_low,
-        low_threshold_usd=info.low_threshold_usd,
+@router.get("/中转充值", response_model=RelayLinkOut, summary="中转平台充值链接")
+async def admin_relay_link(_admin: User = Depends(require_admin)):
+    info = get_relay_recharge_link()
+    return RelayLinkOut(
         recharge_url=info.recharge_url,
+        configured=info.configured,
         message=info.message,
     )
 

@@ -80,8 +80,10 @@ class Settings(BaseSettings):
     relay_quota_profile: str = "newapi"
     relay_quota_api_url: str = ""
     relay_quota_low_threshold: float = 1.0
+    relay_quota_low_cny: float = 5.0
     relay_dashboard_recharge_url: str = ""
     relay_quota_usd_divisor: float = 500000.0
+    relay_quota_cny_divisor: float = 500000.0
     # NovAI 控制台与 API 可能不同域（如 once-cf.novai.su 钱包 + us.novaiapi.com 调用）
     relay_novai_dashboard_url: str = ""
 

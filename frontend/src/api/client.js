@@ -132,7 +132,7 @@ export const api = {
   getOrder: (id) => request(`/api/v1/订单/${id}`),
   listOrders: () => request('/api/v1/订单'),
   getAdminDashboard: () => request('/api/v1/管理/仪表盘'),
-  getRelayQuota: () => request('/api/v1/管理/中转额度'),
+  getRelayLink: () => request('/api/v1/管理/中转充值'),
   confirmAdminOrder: (id, admin_remark = '') =>
     request(`/api/v1/管理/订单/${id}/确认收款`, {
       method: 'POST',

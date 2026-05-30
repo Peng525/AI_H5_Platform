@@ -141,16 +141,10 @@ class OrderClaimRequest(BaseModel):
     remark: str = Field("", max_length=255, description="付款备注（可选，如微信昵称后四位）")
 
 
-class RelayQuotaOut(BaseModel):
-    profile: str
-    remaining_label: str
-    remaining_usd: float | None = None
-    used_raw: float | None = None
-    request_count: int | None = None
-    is_low: bool
-    low_threshold_usd: float
+class RelayLinkOut(BaseModel):
     recharge_url: str = ""
-    message: str
+    configured: bool = False
+    message: str = ""
 
 
 class H5TemplateOut(BaseModel):

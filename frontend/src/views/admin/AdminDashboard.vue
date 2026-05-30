@@ -2,60 +2,33 @@
   <AdminShell title="数据仪表盘">
     <PageLoading v-if="loading" />
     <template v-else-if="data">
-      <div v-if="relayQuota?.is_low" class="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-sm">
-        <p class="font-semibold text-amber-900 flex items-center gap-2">
-          <span class="material-symbols-outlined">warning</span>
-          中转 API 余额不足
-        </p>
-        <p class="mt-1 text-amber-800">{{ relayQuota.message }}</p>
-        <p class="mt-1 text-amber-800">{{ relayQuota.remaining_label }}</p>
-        <a
-          v-if="relayQuota.recharge_url"
-          :href="relayQuota.recharge_url"
-          target="_blank"
-          rel="noopener"
-          class="inline-flex items-center gap-1 mt-2 text-primary font-medium hover:underline"
-        >
-          前往中转平台充值
-          <span class="material-symbols-outlined text-[16px]">open_in_new</span>
-        </a>
-      </div>
-
-      <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+      <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <StatCard icon="visibility" label="今日访问" :value="data.visits_today" suffix="次" color="primary" />
         <StatCard icon="calendar_month" label="近 7 日访问" :value="data.visits_7d" suffix="次" color="secondary" />
         <StatCard icon="shopping_cart" label="成交订单" :value="data.orders_paid" suffix="笔" color="amber" />
         <StatCard icon="payments" label="累计成交额" :value="formatMoney(data.revenue_total)" prefix="¥" color="green" />
       </div>
 
-      <div class="grid lg:grid-cols-3 gap-6 mb-8">
+      <div class="grid lg:grid-cols-2 gap-6 mb-6">
         <section class="bg-white rounded-xl border border-outline-variant p-5 shadow-card">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="font-semibold text-sm">中转 API 额度</h2>
-            <button type="button" class="text-xs text-primary hover:underline" :disabled="relayLoading" @click="loadRelayQuota">
-              刷新
-            </button>
-          </div>
-          <p v-if="relayLoading" class="text-xs text-on-surface-variant">查询中…</p>
-          <p v-else-if="relayError" class="text-xs text-red-600">{{ relayError }}</p>
-          <template v-else-if="relayQuota">
-            <p class="text-lg font-bold" :class="relayQuota.is_low ? 'text-amber-700' : 'text-secondary'">
-              {{ relayQuota.remaining_label }}
-            </p>
-            <p class="text-xs text-on-surface-variant mt-2">{{ relayQuota.message }}</p>
-            <a
-              v-if="relayQuota.recharge_url"
-              :href="relayQuota.recharge_url"
-              target="_blank"
-              rel="noopener"
-              class="inline-block mt-3 text-sm text-primary hover:underline"
-            >
-              充值中转 API →
-            </a>
-          </template>
+          <h2 class="font-semibold text-sm mb-3">中转 API 充值</h2>
+          <p class="text-xs text-on-surface-variant mb-4">
+            推理令牌无法自动读取余额，请登录中转平台控制台查看并充值。
+          </p>
+          <a
+            v-if="relayLink?.recharge_url"
+            :href="relayLink.recharge_url"
+            target="_blank"
+            rel="noopener"
+            class="inline-flex items-center gap-1 text-sm text-primary font-medium hover:underline"
+          >
+            前往中转平台钱包
+            <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+          </a>
+          <p v-else class="text-sm text-on-surface-variant">{{ relayLink?.message || '未配置中转充值链接' }}</p>
         </section>
 
-        <section class="lg:col-span-2 bg-white rounded-xl border border-outline-variant p-5 shadow-card">
+        <section class="bg-white rounded-xl border border-outline-variant p-5 shadow-card">
           <h2 class="font-semibold text-sm mb-3">
             待支付订单（微信）
             <span v-if="data.orders_pending_confirm" class="ml-2 text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
@@ -69,7 +42,7 @@
           <div v-if="!data.pending_payment_orders?.length" class="text-sm text-on-surface-variant py-6 text-center">
             暂无待确认订单
           </div>
-          <div v-else class="space-y-3">
+          <div v-else class="space-y-3 max-h-48 overflow-y-auto">
             <div
               v-for="o in data.pending_payment_orders"
               :key="o.id"
@@ -102,68 +75,53 @@
         </section>
       </div>
 
-      <div class="grid lg:grid-cols-3 gap-6 mb-8">
-        <section class="lg:col-span-1 bg-white rounded-xl border border-outline-variant p-5 shadow-card">
-          <h2 class="font-semibold text-sm mb-4">近 14 日访问趋势</h2>
-          <div class="flex items-end gap-1 h-32">
-            <div
-              v-for="(d, i) in data.visit_chart"
-              :key="i"
-              class="flex-1 flex flex-col items-center gap-1 min-w-0"
-            >
-              <div
-                class="w-full rounded-t bg-primary/80 min-h-[2px] transition-all"
-                :style="{ height: barHeight(d.count) + '%' }"
-                :title="`${d.date}: ${d.count}`"
-              />
-              <span v-if="i % 2 === 0" class="text-[9px] text-on-surface-variant truncate w-full text-center">
-                {{ d.date.slice(5) }}
-              </span>
-            </div>
-          </div>
-          <p class="text-xs text-on-surface-variant mt-3">近 30 日总访问 {{ data.visits_30d }} 次 · 注册用户 {{ data.users_total }}</p>
-        </section>
+      <section class="bg-white rounded-xl border border-outline-variant p-5 shadow-card mb-6">
+        <h2 class="font-semibold text-sm mb-4">近 14 日访问趋势</h2>
+        <VisitTrendChart
+          :chart="data.visit_chart"
+          :summary="`近 30 日总访问 ${data.visits_30d} 次 · 注册用户 ${data.users_total}`"
+        />
+      </section>
 
-        <section class="lg:col-span-2 bg-white rounded-xl border border-outline-variant p-5 shadow-card">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="font-semibold text-sm">近期购买订单</h2>
-            <span class="text-xs text-on-surface-variant">共 {{ data.orders_total }} 笔</span>
-          </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="text-left text-on-surface-variant border-b border-outline-variant">
-                  <th class="pb-2 pr-3 font-medium">订单</th>
-                  <th class="pb-2 pr-3 font-medium">用户</th>
-                  <th class="pb-2 pr-3 font-medium">套餐</th>
-                  <th class="pb-2 pr-3 font-medium">金额</th>
-                  <th class="pb-2 pr-3 font-medium">状态</th>
-                  <th class="pb-2 font-medium">时间</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="!data.recent_orders.length">
-                  <td colspan="6" class="py-8 text-center text-on-surface-variant">暂无订单</td>
-                </tr>
-                <tr
-                  v-for="o in data.recent_orders"
-                  :key="o.id"
-                  class="border-b border-outline-variant/50 hover:bg-surface-container-low"
-                >
-                  <td class="py-2.5 pr-3 font-mono text-xs">#{{ o.id }}</td>
-                  <td class="py-2.5 pr-3">{{ o.username }}</td>
-                  <td class="py-2.5 pr-3">{{ o.plan_name }}</td>
-                  <td class="py-2.5 pr-3 font-medium">¥{{ o.amount.toFixed(2) }}</td>
-                  <td class="py-2.5 pr-3">
-                    <span class="text-xs px-2 py-0.5 rounded-full" :class="statusClass(o.status)">{{ statusLabel(o.status) }}</span>
-                  </td>
-                  <td class="py-2.5 text-xs text-on-surface-variant whitespace-nowrap">{{ formatTime(o.created_at) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
+      <section class="bg-white rounded-xl border border-outline-variant p-5 shadow-card">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-semibold text-sm">近期购买订单</h2>
+          <span class="text-xs text-on-surface-variant">共 {{ data.orders_total }} 笔</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-on-surface-variant border-b border-outline-variant">
+                <th class="pb-2 pr-3 font-medium">订单</th>
+                <th class="pb-2 pr-3 font-medium">用户</th>
+                <th class="pb-2 pr-3 font-medium">套餐</th>
+                <th class="pb-2 pr-3 font-medium">金额</th>
+                <th class="pb-2 pr-3 font-medium">状态</th>
+                <th class="pb-2 font-medium">时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="!data.recent_orders.length">
+                <td colspan="6" class="py-8 text-center text-on-surface-variant">暂无订单</td>
+              </tr>
+              <tr
+                v-for="o in data.recent_orders"
+                :key="o.id"
+                class="border-b border-outline-variant/50 hover:bg-surface-container-low"
+              >
+                <td class="py-2.5 pr-3 font-mono text-xs">#{{ o.id }}</td>
+                <td class="py-2.5 pr-3">{{ o.username }}</td>
+                <td class="py-2.5 pr-3">{{ o.plan_name }}</td>
+                <td class="py-2.5 pr-3 font-medium">¥{{ o.amount.toFixed(2) }}</td>
+                <td class="py-2.5 pr-3">
+                  <span class="text-xs px-2 py-0.5 rounded-full" :class="statusClass(o.status)">{{ statusLabel(o.status) }}</span>
+                </td>
+                <td class="py-2.5 text-xs text-on-surface-variant whitespace-nowrap">{{ formatTime(o.created_at) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </template>
     <p v-else-if="error" class="text-red-600">{{ error }}</p>
 
@@ -186,6 +144,7 @@ import { onMounted, ref } from 'vue'
 import { api } from '../../api/client'
 import AdminShell from '../../components/AdminShell.vue'
 import StatCard from '../../components/admin/StatCard.vue'
+import VisitTrendChart from '../../components/admin/VisitTrendChart.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import PageLoading from '../../components/PageLoading.vue'
 import { useToast } from '../../composables/useToast.js'
@@ -195,15 +154,12 @@ const { error: toastError, success: toastSuccess } = useToast()
 const data = ref(null)
 const loading = ref(true)
 const error = ref('')
-const maxVisit = ref(1)
-const relayQuota = ref(null)
-const relayLoading = ref(false)
-const relayError = ref('')
+const relayLink = ref(null)
 const confirmingId = ref(null)
 const confirmDialog = ref(null)
 
 onMounted(async () => {
-  await Promise.all([loadDashboard(), loadRelayQuota()])
+  await Promise.all([loadDashboard(), loadRelayLink()])
 })
 
 async function loadDashboard() {
@@ -211,7 +167,6 @@ async function loadDashboard() {
   error.value = ''
   try {
     data.value = await api.getAdminDashboard()
-    maxVisit.value = Math.max(1, ...data.value.visit_chart.map((d) => d.count))
   } catch (e) {
     error.value = e.message
   } finally {
@@ -219,15 +174,11 @@ async function loadDashboard() {
   }
 }
 
-async function loadRelayQuota() {
-  relayLoading.value = true
-  relayError.value = ''
+async function loadRelayLink() {
   try {
-    relayQuota.value = await api.getRelayQuota()
-  } catch (e) {
-    relayError.value = e.message
-  } finally {
-    relayLoading.value = false
+    relayLink.value = await api.getRelayLink()
+  } catch {
+    relayLink.value = null
   }
 }
 
@@ -285,10 +236,6 @@ function statusClass(s) {
   if (s === 'claimed') return 'bg-amber-100 text-amber-800'
   if (s === 'rejected') return 'bg-red-100 text-red-700'
   return 'bg-surface-container-high text-on-surface-variant'
-}
-
-function barHeight(count) {
-  return Math.max(4, (count / maxVisit.value) * 100)
 }
 
 function formatMoney(n) {
