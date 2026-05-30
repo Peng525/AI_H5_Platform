@@ -1,6 +1,7 @@
 import { computed, ref, watch } from 'vue'
 import { api } from '../api/client'
 import { DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
+import { getCanvasContentSize } from '../constants/editorPresets.js'
 
 const STORAGE_PREFIX = 'ai_h5_canvas_'
 const SETTINGS_PREFIX = 'ai_h5_project_settings_'
@@ -69,47 +70,61 @@ export function buildElementsFromSlide(slide) {
   return items
 }
 
-/** 根据适应方式计算图片在画布上的位置与样式 */
+/** 根据适应方式计算图片在画布内容区上的位置与样式 */
 export function computeImageFitLayout(fit, viewport, meta = {}) {
-  const vp = viewport
-  const aspect =
-    meta.height && meta.width
-      ? meta.height / meta.width
-      : 16 / 9
-  let x = 24
-  let y = 120
-  let width = vp.width - 48
-  let height = Math.round(width * aspect)
-  let zIndex = CANVAS_Z.CONTENT_BASE
-  let insertAtFront = false
+  const content = getCanvasContentSize(viewport)
+  const srcW = meta.width || 1024
+  const srcH = meta.height || 1024
+  const aspect = srcH / srcW
 
   if (fit === 'fill') {
-    x = 0
-    y = 0
-    width = vp.width
-    height = vp.height
-    zIndex = CANVAS_Z.BACKGROUND
-    insertAtFront = true
-  } else if (fit === 'original') {
-    width = Math.min(meta.width || 280, vp.width - 48)
-    height = Math.min(meta.height || Math.round(width * aspect), vp.height - 160)
-    x = Math.round((vp.width - width) / 2)
-    y = Math.round((vp.height - height) / 2)
-  } else if (fit === 'width') {
-    height = Math.round(width * aspect)
-    x = Math.round((vp.width - width) / 2)
+    return {
+      x: 0,
+      y: 0,
+      width: content.width,
+      height: content.height,
+      zIndex: CANVAS_Z.BACKGROUND,
+      insertAtFront: true,
+      fitIntent: 'fill',
+      style: {
+        background: 'transparent',
+        objectFit: 'contain',
+      },
+    }
   }
 
+  if (fit === 'original') {
+    const scale = Math.min(content.width / srcW, content.height / srcH, 1)
+    const width = Math.round(srcW * scale)
+    const height = Math.round(srcH * scale)
+    return {
+      x: Math.round((content.width - width) / 2),
+      y: Math.round((content.height - height) / 2),
+      width,
+      height,
+      zIndex: CANVAS_Z.CONTENT_BASE,
+      insertAtFront: false,
+      fitIntent: 'original',
+      style: {
+        background: 'transparent',
+        objectFit: 'fill',
+      },
+    }
+  }
+
+  const width = Math.max(24, content.width - 48)
+  const height = Math.round(width * aspect)
   return {
-    x,
-    y,
+    x: Math.round((content.width - width) / 2),
+    y: 120,
     width,
     height,
-    zIndex,
-    insertAtFront,
+    zIndex: CANVAS_Z.CONTENT_BASE,
+    insertAtFront: false,
+    fitIntent: 'width',
     style: {
-      background: fit === 'fill' ? 'transparent' : '#f0f0f0',
-      objectFit: fit === 'fill' ? 'cover' : 'contain',
+      background: '#f0f0f0',
+      objectFit: 'contain',
     },
   }
 }
@@ -434,10 +449,17 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     if (idx < 0) return
     if (!historyBatching) pushHistory()
     const prev = elements.value[idx]
+    let nextStyle = prev.style
+    if (patch.style) {
+      nextStyle = { ...prev.style, ...patch.style }
+      if (Object.prototype.hasOwnProperty.call(patch.style, 'crop') && patch.style.crop == null) {
+        delete nextStyle.crop
+      }
+    }
     elements.value[idx] = {
       ...prev,
       ...patch,
-      style: patch.style ? { ...prev.style, ...patch.style } : prev.style,
+      style: nextStyle,
     }
     saveElements()
   }
@@ -623,6 +645,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
       style: layout.style,
       sourceWidth: meta.width,
       sourceHeight: meta.height,
+      fitIntent: layout.fitIntent || fit,
     })
     if (!historyBatching) pushHistory()
     if (layout.insertAtFront) {
@@ -659,6 +682,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
       width: layout.width,
       height: layout.height,
       zIndex,
+      fitIntent: layout.fitIntent || fit,
       style: { ...el.style, ...layout.style },
     }
     if (!historyBatching) pushHistory()

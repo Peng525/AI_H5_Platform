@@ -299,6 +299,10 @@ class GenerateImageRequest(BaseModel):
     channel: str | None = None
     tier: str = Field("free", description="会员档位：free 免费 | pro 升级")
     style: str | None = Field(None, description="画面风格标签")
+    fit_mode: str | None = Field(None, description="width | fill | original，影响生图比例与提示词")
+    viewport_preset_id: str | None = Field(None, description="生图分辨率预设 id")
+    viewport_width: int | None = Field(None, description="内容区宽度")
+    viewport_height: int | None = Field(None, description="内容区高度")
 
 
 class GenerateImageResponse(BaseModel):

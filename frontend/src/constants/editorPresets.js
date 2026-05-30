@@ -30,3 +30,20 @@ export const SCROLL_EFFECTS = [
 export function getViewportPreset(id) {
   return VIEWPORT_PRESETS.find((v) => v.id === id) || VIEWPORT_PRESETS[0]
 }
+
+/** AI 生图分辨率分组（与画布预设 id 一致） */
+export const IMAGE_GEN_PRESET_GROUPS = [
+  { label: '苹果', ids: ['mobile-375', 'mobile-390'] },
+  { label: '安卓', ids: ['mobile-360'] },
+  { label: '网页', ids: ['web-1280', 'web-1920', 'web-1024'] },
+]
+
+export const IMAGE_GEN_PRESET_IDS = IMAGE_GEN_PRESET_GROUPS.flatMap((g) => g.ids)
+
+/** 画布可编辑内容区（扣除手机状态栏 / 网页标题栏） */
+export function getCanvasContentSize(viewport) {
+  const chrome = viewport?.device === 'mobile' ? 28 : 32
+  const width = viewport?.width ?? 375
+  const height = (viewport?.height ?? 812) - chrome
+  return { width, height, chrome }
+}

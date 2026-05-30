@@ -25,6 +25,10 @@ async def generate_slide_image(
             body.channel,
             body.tier,
             body.style,
+            body.fit_mode,
+            body.viewport_width,
+            body.viewport_height,
+            body.viewport_preset_id,
         )
     except LlmError as exc:
         await _log(db, project_id, body.channel or "auto", False, str(exc))

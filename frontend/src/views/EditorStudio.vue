@@ -64,6 +64,7 @@
         @send-backward="onSendBackward"
         @center-element="onCenterElement"
         @image-fit="onImageFit"
+        @image-crop="onImageCrop"
         @viewport-change="setViewport"
         @batch-start="onBatchStart"
         @batch-end="onBatchEnd"
@@ -77,6 +78,7 @@
         :image-loading="imageLoading"
         :quota-remaining="quota.remaining"
         :quota-total="quota.total"
+        :canvas-viewport-id="settings.viewportId"
         @generate-image="onGenerateImage"
         @add-image-to-page="onAddImageToPage"
       />
@@ -97,6 +99,14 @@
       @insert-vector="onInsertWordCloud"
       @insert-image="onInsertWordCloudImage"
     />
+    <ImageCropModal
+      :open="cropModalOpen"
+      :image-url="cropImageUrl"
+      :initial-crop="cropInitial"
+      @close="cropModalOpen = false"
+      @confirm="onCropConfirm"
+      @reset="onCropReset"
+    />
   </div>
 </template>
 
@@ -116,6 +126,7 @@ import EditorTopBar from '../components/EditorTopBar.vue'
 import EditorShortcutsHelp from '../components/EditorShortcutsHelp.vue'
 import DialogueGeneratorModal from '../components/dialogue/DialogueGeneratorModal.vue'
 import WordCloudEditorModal from '../components/wordcloud/WordCloudEditorModal.vue'
+import ImageCropModal from '../components/ImageCropModal.vue'
 import { buildBlock, getDefaultBlockBackground, resetLayoutBlockIds, resolveStoredLayoutElements } from '../constants/layoutBlocks.js'
 import { useLayoutCatalog } from '../composables/useLayoutCatalog.js'
 import { normalizeChatScript, serializeChatScript } from '../utils/chatScript.js'
@@ -135,6 +146,10 @@ const dialogueGeneratorOpen = ref(false)
 const wordCloudOpen = ref(false)
 const wordCloudEditContent = ref(null)
 const showDialoguePreview = ref(false)
+const cropModalOpen = ref(false)
+const cropTargetId = ref(null)
+const cropImageUrl = ref('')
+const cropInitial = ref(null)
 
 const { settings, viewport, setViewport, setScrollEffect, getSlideBackground, setSlideBackground, applyFromServer, setBgm } = useProjectEditorSettings(projectId)
 
@@ -613,7 +628,16 @@ async function refreshQuota() {
   quota.value = { remaining: q.quota_remaining, total: q.quota_total }
 }
 
-async function onGenerateImage({ prompt, channelTier, channel, style }) {
+async function onGenerateImage({
+  prompt,
+  channelTier,
+  channel,
+  style,
+  viewportPresetId,
+  viewportWidth,
+  viewportHeight,
+  fitMode: genFitMode,
+}) {
   if (!prompt?.trim() || !project.value) return
   imageLoading.value = true
   aiPanelRef.value?.setImageError('')
@@ -623,6 +647,10 @@ async function onGenerateImage({ prompt, channelTier, channel, style }) {
       tier: channelTier,
       channel: channel || undefined,
       style,
+      fit_mode: genFitMode || undefined,
+      viewport_preset_id: viewportPresetId || undefined,
+      viewport_width: viewportWidth || undefined,
+      viewport_height: viewportHeight || undefined,
     })
     aiPanelRef.value?.setGeneratedImage(result)
     await refreshQuota()
@@ -640,6 +668,31 @@ function onAddImageToPage({ url, width, height, fitMode }) {
 
 function onImageFit(fit) {
   applyImageFitToSelected(fit, viewport.value)
+}
+
+function onImageCrop() {
+  const id = selectedId.value
+  if (!id) return
+  const el = elements.value.find((e) => e.id === id)
+  if (!el || el.type !== 'image' || !el.content) return
+  cropTargetId.value = id
+  cropImageUrl.value = el.content
+  cropInitial.value = el.style?.crop || null
+  cropModalOpen.value = true
+}
+
+function onCropConfirm(crop) {
+  if (!cropTargetId.value) return
+  updateElement(cropTargetId.value, {
+    style: { crop },
+  })
+  cropModalOpen.value = false
+}
+
+function onCropReset() {
+  if (!cropTargetId.value) return
+  updateElement(cropTargetId.value, { style: { crop: null } })
+  cropInitial.value = null
 }
 
 function onPreviewAnimation(anim) {

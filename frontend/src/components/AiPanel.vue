@@ -68,6 +68,23 @@
           </button>
         </div>
 
+        <div>
+          <label class="text-xs font-medium text-on-surface-variant">生图分辨率</label>
+          <select
+            v-model="genViewportId"
+            class="mt-1 w-full border border-outline-variant rounded-lg px-2 py-2 text-sm bg-white"
+          >
+            <optgroup v-for="g in imageGenGroups" :key="g.label" :label="g.label">
+              <option v-for="opt in g.options" :key="opt.id" :value="opt.id">
+                {{ opt.label }} · {{ opt.contentWidth }}×{{ opt.contentHeight }}
+              </option>
+            </optgroup>
+          </select>
+          <p class="text-[10px] text-on-surface-variant mt-1">
+            生图：{{ genResolutionHint }}（内容区）
+          </p>
+        </div>
+
         <div class="space-y-2 pt-1">
           <button
             class="w-full py-3 rounded-lg bg-primary text-on-primary font-medium flex items-center justify-center gap-2 disabled:opacity-50"
@@ -105,6 +122,9 @@
           <div class="p-2 space-y-2 border-t border-outline-variant">
             <div>
               <p class="text-[11px] font-medium text-on-surface-variant mb-1">添加到页面的方式</p>
+              <p class="text-[10px] text-on-surface-variant mb-1.5 leading-snug">
+                填充：按当前画布内容区完整显示；原始：等比紧包裹；适应宽：宽度贴齐
+              </p>
               <div class="flex flex-wrap gap-1.5">
                 <button
                   v-for="m in fitModes"
@@ -204,10 +224,16 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
 import { IMAGE_PROMPT_TEMPLATES, formatImagePromptTemplate } from '../constants/imagePromptTemplates'
+import {
+  IMAGE_GEN_PRESET_GROUPS,
+  IMAGE_GEN_PRESET_IDS,
+  getCanvasContentSize,
+  getViewportPreset,
+} from '../constants/editorPresets'
 import ConfirmDialog from './ConfirmDialog.vue'
 
 const props = defineProps({
@@ -215,6 +241,7 @@ const props = defineProps({
   quotaRemaining: { type: Number, default: 5 },
   quotaTotal: { type: Number, default: 5 },
   llmChannel: { type: String, default: '' },
+  canvasViewportId: { type: String, default: 'mobile-375' },
 })
 const emit = defineEmits(['generate-image', 'add-image-to-page'])
 
@@ -245,6 +272,44 @@ const fitModes = [
   { id: 'original', label: '原始尺寸' },
 ]
 
+const genViewportId = ref(
+  IMAGE_GEN_PRESET_IDS.includes(props.canvasViewportId) ? props.canvasViewportId : 'mobile-375'
+)
+
+watch(
+  () => props.canvasViewportId,
+  (id) => {
+    if (IMAGE_GEN_PRESET_IDS.includes(id)) {
+      genViewportId.value = id
+    }
+  }
+)
+
+const imageGenGroups = computed(() =>
+  IMAGE_GEN_PRESET_GROUPS.map((g) => ({
+    label: g.label,
+    options: g.ids.map((id) => {
+      const preset = getViewportPreset(id)
+      const content = getCanvasContentSize(preset)
+      return {
+        id,
+        label: preset.label.replace(/^手机 · /, ''),
+        contentWidth: content.width,
+        contentHeight: content.height,
+      }
+    }),
+  }))
+)
+
+const genViewportPreset = computed(() => getViewportPreset(genViewportId.value))
+const genContentSize = computed(() => getCanvasContentSize(genViewportPreset.value))
+const genResolutionHint = computed(() => {
+  const p = genViewportPreset.value
+  const c = genContentSize.value
+  const short = p.label.replace(/^手机 · /, '').replace(/^网页 · /, '')
+  return `${c.width}×${c.height}（${short}）`
+})
+
 const fitModeLabel = computed(() => fitModes.find((m) => m.id === fitMode.value)?.label || '适应宽度')
 
 function onProClick() {
@@ -273,11 +338,16 @@ function applyPromptTemplate(tpl) {
 }
 
 function payloadBase() {
+  const content = genContentSize.value
   return {
     prompt: prompt.value,
     channelTier: channelTier.value,
     channel: props.llmChannel,
     style: selectedStyle.value,
+    viewportPresetId: genViewportId.value,
+    viewportWidth: content.width,
+    viewportHeight: content.height,
+    fitMode: fitMode.value,
   }
 }
 

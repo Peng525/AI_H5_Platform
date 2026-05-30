@@ -214,12 +214,19 @@
             v-for="m in imageFitModes"
             :key="m.id"
             type="button"
-            class="px-1.5 py-1 text-[10px] rounded border whitespace-nowrap"
-            :class="m.id === 'width' ? 'border-outline-variant hover:bg-surface-container' : 'border-outline-variant hover:bg-surface-container'"
+            class="px-1.5 py-1 text-[10px] rounded border whitespace-nowrap border-outline-variant hover:bg-surface-container"
             :title="m.label"
             @click="$emit('image-fit', m.id)"
           >
             {{ m.short }}
+          </button>
+          <button
+            type="button"
+            class="px-1.5 py-1 text-[10px] rounded border border-outline-variant hover:bg-surface-container whitespace-nowrap"
+            title="裁切图片"
+            @click="$emit('image-crop')"
+          >
+            裁切
           </button>
         </template>
 
@@ -273,7 +280,7 @@ const props = defineProps({
   slideId: { type: String, default: '' },
 })
 
-const emit = defineEmits(['add-text', 'add-shape', 'add-image', 'style-change', 'duplicate', 'delete', 'bring-front', 'send-back', 'bring-forward', 'send-backward', 'center-element', 'image-fit'])
+const emit = defineEmits(['add-text', 'add-shape', 'add-image', 'style-change', 'duplicate', 'delete', 'bring-front', 'send-back', 'bring-forward', 'send-backward', 'center-element', 'image-fit', 'image-crop'])
 
 const imageFitModes = [
   { id: 'width', label: '适应宽度', short: '适应宽' },

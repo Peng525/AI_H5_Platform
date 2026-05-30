@@ -114,13 +114,25 @@
       :style="{ background: element.style?.background || '#f0f0f0' }"
     >
       <img
-        v-if="element.content"
+        v-if="element.content && !imageCrop"
         :src="element.content"
         alt="素材"
         class="w-full h-full pointer-events-none"
-        :class="element.style?.objectFit === 'cover' ? 'object-cover' : 'object-contain'"
+        :class="imageObjectFitClass"
         draggable="false"
       />
+      <div
+        v-else-if="element.content && imageCrop"
+        class="w-full h-full overflow-hidden relative"
+      >
+        <img
+          :src="element.content"
+          alt="素材"
+          class="absolute pointer-events-none max-w-none"
+          :style="croppedImageStyle"
+          draggable="false"
+        />
+      </div>
       <span v-else class="material-symbols-outlined text-3xl text-on-surface-variant/50 pointer-events-none">image</span>
     </div>
 
@@ -194,6 +206,33 @@ const iconStyle = computed(() => ({
 }))
 
 const iconSize = computed(() => Math.min(props.element.width, props.element.height) * 0.55)
+
+const imageCrop = computed(() => {
+  const c = props.element.style?.crop
+  if (!c || c.width == null) return null
+  return c
+})
+
+const imageObjectFitClass = computed(() => {
+  const fit = props.element.style?.objectFit
+  if (fit === 'cover') return 'object-cover'
+  if (fit === 'fill') return 'object-fill'
+  return 'object-contain'
+})
+
+const croppedImageStyle = computed(() => {
+  const c = imageCrop.value
+  if (!c) return {}
+  const invW = 1 / Math.max(c.width, 0.01)
+  const invH = 1 / Math.max(c.height, 0.01)
+  return {
+    width: `${invW * 100}%`,
+    height: `${invH * 100}%`,
+    left: `${-c.x * invW * 100}%`,
+    top: `${-c.y * invH * 100}%`,
+    objectFit: 'fill',
+  }
+})
 
 const staggerClass = computed(() =>
   props.readonly && props.staggerIndex >= 0 ? 'canvas-stagger-in' : ''

@@ -50,6 +50,7 @@
           @send-backward="$emit('send-backward')"
           @center-element="$emit('center-element', $event)"
           @image-fit="$emit('image-fit', $event)"
+          @image-crop="$emit('image-crop')"
         />
       </div>
     </div>
@@ -246,6 +247,7 @@ const emit = defineEmits([
   'send-backward',
   'center-element',
   'image-fit',
+  'image-crop',
   'viewport-change',
   'batch-start',
   'batch-end',
