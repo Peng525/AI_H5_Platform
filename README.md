@@ -40,7 +40,7 @@ docker compose -f docker-compose.yml -f docker-compose.cn.yml up -d --build
 - **三栏编辑器**：工具箱 + 画布 + AI 面板
 - **AI 全量生成 / 单页改写 / 配图**：生图前选分辨率，预览后自选适应宽度、填充页面或原始尺寸添加
 - **互动组件**：对话生成器、文字云（工具箱 → 素材 → 互动组件）
-- **管理员控制台**：用户、订单、模板、版式、提示词、系统设置
+- **管理员控制台**（`/admin`）：数据仪表盘（访问统计、订单、近 14 日趋势图）、待支付订单确认、用户/模板/版式/提示词管理；**中转 API 充值**仅提供外链（推理令牌无法自动读余额）
 - **使用帮助**：登录后用户菜单 → `/help`（FAQ、快捷键）
 
 ## 配置说明
@@ -53,14 +53,37 @@ docker compose -f docker-compose.yml -f docker-compose.cn.yml up -d --build
 | `ADMIN_USERNAMES` | 管理员邮箱，逗号分隔 |
 | `CAPTCHA_PROVIDER` | `mock`（开发）或 `tencent`（上线推荐） |
 | `LLM_RELAY_*` / `LLM_OFFICIAL_*` | AI 文稿与配图通道 |
+| `RELAY_DASHBOARD_RECHARGE_URL` | 管理端「前往中转平台钱包」链接（可选；NovAI 示例见下） |
 
-配图示例：
+配图与中继示例：
 
 ```env
 LLM_DEFAULT_CHANNEL=auto
 LLM_RELAY_BASE_URL=https://你的中转地址/v1
-LLM_RELAY_API_KEY=你的密钥
+LLM_RELAY_API_KEY=你的推理令牌
+# 管理端充值外链（余额需登录中转站控制台自行查看）
+RELAY_DASHBOARD_RECHARGE_URL=https://once-cf.novai.su/wallet
 ```
+
+> **说明：** `LLM_RELAY_API_KEY` 仅用于调用大模型接口；多数中转站的推理令牌**不能**查询账户余额，管理端不会自动显示余额，只提供上述充值链接。
+
+## 管理员控制台
+
+登录邮箱须在 `.env` 的 `ADMIN_USERNAMES` 中；登录后自动进入 `/admin`。
+
+| 页面 | 功能 |
+|------|------|
+| `/admin` | 今日/近 7 日访问、成交订单与成交额、近 14 日访问趋势图、待支付微信订单确认、近期订单列表、**中转 API 充值外链** |
+| `/admin/users` | 创建用户、改会员档位、调整 API 配额 |
+| `/admin/templates` | H5 探索模板 CRUD、PPTX 导入 |
+| `/admin/layouts` | 素材版式块管理 |
+| `/admin/prompts` | 文稿提示词（全量生成 / 单页改写） |
+| `/admin/image-prompts` | 生图提示词模板 |
+| `/settings` | 大模型通道与 `.env` 在线保存 |
+
+**中转 API 充值：** 配置 `RELAY_DASHBOARD_RECHARGE_URL` 后，仪表盘显示「前往中转平台钱包」。余额须在中转站控制台用账号密码登录查看；`LLM_RELAY_API_KEY` 只负责调模型，不能代替网页登录查余额。
+
+---
 
 ## 编辑器要点
 
@@ -133,6 +156,7 @@ cd frontend && npm install && npm run dev
 | 问题 | 处理建议 |
 |------|----------|
 | AI 生图失败 | 检查 `.env` 中 `LLM_RELAY_*` 或 `LLM_OFFICIAL_*`；管理员在系统设置测试连通性 |
+| 管理端看不到中转余额 | 正常：推理令牌无法查余额；在 `/admin` 点击「前往中转平台钱包」登录控制台查看 |
 | BGM 列表为空 | 将 MP3 放入 `backend/static/bgm/` 后重启服务 |
 | 分享链接打不开 | 确认端口与安全组放行；项目需有有效 `share_slug` |
 | 升级支付未到账 | 个人微信码需手动输入金额；等待轮询或联系管理员确认订单 |

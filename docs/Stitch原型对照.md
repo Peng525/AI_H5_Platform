@@ -31,11 +31,13 @@
 | 功能 | 路由 | 状态 |
 |------|------|------|
 | 管理控制台框架 | `AdminShell` | ✅ 侧栏 + 退出登录 |
-| 数据仪表盘（访问/订单/成交额） | `/admin` | ✅ |
+| 数据仪表盘（访问/订单/成交额/趋势图/待确认订单） | `/admin` | ✅ |
+| 中转 API 充值外链 | `/admin` | ✅ 不自动读余额，跳转钱包页 |
 | 用户管理（创建/编辑/配额） | `/admin/users` | ✅ |
 | H5 模板管理 | `/admin/templates` | ✅ |
 | 版式管理 | `/admin/layouts` | ✅ 自定义 `canvas_elements` 上架素材面板 |
-| 提示词模板编辑 | `/admin/prompts` | ✅ |
+| 文稿提示词模板编辑 | `/admin/prompts` | ✅ |
+| 生图提示词模板 | `/admin/image-prompts` | ✅ |
 | 大模型配置（在线保存 `.env`） | `/settings` | ✅ 仅管理员 |
 | 管理员登录跳转 | `/login` → `/admin` | ✅ |
 

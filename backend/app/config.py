@@ -76,7 +76,7 @@ class Settings(BaseSettings):
     # 待支付订单有效时长（分钟），超时自动作废
     order_pending_expire_minutes: int = 2
 
-    # 中转 API 额度查询（newapi | novai | novita | custom）
+    # 中转 API 充值链接（管理端仅展示外链，推理令牌不查余额）
     relay_quota_profile: str = "newapi"
     relay_quota_api_url: str = ""
     relay_quota_low_threshold: float = 1.0
