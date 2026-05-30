@@ -309,6 +309,10 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     return undoStack.length > 0
   }
 
+  function canRedo() {
+    return redoStack.length > 0
+  }
+
   function clearHistory() {
     undoStack.length = 0
     redoStack.length = 0
@@ -728,6 +732,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     undo,
     redo,
     canUndo,
+    canRedo,
     beginHistoryBatch,
     endHistoryBatch,
   }

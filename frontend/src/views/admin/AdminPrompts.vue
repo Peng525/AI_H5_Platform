@@ -70,6 +70,16 @@
         </div>
       </div>
     </div>
+    <ConfirmDialog
+      :open="!!deleteConfirm"
+      title="删除提示词模板"
+      :message="deleteConfirm?.message || ''"
+      confirm-text="删除"
+      cancel-text="取消"
+      danger
+      @confirm="onDeleteConfirm"
+      @cancel="deleteConfirm = null"
+    />
   </AdminShell>
 </template>
 
@@ -77,6 +87,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { api } from '../../api/client'
 import AdminShell from '../../components/AdminShell.vue'
+import ConfirmDialog from '../../components/ConfirmDialog.vue'
 
 const templates = ref([])
 const selectedId = ref('')
@@ -84,6 +95,7 @@ const detail = ref(null)
 const loading = ref(true)
 const error = ref('')
 const saving = ref(false)
+const deleteConfirm = ref(null)
 const saveError = ref('')
 const dialogMode = ref('edit')
 const form = reactive({ id: '', name: '', description: '', system: '', user: '' })
@@ -151,8 +163,17 @@ async function save() {
   }
 }
 
-async function remove() {
-  if (!detail.value || !confirm(`确定删除「${detail.value.name}」？`)) return
+function remove() {
+  if (!detail.value) return
+  deleteConfirm.value = { message: `确定删除「${detail.value.name}」？` }
+}
+
+async function onDeleteConfirm() {
+  if (!detail.value) {
+    deleteConfirm.value = null
+    return
+  }
+  deleteConfirm.value = null
   try {
     await api.deletePromptTemplate(detail.value.id)
     const res = await api.getPromptTemplates()

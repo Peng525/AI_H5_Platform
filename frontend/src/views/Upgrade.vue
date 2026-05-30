@@ -228,6 +228,7 @@
               v-if="payMsg"
               class="mt-4 text-sm text-center font-medium"
               :class="payOk ? 'text-secondary' : 'text-red-600'"
+              aria-live="polite"
             >
               {{ payMsg }}
             </p>
@@ -390,8 +391,9 @@ async function refreshCustomPrice() {
     if (selected.value?.id === 'custom') {
       selected.value = { ...customPlan.value }
     }
-  } catch {
-    /* 忽略计价失败 */
+  } catch (e) {
+    payMsg.value = '价格计算失败，请稍后重试'
+    console.warn('quote pack failed', e)
   }
 }
 
@@ -502,12 +504,12 @@ async function refreshOrderStatus() {
       stopCountdown()
     }
   } catch {
-    /* 忽略轮询失败 */
+    payMsg.value = '订单状态查询失败，请检查网络后稍候'
   }
 }
 
 function onQrError() {
-  payMsg.value = '收款码加载失败：请将 wechat-pay-qr.png 放到 backend/pay_assets/ 目录，然后重启服务'
+  payMsg.value = '收款码暂时无法显示，请联系管理员配置微信支付二维码后重试'
   payOk.value = false
 }
 

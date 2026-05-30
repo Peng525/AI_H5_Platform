@@ -121,16 +121,19 @@
           </div>
           <div class="p-2 space-y-2 border-t border-outline-variant">
             <div>
-              <p class="text-[11px] font-medium text-on-surface-variant mb-1">添加到页面的方式</p>
-              <p class="text-[10px] text-on-surface-variant mb-1.5 leading-snug">
-                填充：按当前画布内容区完整显示；原始：等比紧包裹；适应宽：宽度贴齐
+              <p class="text-xs font-medium text-on-surface mb-1 antialiased">添加到页面的方式</p>
+              <p class="text-xs text-on-surface-variant mb-0.5 leading-relaxed antialiased">
+                适应宽：宽度贴齐画布
+              </p>
+              <p class="text-xs text-on-surface-variant mb-1.5 leading-relaxed antialiased">
+                填充：铺满内容区完整显示；原始：等比紧包裹
               </p>
               <div class="flex flex-wrap gap-1.5">
                 <button
                   v-for="m in fitModes"
                   :key="m.id"
                   type="button"
-                  class="px-2 py-1 text-[11px] rounded-full border"
+                  class="px-2.5 py-1 text-xs font-medium rounded-full border antialiased"
                   :class="fitMode === m.id ? 'bg-secondary/15 border-secondary text-secondary' : 'border-outline-variant'"
                   @click="fitMode = m.id"
                 >
@@ -138,23 +141,13 @@
                 </button>
               </div>
             </div>
-            <div class="flex gap-1.5">
-              <button
-                type="button"
-                class="flex-1 py-1.5 text-xs rounded-md bg-primary text-on-primary"
-                @click="emitAddToPage"
-              >
-                按「{{ fitModeLabel }}」添加
-              </button>
-              <button
-                type="button"
-                class="px-2 py-1.5 text-xs rounded-md border border-outline-variant hover:bg-surface-container-low"
-                title="复制图片到剪贴板"
-                @click="copyImage"
-              >
-                复制
-              </button>
-            </div>
+            <button
+              type="button"
+              class="w-full py-2 text-sm font-medium rounded-md bg-primary text-on-primary antialiased"
+              @click="emitAddToPage"
+            >
+              按「{{ fitModeLabel }}」添加
+            </button>
           </div>
         </div>
 
@@ -385,21 +378,6 @@ function emitAddToPage() {
     ...generatedImage.value,
     fitMode: fitMode.value,
   })
-}
-
-async function copyImage() {
-  if (!generatedImage.value?.url) return
-  try {
-    const res = await fetch(generatedImage.value.url)
-    const blob = await res.blob()
-    await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })])
-  } catch {
-    try {
-      await navigator.clipboard.writeText(generatedImage.value.url)
-    } catch {
-      imageError.value = '复制失败，请使用「添加到页面」'
-    }
-  }
 }
 
 defineExpose({ setGeneratedImage, setImageError })

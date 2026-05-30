@@ -7,6 +7,7 @@
         </div>
         <h1 class="text-xl font-bold">欢迎来到 AI 智能 H5 平台</h1>
         <p class="text-sm text-on-surface-variant mt-1">请先登录后再使用编辑器等功能</p>
+        <p class="text-xs text-on-surface-variant mt-2">首次使用将自动创建账号，无需单独注册</p>
       </div>
 
       <div v-if="autoLogging" class="text-center py-8 text-on-surface-variant text-sm">
@@ -44,9 +45,12 @@
           </div>
         </label>
 
-        <label class="flex items-center gap-2 text-sm cursor-pointer select-none">
-          <input v-model="rememberMe" type="checkbox" class="rounded border-outline-variant text-primary focus:ring-primary" />
-          <span>记住密码，下次自动登录</span>
+        <label class="flex items-start gap-2 text-sm cursor-pointer select-none">
+          <input v-model="rememberMe" type="checkbox" class="mt-0.5 rounded border-outline-variant text-primary focus:ring-primary" />
+          <span>
+            记住邮箱并保持登录
+            <span class="block text-xs text-on-surface-variant font-normal mt-0.5">仅保存邮箱与登录状态，不保存密码</span>
+          </span>
         </label>
 
         <TencentCaptcha @ticket="onCaptchaTicket" @verified="captchaOk = $event" />
@@ -58,8 +62,8 @@
           :disabled="loading || !captchaOk"
           class="w-full py-2.5 bg-primary text-on-primary rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-1"
         >
-          注册 / 登录
-          <span class="material-symbols-outlined text-lg">login</span>
+          {{ loading ? '登录中…' : '注册 / 登录' }}
+          <span v-if="!loading" class="material-symbols-outlined text-lg">login</span>
         </button>
       </form>
 
@@ -95,7 +99,6 @@ onMounted(async () => {
     const saved = getRememberedCredentials()
     if (saved) {
       account.value = saved.account
-      password.value = saved.password
       rememberMe.value = true
     }
     return
@@ -109,8 +112,11 @@ onMounted(async () => {
   const saved = getRememberedCredentials()
   if (saved) {
     account.value = saved.account
-    password.value = saved.password
     rememberMe.value = true
+  }
+
+  const token = localStorage.getItem('ai_h5_token')
+  if (rememberMe.value && token) {
     autoLogging.value = true
     const me = await refreshProfile()
     autoLogging.value = false
@@ -157,7 +163,7 @@ async function submit() {
     const data = await api.login(body).catch(() => api.register(body))
     setSession(data, rememberMe.value)
     if (rememberMe.value) {
-      saveRememberCredentials(account.value.trim(), password.value)
+      saveRememberCredentials(account.value.trim())
     } else {
       clearRememberCredentials()
     }

@@ -84,15 +84,15 @@ export function useAuth() {
       const raw = localStorage.getItem(REMEMBER_KEY)
       if (!raw) return null
       const data = JSON.parse(raw)
-      if (!data?.account || !data?.password) return null
-      return data
+      if (!data?.account) return null
+      return { account: data.account }
     } catch {
       return null
     }
   }
 
-  function saveRememberCredentials(account, password) {
-    localStorage.setItem(REMEMBER_KEY, JSON.stringify({ account, password }))
+  function saveRememberCredentials(account) {
+    localStorage.setItem(REMEMBER_KEY, JSON.stringify({ account: account.trim() }))
   }
 
   function clearRememberCredentials() {

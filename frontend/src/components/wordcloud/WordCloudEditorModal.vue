@@ -148,6 +148,9 @@ import { nextTick, ref, watch } from 'vue'
 import { WORD_CLOUD_SHAPES } from '../../constants/wordCloudShapes.js'
 import { defaultWordCloudContent, parseTableText, parseUploadedFile, wordsFromManual } from '../../utils/parseSurveyData.js'
 import { renderWordCloud } from './WordCloudRenderer.js'
+import { useToast } from '../../composables/useToast.js'
+
+const { error: toastError } = useToast()
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -211,7 +214,7 @@ async function onFile(e) {
     content.value.words = await parseUploadedFile(file)
     refreshPreview()
   } catch (err) {
-    alert(err.message || '文件解析失败')
+    toastError(err.message || '文件解析失败')
   }
   e.target.value = ''
 }

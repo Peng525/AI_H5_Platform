@@ -1,6 +1,25 @@
 <template>
   <div class="flex flex-col items-center gap-1 w-full max-w-full min-w-0" data-editor-chrome>
     <div class="flex items-center gap-0.5 sm:gap-1 bg-white shadow-card rounded-lg px-1 sm:px-2 py-1 border border-outline-variant flex-wrap justify-center max-w-full overflow-x-auto">
+      <button
+        type="button"
+        class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant disabled:opacity-35"
+        title="撤销 (Ctrl+Z)"
+        :disabled="!canUndo"
+        @click="$emit('undo')"
+      >
+        <span class="material-symbols-outlined text-[18px]">undo</span>
+      </button>
+      <button
+        type="button"
+        class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant disabled:opacity-35"
+        title="重做 (Ctrl+Y)"
+        :disabled="!canRedo"
+        @click="$emit('redo')"
+      >
+        <span class="material-symbols-outlined text-[18px]">redo</span>
+      </button>
+      <div class="w-px h-5 bg-outline-variant" />
       <!-- 添加 -->
       <div ref="addMenuRef" class="relative">
         <button
@@ -202,19 +221,14 @@
           />
         </template>
         <template v-else-if="selected.type === 'image'">
-          <WordColorPicker
-            :model-value="selected.style?.background || '#f0f0f0'"
-            :context-key="colorPickerContextKey"
-            label="背景颜色"
-            icon="format_color_fill"
-            @change="onStyle({ background: $event })"
-          />
-          <div class="w-px h-5 bg-outline-variant" />
           <button
             v-for="m in imageFitModes"
             :key="m.id"
             type="button"
-            class="px-1.5 py-1 text-[10px] rounded border whitespace-nowrap border-outline-variant hover:bg-surface-container"
+            class="px-2 py-1 text-xs font-medium rounded border whitespace-nowrap antialiased"
+            :class="activeImageFit === m.id
+              ? 'bg-primary/10 border-primary text-primary'
+              : 'border-outline-variant hover:bg-surface-container'"
             :title="m.label"
             @click="$emit('image-fit', m.id)"
           >
@@ -222,7 +236,7 @@
           </button>
           <button
             type="button"
-            class="px-1.5 py-1 text-[10px] rounded border border-outline-variant hover:bg-surface-container whitespace-nowrap"
+            class="px-2 py-1 text-xs font-medium rounded border border-outline-variant hover:bg-surface-container whitespace-nowrap antialiased"
             title="裁切图片"
             @click="$emit('image-crop')"
           >
@@ -278,15 +292,25 @@ const props = defineProps({
   themeId: { type: String, default: 'zjy-minimal' },
   viewportId: { type: String, default: 'mobile-375' },
   slideId: { type: String, default: '' },
+  canUndo: { type: Boolean, default: false },
+  canRedo: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['add-text', 'add-shape', 'add-image', 'style-change', 'duplicate', 'delete', 'bring-front', 'send-back', 'bring-forward', 'send-backward', 'center-element', 'image-fit', 'image-crop'])
+const emit = defineEmits(['add-text', 'add-shape', 'add-image', 'style-change', 'duplicate', 'delete', 'bring-front', 'send-back', 'bring-forward', 'send-backward', 'center-element', 'image-fit', 'image-crop', 'undo', 'redo'])
 
 const imageFitModes = [
   { id: 'width', label: '适应宽度', short: '适应宽' },
   { id: 'fill', label: '填充页面', short: '填充' },
   { id: 'original', label: '原始尺寸', short: '原图' },
 ]
+
+const activeImageFit = computed(() => {
+  const el = props.selected
+  if (!el || el.type !== 'image') return 'width'
+  if (el.fitIntent) return el.fitIntent
+  if ((el.zIndex ?? 10) === 0) return 'fill'
+  return 'width'
+})
 
 const addMenuOpen = ref(false)
 const addMenuRef = ref(null)

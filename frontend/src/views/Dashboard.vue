@@ -53,7 +53,7 @@
         </div>
       </div>
 
-      <p v-if="loading" class="text-on-surface-variant">加载中…</p>
+      <PageLoading v-if="loading" />
       <p v-else-if="error" class="text-red-600">{{ error }}</p>
 
       <div v-else-if="projects.length === 0" class="text-center py-20 bg-surface-container-low rounded-xl border border-dashed border-outline-variant">
@@ -141,6 +141,7 @@ import { useRouter } from 'vue-router'
 import { api } from '../api/client'
 import AppShell from '../components/AppShell.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import PageLoading from '../components/PageLoading.vue'
 
 const projects = ref([])
 const loading = ref(true)

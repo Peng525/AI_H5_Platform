@@ -74,6 +74,15 @@
         </article>
       </div>
 
+      <EmptyState
+        v-else-if="loadError"
+        icon="error"
+        title="模板加载失败"
+        :description="loadError"
+        action-label="重试"
+        @action="initPage"
+      />
+
       <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <article
           v-for="t in templates"
@@ -142,6 +151,7 @@ import { defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api/client'
 import AppShell from '../components/AppShell.vue'
+import EmptyState from '../components/EmptyState.vue'
 import TemplateCoverThumb from '../components/TemplateCoverThumb.vue'
 
 const TemplatePreviewModal = defineAsyncComponent(() => import('../components/TemplatePreviewModal.vue'))
@@ -161,6 +171,7 @@ const device = ref('全部')
 const search = ref('')
 const templates = ref([])
 const loading = ref(true)
+const loadError = ref('')
 const previewOpen = ref(false)
 const previewTemplate = ref(null)
 const previewMounted = ref(false)
@@ -175,6 +186,7 @@ watch(previewOpen, (open) => {
 
 async function initPage() {
   loading.value = true
+  loadError.value = ''
   try {
     const [cats, res] = await Promise.all([
       api.getTemplateCategories(),
@@ -183,6 +195,8 @@ async function initPage() {
     categories.value = cats.items
     if (cats.devices?.length) devices.value = cats.devices
     templates.value = res.items
+  } catch (e) {
+    loadError.value = e.message || '加载失败'
   } finally {
     loading.value = false
   }
@@ -190,9 +204,12 @@ async function initPage() {
 
 async function load() {
   loading.value = true
+  loadError.value = ''
   try {
     const res = await api.listTemplates(category.value, search.value, device.value)
     templates.value = res.items
+  } catch (e) {
+    loadError.value = e.message || '加载失败'
   } finally {
     loading.value = false
   }

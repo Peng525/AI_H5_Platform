@@ -1,7 +1,26 @@
 <template>
   <div class="h-screen flex flex-col bg-background overflow-hidden">
     <EditorTopBar :project-id="projectId" />
-    <div class="editor-workspace flex flex-1 min-h-0 min-w-0 overflow-x-auto overflow-y-hidden">
+    <div v-if="projectLoading" class="flex-1 flex items-center justify-center min-h-0">
+      <PageLoading message="加载项目中…" />
+    </div>
+    <div v-else-if="loadError" class="flex-1 flex items-center justify-center p-6">
+      <EmptyState
+        icon="error"
+        title="无法加载项目"
+        :description="loadError"
+        action-label="重试"
+        @action="load"
+      />
+    </div>
+    <div v-else class="editor-workspace flex flex-1 min-h-0 min-w-0 overflow-x-auto overflow-y-hidden relative">
+      <div
+        v-if="showEditorCoach"
+        class="absolute top-2 left-1/2 -translate-x-1/2 z-[70] max-w-md w-[calc(100%-2rem)] bg-primary text-on-primary text-xs rounded-lg px-3 py-2 shadow-lg flex items-start gap-2"
+      >
+        <span class="flex-1 leading-relaxed">AI 配图：①选生图分辨率 ②填写描述 ③生图 ④选择添加方式</span>
+        <button type="button" class="shrink-0 opacity-90 hover:opacity-100 font-medium" @click="dismissEditorCoach">知道了</button>
+      </div>
       <EditorToolbox
         :slides="project?.slides || []"
         :current-id="current?.id"
@@ -66,6 +85,10 @@
         @image-fit="onImageFit"
         @image-crop="onImageCrop"
         @viewport-change="setViewport"
+        @undo="undo"
+        @redo="redo"
+        :can-undo="canUndo()"
+        :can-redo="canRedo()"
         @batch-start="onBatchStart"
         @batch-end="onBatchEnd"
         @move-delta="onMoveDelta"
@@ -107,6 +130,16 @@
       @confirm="onCropConfirm"
       @reset="onCropReset"
     />
+    <ConfirmDialog
+      :open="!!deleteSlideConfirm"
+      title="删除页面"
+      message="确定删除该页面？此操作不可撤销。"
+      confirm-text="删除"
+      cancel-text="取消"
+      danger
+      @confirm="onDeleteSlideConfirm"
+      @cancel="deleteSlideConfirm = null"
+    />
   </div>
 </template>
 
@@ -127,6 +160,13 @@ import EditorShortcutsHelp from '../components/EditorShortcutsHelp.vue'
 import DialogueGeneratorModal from '../components/dialogue/DialogueGeneratorModal.vue'
 import WordCloudEditorModal from '../components/wordcloud/WordCloudEditorModal.vue'
 import ImageCropModal from '../components/ImageCropModal.vue'
+import PageLoading from '../components/PageLoading.vue'
+import EmptyState from '../components/EmptyState.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
+import { useToast } from '../composables/useToast.js'
+
+const COACH_KEY = 'ai_h5_editor_coach_seen'
+const { error: toastError, success: toastSuccess } = useToast()
 import { buildBlock, getDefaultBlockBackground, resetLayoutBlockIds, resolveStoredLayoutElements } from '../constants/layoutBlocks.js'
 import { useLayoutCatalog } from '../composables/useLayoutCatalog.js'
 import { normalizeChatScript, serializeChatScript } from '../utils/chatScript.js'
@@ -150,6 +190,10 @@ const cropModalOpen = ref(false)
 const cropTargetId = ref(null)
 const cropImageUrl = ref('')
 const cropInitial = ref(null)
+const projectLoading = ref(true)
+const loadError = ref('')
+const deleteSlideConfirm = ref(null)
+const showEditorCoach = ref(!localStorage.getItem(COACH_KEY))
 
 const { settings, viewport, setViewport, setScrollEffect, getSlideBackground, setSlideBackground, applyFromServer, setBgm } = useProjectEditorSettings(projectId)
 
@@ -199,6 +243,8 @@ const {
   flushCanvasSave,
   undo,
   redo,
+  canUndo,
+  canRedo,
   beginHistoryBatch,
   endHistoryBatch,
 } = useSlideCanvas(projectId, slideIdRef)
@@ -212,14 +258,27 @@ const slideIndex = computed(() => {
 })
 
 async function load() {
-  project.value = await api.getProject(Number(projectId.value))
-  applyFromServer(project.value.settings)
-  current.value = project.value.slides?.[0] || null
-  showDialoguePreview.value = !!current.value?.chat_script?.enabled
-  loadElements(current.value?.canvas_elements)
-  if (current.value && !elements.value.length) syncFromSlide(current.value)
-  const q = await api.getQuota()
-  quota.value = { remaining: q.quota_remaining, total: q.quota_total }
+  projectLoading.value = true
+  loadError.value = ''
+  try {
+    project.value = await api.getProject(Number(projectId.value))
+    applyFromServer(project.value.settings)
+    current.value = project.value.slides?.[0] || null
+    showDialoguePreview.value = !!current.value?.chat_script?.enabled
+    loadElements(current.value?.canvas_elements)
+    if (current.value && !elements.value.length) syncFromSlide(current.value)
+    const q = await api.getQuota()
+    quota.value = { remaining: q.quota_remaining, total: q.quota_total }
+  } catch (e) {
+    loadError.value = e.message || '加载失败'
+  } finally {
+    projectLoading.value = false
+  }
+}
+
+function dismissEditorCoach() {
+  showEditorCoach.value = false
+  localStorage.setItem(COACH_KEY, '1')
 }
 
 function onBgmChange(patch) {
@@ -258,7 +317,7 @@ async function addSlide() {
     project.value.slides.push(slide)
     finishNewSlide(slide)
   } catch (e) {
-    alert(e.message)
+    toastError(e.message)
   }
 }
 
@@ -292,10 +351,16 @@ function applyLayoutBlock(blockId, slideId = null, { mode = 'append' } = {}) {
 
 async function removeSlide(slideId) {
   if ((project.value.slides?.length || 0) <= 1) {
-    alert('至少保留一页')
+    toastError('至少保留一页')
     return
   }
-  if (!confirm('确定删除该页面？')) return
+  deleteSlideConfirm.value = slideId
+}
+
+async function onDeleteSlideConfirm() {
+  const slideId = deleteSlideConfirm.value
+  if (!slideId) return
+  deleteSlideConfirm.value = null
   saveElements()
   try {
     await api.deleteSlide(project.value.id, slideId)
@@ -305,8 +370,9 @@ async function removeSlide(slideId) {
       current.value = project.value.slides[0]
       loadElements()
     }
+    toastSuccess('页面已删除')
   } catch (e) {
-    alert(e.message)
+    toastError(e.message)
   }
 }
 
@@ -321,7 +387,7 @@ async function saveSlideFields(fields) {
       chat_script: updated.chat_script ?? fields.chat_script ?? current.value.chat_script,
     }
   } catch (e) {
-    alert(e.message || '保存页面失败')
+    toastError(e.message || '保存页面失败')
     console.error(e)
   }
 }
@@ -410,7 +476,7 @@ async function onInsertDialogue(script) {
     current.value = { ...updated, chat_script: serialized }
     showDialoguePreview.value = true
   } catch (e) {
-    alert(e.message || '插入对话失败，请重试')
+    toastError(e.message || '插入对话失败，请重试')
     console.error(e)
   }
 }

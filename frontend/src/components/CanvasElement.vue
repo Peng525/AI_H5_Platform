@@ -3,7 +3,7 @@
     class="absolute select-none"
     :class="[
       readonly ? 'pointer-events-none' : 'touch-none',
-      selected && !readonly ? 'ring-2 ring-white z-50 shadow-[0_0_0_1px_rgba(0,0,0,0.35)]' : '',
+      selectionRingClass,
       staggerClass,
     ]"
     :style="{
@@ -147,7 +147,19 @@
       />
     </div>
 
-    <template v-if="selected && !readonly">
+    <template v-if="selected && !readonly && element.type === 'image'">
+      <span
+        class="absolute top-0 left-0 z-[60] text-[10px] leading-none bg-primary text-white px-1.5 py-0.5 rounded-br pointer-events-none antialiased"
+      >已选中</span>
+      <div class="absolute -top-1 -left-1 w-1.5 h-1.5 bg-primary border border-white rounded-sm pointer-events-none" />
+      <div class="absolute -top-1 -right-1 w-1.5 h-1.5 bg-primary border border-white rounded-sm pointer-events-none" />
+      <div class="absolute -bottom-1 -left-1 w-1.5 h-1.5 bg-primary border border-white rounded-sm pointer-events-none" />
+      <div
+        class="absolute -bottom-1 -right-1 w-3 h-3 bg-primary border border-white rounded-sm cursor-se-resize shadow-sm"
+        @mousedown.stop="startResize"
+      />
+    </template>
+    <template v-else-if="selected && !readonly">
       <div
         class="absolute -bottom-1 -right-1 w-3 h-3 bg-white border border-black/35 rounded-sm cursor-se-resize shadow-sm"
         @mousedown.stop="startResize"
@@ -206,6 +218,14 @@ const iconStyle = computed(() => ({
 }))
 
 const iconSize = computed(() => Math.min(props.element.width, props.element.height) * 0.55)
+
+const selectionRingClass = computed(() => {
+  if (!props.selected || props.readonly) return ''
+  if (props.element.type === 'image') {
+    return 'z-50 outline outline-2 outline-primary outline-offset-0 shadow-[0_0_0_1px_rgba(0,93,170,0.45)]'
+  }
+  return 'ring-2 ring-white z-50 shadow-[0_0_0_1px_rgba(0,0,0,0.35)]'
+})
 
 const imageCrop = computed(() => {
   const c = props.element.style?.crop

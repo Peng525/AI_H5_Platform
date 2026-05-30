@@ -17,6 +17,7 @@ const routes = [
   { path: '/create', name: 'create', component: () => import('../views/Create.vue'), meta: { title: '新建演示', requiresAuth: true } },
   { path: '/editor/:id', name: 'editor', component: () => import('../views/EditorStudio.vue'), meta: { title: '编辑器', requiresAuth: true } },
   { path: '/upgrade', name: 'upgrade', component: () => import('../views/Upgrade.vue'), meta: { title: '套餐升级', requiresAuth: true } },
+  { path: '/help', name: 'help', component: () => import('../views/Help.vue'), meta: { title: '使用帮助', requiresAuth: true } },
   { path: '/publish/:id', name: 'publish', component: () => import('../views/PublishSuccess.vue'), meta: { title: '发布成功', requiresAuth: true } },
   { path: '/preview/:id', name: 'preview', component: () => import('../views/Preview.vue'), meta: { title: '演示预览', requiresAuth: true } },
   { path: '/admin', name: 'admin', component: () => import('../views/admin/AdminDashboard.vue'), meta: { title: '管理仪表盘', requiresAuth: true, admin: true } },

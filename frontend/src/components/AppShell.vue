@@ -19,6 +19,7 @@
           :to="link.to"
           class="px-3 py-1.5 rounded-lg transition-colors"
           :class="isActive(link.match) ? 'bg-primary/10 text-primary font-medium' : 'text-on-surface-variant hover:bg-surface-container-high'"
+          :aria-current="isActive(link.match) ? 'page' : undefined"
         >
           {{ link.label }}
         </router-link>
@@ -29,8 +30,9 @@
       <span
         v-if="showQuota"
         class="hidden md:inline-flex items-center gap-1 text-xs text-on-surface-variant bg-surface-container-low px-2 py-1 rounded-full whitespace-nowrap"
+        :title="quotaFailed ? '配额加载失败' : undefined"
       >
-        配额 {{ quota.remaining }}/{{ quota.total }}
+        配额 {{ quotaFailed ? '—' : `${quota.remaining}/${quota.total}` }}
       </span>
       <router-link
         v-if="user?.tier !== 'pro'"
@@ -55,7 +57,7 @@
         :to="`/publish/${projectId}`"
         class="px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg bg-primary text-on-primary text-xs sm:text-sm font-medium shadow-card whitespace-nowrap"
       >
-        导出
+        发布分享
       </router-link>
 
       <div ref="menuRef" class="relative">
@@ -80,7 +82,7 @@
           class="absolute right-0 top-full mt-1 w-48 sm:w-52 bg-white border border-outline-variant rounded-lg shadow-lg py-1 z-50"
         >
           <p v-if="showQuota" class="px-3 py-2 text-xs text-on-surface-variant border-b border-outline-variant md:hidden">
-            配额 {{ quota.remaining }}/{{ quota.total }}
+            配额 {{ quotaFailed ? '—' : `${quota.remaining}/${quota.total}` }}
           </p>
           <p class="px-3 py-2 text-xs text-on-surface-variant border-b border-outline-variant truncate">
             {{ displayName }}
@@ -91,6 +93,13 @@
             @click="menuOpen = false"
           >
             我的项目
+          </router-link>
+          <router-link
+            to="/help"
+            class="block px-3 py-2 text-sm hover:bg-surface-container-low"
+            @click="menuOpen = false"
+          >
+            使用帮助
           </router-link>
           <router-link
             v-if="isAdmin"
@@ -142,6 +151,7 @@ const menuOpen = ref(false)
 const logoutOpen = ref(false)
 const menuRef = ref(null)
 const quota = ref({ remaining: 5, total: 5 })
+const quotaFailed = ref(false)
 
 const navLinks = computed(() => {
   const links = [
@@ -189,8 +199,9 @@ onMounted(async () => {
   try {
     const q = await api.getQuota()
     quota.value = { remaining: q.quota_remaining, total: q.quota_total }
+    quotaFailed.value = false
   } catch {
-    /* 忽略配额加载失败 */
+    quotaFailed.value = true
   }
 })
 

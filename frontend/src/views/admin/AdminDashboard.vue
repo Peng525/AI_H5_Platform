@@ -1,6 +1,6 @@
 <template>
   <AdminShell title="数据仪表盘">
-    <div v-if="loading" class="text-on-surface-variant">加载中…</div>
+    <PageLoading v-if="loading" />
     <template v-else-if="data">
       <div v-if="relayQuota?.is_low" class="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-sm">
         <p class="font-semibold text-amber-900 flex items-center gap-2">
@@ -166,6 +166,18 @@
       </div>
     </template>
     <p v-else-if="error" class="text-red-600">{{ error }}</p>
+
+    <ConfirmDialog
+      :open="!!confirmDialog"
+      :title="confirmDialog?.title || '确认'"
+      :message="confirmDialog?.message || ''"
+      :confirm-text="confirmDialog?.confirmText || '确定'"
+      :cancel-text="confirmDialog?.cancelText || '取消'"
+      :danger="confirmDialog?.danger"
+      :loading="!!confirmingId"
+      @confirm="onConfirmDialog"
+      @cancel="confirmDialog = null"
+    />
   </AdminShell>
 </template>
 
@@ -174,6 +186,11 @@ import { onMounted, ref } from 'vue'
 import { api } from '../../api/client'
 import AdminShell from '../../components/AdminShell.vue'
 import StatCard from '../../components/admin/StatCard.vue'
+import ConfirmDialog from '../../components/ConfirmDialog.vue'
+import PageLoading from '../../components/PageLoading.vue'
+import { useToast } from '../../composables/useToast.js'
+
+const { error: toastError, success: toastSuccess } = useToast()
 
 const data = ref(null)
 const loading = ref(true)
@@ -183,6 +200,7 @@ const relayQuota = ref(null)
 const relayLoading = ref(false)
 const relayError = ref('')
 const confirmingId = ref(null)
+const confirmDialog = ref(null)
 
 onMounted(async () => {
   await Promise.all([loadDashboard(), loadRelayQuota()])
@@ -214,25 +232,44 @@ async function loadRelayQuota() {
 }
 
 async function confirmOrder(o) {
-  if (!confirm(`确认已收到 #${o.id} 的 ¥${o.amount.toFixed(2)} 微信转账？\n确认后将开通用户套餐。`)) return
-  confirmingId.value = o.id
-  try {
-    await api.confirmAdminOrder(o.id, '微信到账已核对')
-    await loadDashboard()
-  } catch (e) {
-    alert(e.message)
-  } finally {
-    confirmingId.value = null
+  confirmDialog.value = {
+    title: '确认收款',
+    message: `确认已收到 #${o.id} 的 ¥${o.amount.toFixed(2)} 微信转账？确认后将开通用户套餐。`,
+    confirmText: '确认收款',
+    order: o,
+    action: 'confirm',
   }
 }
 
 async function rejectOrder(o) {
+  confirmDialog.value = {
+    title: '拒绝订单',
+    message: `确定拒绝订单 #${o.id}（¥${o.amount.toFixed(2)}）？用户将不会获得套餐。`,
+    confirmText: '拒绝订单',
+    cancelText: '取消',
+    danger: true,
+    order: o,
+    action: 'reject',
+  }
+}
+
+async function onConfirmDialog() {
+  const dlg = confirmDialog.value
+  if (!dlg?.order) return
+  const o = dlg.order
   confirmingId.value = o.id
   try {
-    await api.rejectAdminOrder(o.id, '未收到对应款项')
+    if (dlg.action === 'confirm') {
+      await api.confirmAdminOrder(o.id, '微信到账已核对')
+      toastSuccess('已确认收款并开通套餐')
+    } else {
+      await api.rejectAdminOrder(o.id, '未收到对应款项')
+      toastSuccess('已拒绝该订单')
+    }
+    confirmDialog.value = null
     await loadDashboard()
   } catch (e) {
-    alert(e.message)
+    toastError(e.message)
   } finally {
     confirmingId.value = null
   }

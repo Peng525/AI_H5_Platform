@@ -38,6 +38,8 @@
           :theme-id="themeId"
           :viewport-id="viewportId"
           :slide-id="slide?.id || ''"
+          :can-undo="canUndo"
+          :can-redo="canRedo"
           @add-text="$emit('add-text')"
           @add-shape="$emit('add-shape')"
           @add-image="$emit('add-image')"
@@ -51,6 +53,8 @@
           @center-element="$emit('center-element', $event)"
           @image-fit="$emit('image-fit', $event)"
           @image-crop="$emit('image-crop')"
+          @undo="$emit('undo')"
+          @redo="$emit('redo')"
         />
       </div>
     </div>
@@ -229,6 +233,8 @@ const props = defineProps({
   showBgmPlayer: { type: Boolean, default: false },
   bgmMuted: { type: Boolean, default: false },
   bgmSpinning: { type: Boolean, default: false },
+  canUndo: { type: Boolean, default: false },
+  canRedo: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
@@ -248,6 +254,8 @@ const emit = defineEmits([
   'center-element',
   'image-fit',
   'image-crop',
+  'undo',
+  'redo',
   'viewport-change',
   'batch-start',
   'batch-end',

@@ -21,7 +21,7 @@
       收款后也可在此直接将用户改为 Pro 会员，无需走订单（适合补发或赠送）。
     </p>
 
-    <div v-if="loading" class="text-on-surface-variant">加载中…</div>
+    <PageLoading v-if="loading" />
     <div v-else class="bg-white rounded-xl border border-outline-variant shadow-card overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -61,9 +61,17 @@
     </div>
 
     <!-- 创建/编辑弹窗 -->
-    <div v-if="modalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" @click.self="modalOpen = false">
+    <div
+      v-if="modalOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="user-modal-title"
+      @click.self="modalOpen = false"
+      @keydown.esc="modalOpen = false"
+    >
       <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-        <h3 class="font-bold text-lg mb-4">{{ editing ? '编辑用户' : '创建账号' }}</h3>
+        <h3 id="user-modal-title" class="font-bold text-lg mb-4">{{ editing ? '编辑用户' : '创建账号' }}</h3>
         <form class="space-y-4" @submit.prevent="submitForm">
           <label v-if="!editing" class="block text-sm">
             <span class="text-on-surface-variant text-xs">邮箱</span>
@@ -108,6 +116,7 @@
 import { onMounted, ref } from 'vue'
 import { api } from '../../api/client'
 import AdminShell from '../../components/AdminShell.vue'
+import PageLoading from '../../components/PageLoading.vue'
 
 const users = ref([])
 const loading = ref(true)

@@ -68,6 +68,16 @@
       @close="editor.open = false"
       @saved="onSaved"
     />
+    <ConfirmDialog
+      :open="!!deleteConfirm"
+      title="删除模板"
+      :message="deleteConfirm?.message || ''"
+      confirm-text="删除"
+      cancel-text="取消"
+      danger
+      @confirm="onDeleteConfirm"
+      @cancel="deleteConfirm = null"
+    />
   </AdminShell>
 </template>
 
@@ -76,6 +86,11 @@ import { onMounted, reactive, ref } from 'vue'
 import { api } from '../../api/client'
 import AdminShell from '../../components/AdminShell.vue'
 import AdminTemplateEditor from '../../components/admin/AdminTemplateEditor.vue'
+import ConfirmDialog from '../../components/ConfirmDialog.vue'
+import { useToast } from '../../composables/useToast.js'
+
+const { success: toastSuccess, error: toastError } = useToast()
+const deleteConfirm = ref(null)
 
 const templates = ref([])
 const loading = ref(true)
@@ -127,13 +142,24 @@ function onSaved() {
   load()
 }
 
-async function remove(t) {
-  if (!confirm(`确定删除模板「${t.title}」？`)) return
+function remove(t) {
+  deleteConfirm.value = {
+    message: `确定删除模板「${t.title}」？此操作不可撤销。`,
+    item: t,
+  }
+}
+
+async function onDeleteConfirm() {
+  const t = deleteConfirm.value?.item
+  deleteConfirm.value = null
+  if (!t) return
   try {
     await api.deleteAdminTemplate(t.id)
+    toastSuccess('模板已删除')
     await load()
   } catch (e) {
     error.value = e.message
+    toastError(e.message)
   }
 }
 </script>

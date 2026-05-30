@@ -63,6 +63,16 @@
       @close="editor.open = false"
       @saved="onSaved"
     />
+    <ConfirmDialog
+      :open="!!deleteConfirm"
+      title="删除版式"
+      :message="deleteConfirm?.message || ''"
+      confirm-text="删除"
+      cancel-text="取消"
+      danger
+      @confirm="onDeleteConfirm"
+      @cancel="deleteConfirm = null"
+    />
   </AdminShell>
 </template>
 
@@ -71,6 +81,11 @@ import { onMounted, reactive, ref } from 'vue'
 import { api } from '../../api/client'
 import AdminShell from '../../components/AdminShell.vue'
 import AdminLayoutEditor from '../../components/admin/AdminLayoutEditor.vue'
+import ConfirmDialog from '../../components/ConfirmDialog.vue'
+import { useToast } from '../../composables/useToast.js'
+
+const { success: toastSuccess, error: toastError } = useToast()
+const deleteConfirm = ref(null)
 
 const layouts = ref([])
 const loading = ref(true)
@@ -113,17 +128,27 @@ async function openEdit(item) {
     editor.data = detail
     editor.open = true
   } catch (e) {
-    alert(e.message || '加载详情失败')
+    toastError(e.message || '加载详情失败')
   }
 }
 
-async function remove(item) {
-  if (!confirm(`确定删除版式「${item.label}」？`)) return
+function remove(item) {
+  deleteConfirm.value = {
+    message: `确定删除版式「${item.label}」？`,
+    item,
+  }
+}
+
+async function onDeleteConfirm() {
+  const item = deleteConfirm.value?.item
+  deleteConfirm.value = null
+  if (!item) return
   try {
     await api.deleteAdminLayout(item.id)
+    toastSuccess('版式已删除')
     await load()
   } catch (e) {
-    alert(e.message || '删除失败')
+    toastError(e.message || '删除失败')
   }
 }
 
