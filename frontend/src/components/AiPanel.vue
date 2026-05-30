@@ -146,7 +146,22 @@
         <p class="text-xs text-on-surface-variant">
           选择模板后将自动填入「AI 助手」中的画面描述，可按需修改后生成。
         </p>
-        <ul class="space-y-2">
+        <PageLoading v-if="promptsLoading" message="加载模板…" />
+        <EmptyState
+          v-else-if="promptsLoadError && !promptTemplates.length"
+          icon="error"
+          title="模板加载失败"
+          :description="promptsLoadError"
+          action-label="重试"
+          @action="reloadPromptTemplates"
+        />
+        <EmptyState
+          v-else-if="!promptTemplates.length"
+          icon="psychology"
+          title="暂无提示词模板"
+          description="管理员可在控制台「生图提示词」中添加"
+        />
+        <ul v-else class="space-y-2">
           <li
             v-for="tpl in promptTemplates"
             :key="tpl.id"
@@ -195,10 +210,11 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
-import { IMAGE_PROMPT_TEMPLATES, formatImagePromptTemplate } from '../constants/imagePromptTemplates'
+import { useImagePromptTemplates } from '../composables/useImagePromptTemplates'
+import { formatImagePromptTemplate } from '../constants/imagePromptTemplates'
 import {
   IMAGE_GEN_PRESET_GROUPS,
   IMAGE_GEN_PRESET_IDS,
@@ -206,6 +222,8 @@ import {
   getViewportPreset,
 } from '../constants/editorPresets'
 import ConfirmDialog from './ConfirmDialog.vue'
+import EmptyState from './EmptyState.vue'
+import PageLoading from './PageLoading.vue'
 
 const props = defineProps({
   imageLoading: Boolean,
@@ -228,7 +246,17 @@ const scrollRef = ref(null)
 const previewRef = ref(null)
 const upgradeDialogOpen = ref(false)
 const selectedTemplateId = ref('')
-const promptTemplates = IMAGE_PROMPT_TEMPLATES
+const {
+  templates: promptTemplates,
+  loading: promptsLoading,
+  loadError: promptsLoadError,
+  load: loadPromptTemplates,
+  reload: reloadPromptTemplates,
+} = useImagePromptTemplates()
+
+onMounted(() => {
+  loadPromptTemplates()
+})
 
 const tabs = [
   { id: 'assistant', label: 'AI 助手' },

@@ -88,7 +88,8 @@ const navItems = [
   { label: '用户管理', to: '/admin/users', match: '/admin/users', icon: 'group' },
   { label: 'H5 模板', to: '/admin/templates', match: '/admin/templates', icon: 'dashboard_customize' },
   { label: '版式管理', to: '/admin/layouts', match: '/admin/layouts', icon: 'view_quilt' },
-  { label: '提示词模板', to: '/admin/prompts', match: '/admin/prompts', icon: 'psychology' },
+  { label: '文稿提示词', to: '/admin/prompts', match: '/admin/prompts', icon: 'description' },
+  { label: '生图提示词', to: '/admin/image-prompts', match: '/admin/image-prompts', icon: 'psychology' },
   { label: '系统设置', to: '/settings', match: '/settings', icon: 'settings' },
 ]
 

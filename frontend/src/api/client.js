@@ -164,6 +164,15 @@ export const api = {
   updateAdminLayout: (id, body) =>
     request(`/api/v1/管理/版式/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteAdminLayout: (id) => request(`/api/v1/管理/版式/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  listImagePromptTemplates: () => request('/api/v1/生图提示词'),
+  listAdminImagePrompts: () => request('/api/v1/管理/生图提示词'),
+  getAdminImagePrompt: (id) => request(`/api/v1/管理/生图提示词/${encodeURIComponent(id)}`),
+  createAdminImagePrompt: (body) =>
+    request('/api/v1/管理/生图提示词', { method: 'POST', body: JSON.stringify(body) }),
+  updateAdminImagePrompt: (id, body) =>
+    request(`/api/v1/管理/生图提示词/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteAdminImagePrompt: (id) =>
+    request(`/api/v1/管理/生图提示词/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   testLlm: (channel, tier = 'free') => {
     const q = new URLSearchParams()
     if (channel) q.set('channel', channel)

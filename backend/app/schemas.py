@@ -240,6 +240,45 @@ class LayoutBlockUpdate(BaseModel):
     enabled: bool | None = None
 
 
+class ImagePromptField(BaseModel):
+    label: str
+    value: str
+
+
+class ImagePromptTemplateOut(BaseModel):
+    id: str
+    title: str
+    description: str = ""
+    fields: list[ImagePromptField] = Field(default_factory=list)
+    sort_order: int = 100
+    enabled: bool = True
+    source: str = "admin"
+
+
+class ImagePromptTemplatePublicOut(BaseModel):
+    id: str
+    title: str
+    description: str = ""
+    fields: list[ImagePromptField] = Field(default_factory=list)
+
+
+class ImagePromptTemplateCreate(BaseModel):
+    id: str = Field(..., min_length=2, max_length=64)
+    title: str
+    description: str = ""
+    fields: list[ImagePromptField] = Field(default_factory=list)
+    sort_order: int = 100
+    enabled: bool = True
+
+
+class ImagePromptTemplateUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    fields: list[ImagePromptField] | None = None
+    sort_order: int | None = None
+    enabled: bool | None = None
+
+
 class PromptTemplateOut(BaseModel):
     id: str
     name: str

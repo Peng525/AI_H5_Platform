@@ -8,6 +8,7 @@ from app.config import settings
 from app.database import SessionLocal
 from app.models import Order, Project, SiteVisitDaily, User
 from app.services.h5_template_service import seed_default_templates
+from app.services.image_prompt_template_service import seed_builtin_templates
 
 
 async def _ensure_user(db, username: str, password: str, tier: str = "free") -> None:
@@ -38,6 +39,7 @@ async def seed_demo_user() -> None:
             admin_user = settings.admin_usernames.split(",")[0].strip()
         await _ensure_user(db, admin_user, settings.seed_admin_password)
         await seed_default_templates(db)
+        await seed_builtin_templates(db)
         await _assign_orphan_projects(db)
         await db.commit()
         await _seed_demo_orders()

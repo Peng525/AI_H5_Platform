@@ -15,6 +15,9 @@ from app.schemas import (
     H5TemplateCreate,
     H5TemplateOut,
     H5TemplateUpdate,
+    ImagePromptTemplateCreate,
+    ImagePromptTemplateOut,
+    ImagePromptTemplateUpdate,
     LayoutBlockCreate,
     LayoutBlockOut,
     LayoutBlockUpdate,
@@ -35,6 +38,14 @@ from app.services.layout_block_service import (
     delete_block,
     get_block,
     update_block,
+)
+from app.services.image_prompt_template_service import (
+    ImagePromptTemplateError,
+    admin_list as admin_list_image_prompts,
+    create_template as create_image_prompt_template,
+    delete_template as delete_image_prompt_template,
+    get_template as get_image_prompt_template,
+    update_template as update_image_prompt_template,
 )
 from app.services.pptx_template_parser import PptxParseError, parse_pptx_bytes
 from app.services.order_service import (
@@ -428,6 +439,70 @@ async def admin_delete_layout_block(
         await db.commit()
     except LayoutBlockError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"message": "已删除"}
+
+
+@router.get("/生图提示词", response_model=list[ImagePromptTemplateOut], summary="生图提示词模板列表（管理）")
+async def admin_list_image_prompt_templates(
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    rows = await admin_list_image_prompts(db)
+    return [ImagePromptTemplateOut(**{**r, "enabled": bool(r.get("enabled"))}) for r in rows]
+
+
+@router.get("/生图提示词/{template_id}", response_model=ImagePromptTemplateOut, summary="生图提示词模板详情")
+async def admin_get_image_prompt_template(
+    template_id: str,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    row = await get_image_prompt_template(db, template_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="模板不存在")
+    return ImagePromptTemplateOut(**{**row, "enabled": bool(row.get("enabled"))})
+
+
+@router.post("/生图提示词", response_model=ImagePromptTemplateOut, summary="创建生图提示词模板")
+async def admin_create_image_prompt_template(
+    body: ImagePromptTemplateCreate,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        row = await create_image_prompt_template(db, body.model_dump())
+        await db.commit()
+    except ImagePromptTemplateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return ImagePromptTemplateOut(**{**row, "enabled": bool(row.get("enabled"))})
+
+
+@router.put("/生图提示词/{template_id}", response_model=ImagePromptTemplateOut, summary="更新生图提示词模板")
+async def admin_update_image_prompt_template(
+    template_id: str,
+    body: ImagePromptTemplateUpdate,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        row = await update_image_prompt_template(db, template_id, body.model_dump(exclude_unset=True))
+        await db.commit()
+    except ImagePromptTemplateError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return ImagePromptTemplateOut(**{**row, "enabled": bool(row.get("enabled"))})
+
+
+@router.delete("/生图提示词/{template_id}", summary="删除生图提示词模板")
+async def admin_delete_image_prompt_template(
+    template_id: str,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        await delete_image_prompt_template(db, template_id)
+        await db.commit()
+    except ImagePromptTemplateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"message": "已删除"}
 
 
