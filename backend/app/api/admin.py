@@ -54,6 +54,7 @@ from app.services.template_draft_service import (
     TemplateDraftError,
     apply_parsed_template_to_draft,
     get_or_create_template_draft,
+    quick_create_template_draft,
     save_template_preset,
 )
 from app.services.order_service import (
@@ -372,6 +373,21 @@ async def admin_update_template(
     return H5TemplateOut(**{**row, "premium": bool(row.get("premium")), "enabled": bool(row.get("enabled"))})
 
 
+@router.post("/模板/快速创建", response_model=TemplateDraftOut, summary="一键创建空白模板并进入可视化编辑")
+async def admin_template_quick_create(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        template_id, project = await quick_create_template_draft(db, admin)
+        await db.commit()
+    except H5TemplateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"创建编辑草稿失败：{exc}") from exc
+    return TemplateDraftOut(project_id=project.id, template_id=template_id)
+
+
 @router.post("/模板/{template_id}/编辑草稿", response_model=TemplateDraftOut, summary="获取或创建模板可视化编辑草稿")
 async def admin_template_edit_draft(
     template_id: str,
@@ -383,6 +399,8 @@ async def admin_template_edit_draft(
         await db.commit()
     except TemplateDraftError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"打开编辑草稿失败：{exc}") from exc
     return TemplateDraftOut(project_id=project.id, template_id=template_id)
 
 

@@ -14,10 +14,11 @@
         </button>
         <button
           type="button"
-          class="px-4 py-2 rounded-lg bg-primary text-on-primary text-sm font-medium"
-          @click="openCreate"
+          class="px-4 py-2 rounded-lg bg-primary text-on-primary text-sm font-medium disabled:opacity-50"
+          :disabled="creating"
+          @click="quickCreate"
         >
-          新建模板
+          {{ creating ? '创建中…' : '新建模板' }}
         </button>
       </div>
     </div>
@@ -64,7 +65,6 @@
 
     <AdminTemplateEditor
       :open="editor.open"
-      :mode="editor.mode"
       @close="editor.open = false"
       @open-editor="goEditor"
     />
@@ -96,8 +96,9 @@ const deleteConfirm = ref(null)
 
 const templates = ref([])
 const loading = ref(true)
+const creating = ref(false)
 const error = ref('')
-const editor = reactive({ open: false, mode: 'create' })
+const editor = reactive({ open: false })
 
 onMounted(load)
 
@@ -113,9 +114,16 @@ async function load() {
   }
 }
 
-function openCreate() {
-  editor.mode = 'create'
-  editor.open = true
+async function quickCreate() {
+  creating.value = true
+  try {
+    const draft = await api.quickCreateAdminTemplate()
+    goEditor({ templateId: draft.template_id, projectId: draft.project_id })
+  } catch (e) {
+    toastError(e.message || '创建失败，请重启后端服务后再试')
+  } finally {
+    creating.value = false
+  }
 }
 
 function openImport() {

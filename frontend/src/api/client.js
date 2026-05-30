@@ -156,6 +156,7 @@ export const api = {
     request(`/api/v1/管理/模板/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   startTemplateDraft: (templateId) =>
     request(`/api/v1/管理/模板/${encodeURIComponent(templateId)}/编辑草稿`, { method: 'POST' }),
+  quickCreateAdminTemplate: () => request('/api/v1/管理/模板/快速创建', { method: 'POST' }),
   saveTemplatePreset: (templateId, body) =>
     request(`/api/v1/管理/模板/${encodeURIComponent(templateId)}/保存预设`, {
       method: 'POST',

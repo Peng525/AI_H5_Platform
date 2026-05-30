@@ -122,6 +122,43 @@ async def _seed_project_slides(
     project.settings_json = json.dumps(merged, ensure_ascii=False)
 
 
+async def quick_create_template_draft(db: AsyncSession, admin: User) -> tuple[str, Project]:
+    """创建空白模板并进入可视化编辑草稿（无需先填表单）。"""
+    import uuid
+
+    tid = f"template-{uuid.uuid4().hex[:10]}"
+    default_settings = {
+        "viewportId": "mobile-375",
+        "scrollEffect": "page",
+        "themeId": "zjy-minimal",
+        "showScrollHint": False,
+        "defaultChatTapToContinue": True,
+        "bgm": {"enabled": False, "trackId": "", "url": "", "loop": True, "volume": 0.35},
+    }
+    from app.services.h5_template_service import create_template
+
+    await create_template(
+        db,
+        {
+            "id": tid,
+            "title": "未命名模板",
+            "description": "",
+            "category": "简约商务",
+            "device": "mobile",
+            "pages": 1,
+            "premium": False,
+            "cover_gradient": "from-primary to-primary-container",
+            "default_viewport": "mobile-375",
+            "slides_json": [],
+            "settings_json": default_settings,
+            "sort_order": 0,
+            "enabled": False,
+        },
+    )
+    project = await get_or_create_template_draft(db, tid, admin)
+    return tid, project
+
+
 async def get_or_create_template_draft(
     db: AsyncSession,
     template_id: str,
