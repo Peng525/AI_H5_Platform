@@ -1,5 +1,5 @@
 <template>
-  <aside class="editor-ai-panel w-[14rem] sm:w-[16.25rem] lg:w-[18.75rem] border-l border-outline-variant bg-surface-container-low flex flex-col h-full min-h-0 shrink-0 overflow-hidden">
+  <aside class="editor-ai-panel w-[14rem] sm:w-[16.25rem] lg:w-[18.75rem] border-l border-outline-variant bg-white flex flex-col h-full min-h-0 shrink-0 overflow-hidden">
     <div class="p-4 border-b border-outline-variant shrink-0">
       <h2 class="font-semibold text-sm">AI 智能面板</h2>
     </div>
@@ -51,21 +51,9 @@
           <textarea
             v-model="prompt"
             rows="4"
-            class="mt-1 w-full border border-outline-variant rounded-lg p-3 text-sm resize-y min-h-[88px] max-h-48"
+            class="mt-1 w-full border border-outline-variant rounded-lg p-3 text-sm resize-y min-h-[88px] max-h-48 bg-white"
             placeholder="描述您想要的 H5 画面，例如：站在路口的人，左右两条分岔路…"
           />
-        </div>
-
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="s in styles"
-            :key="s"
-            class="px-2 py-1 text-xs rounded-full border"
-            :class="selectedStyle === s ? 'bg-primary text-on-primary border-primary' : 'border-outline-variant'"
-            @click="selectedStyle = s"
-          >
-            {{ s }}
-          </button>
         </div>
 
         <div>
@@ -192,16 +180,6 @@
           </li>
         </ul>
       </div>
-
-      <div v-else class="p-4 pb-6 text-sm">
-        <p>已用 {{ quotaTotal - quotaRemaining }} / {{ quotaTotal }} 次</p>
-        <div class="mt-2 h-2 bg-outline-variant/30 rounded-full overflow-hidden">
-          <div
-            class="h-full bg-secondary transition-all"
-            :style="{ width: `${(quotaRemaining / quotaTotal) * 100}%` }"
-          />
-        </div>
-      </div>
     </div>
 
     <ConfirmDialog
@@ -243,7 +221,6 @@ const { user } = useAuth()
 const tab = ref('assistant')
 const channelTier = ref('free')
 const prompt = ref('')
-const selectedStyle = ref('商务专业')
 const fitMode = ref('width')
 const generatedImage = ref(null)
 const imageError = ref('')
@@ -255,10 +232,8 @@ const promptTemplates = IMAGE_PROMPT_TEMPLATES
 
 const tabs = [
   { id: 'assistant', label: 'AI 助手' },
-  { id: 'prompts', label: '提示词' },
-  { id: 'quota', label: '配额' },
+  { id: 'prompts', label: '提示词模板' },
 ]
-const styles = ['3D质感', '扁平插画', '商务专业']
 const fitModes = [
   { id: 'width', label: '适应宽度' },
   { id: 'fill', label: '填充页面' },
@@ -321,9 +296,6 @@ function onUpgradeConfirm() {
 function applyPromptTemplate(tpl) {
   selectedTemplateId.value = tpl.id
   prompt.value = formatImagePromptTemplate(tpl)
-  if (tpl.suggestedStyle && styles.includes(tpl.suggestedStyle)) {
-    selectedStyle.value = tpl.suggestedStyle
-  }
   tab.value = 'assistant'
   nextTick(() => {
     scrollRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
@@ -336,7 +308,6 @@ function payloadBase() {
     prompt: prompt.value,
     channelTier: channelTier.value,
     channel: props.llmChannel,
-    style: selectedStyle.value,
     viewportPresetId: genViewportId.value,
     viewportWidth: content.width,
     viewportHeight: content.height,

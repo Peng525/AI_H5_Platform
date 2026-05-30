@@ -32,7 +32,7 @@
           </optgroup>
         </select>
       </div>
-      <div class="flex justify-center min-w-0 pointer-events-auto w-full">
+      <div class="flex justify-center min-w-0 pointer-events-auto w-full overflow-visible">
         <EditorCanvasToolbar
           :selected="selectedElement"
           :theme-id="themeId"

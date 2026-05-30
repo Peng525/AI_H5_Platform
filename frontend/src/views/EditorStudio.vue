@@ -16,10 +16,40 @@
     <div v-else class="editor-workspace flex flex-1 min-h-0 min-w-0 overflow-x-auto overflow-y-hidden relative">
       <div
         v-if="showEditorCoach"
-        class="absolute top-2 left-1/2 -translate-x-1/2 z-[70] max-w-md w-[calc(100%-2rem)] bg-primary text-on-primary text-xs rounded-lg px-3 py-2 shadow-lg flex items-start gap-2"
+        class="absolute top-3 left-1/2 -translate-x-1/2 z-[70] max-w-sm w-[calc(100%-2rem)] bg-white border border-outline-variant/60 rounded-xl px-4 py-3.5 shadow-md"
       >
-        <span class="flex-1 leading-relaxed">AI 配图：①选生图分辨率 ②填写描述 ③生图 ④选择添加方式</span>
-        <button type="button" class="shrink-0 opacity-90 hover:opacity-100 font-medium" @click="dismissEditorCoach">知道了</button>
+        <div class="flex items-start justify-between gap-3 mb-3">
+          <p class="text-sm font-medium text-on-surface">首次使用 AI 配图</p>
+          <button
+            type="button"
+            class="shrink-0 text-on-surface-variant hover:text-on-surface material-symbols-outlined text-lg leading-none"
+            aria-label="关闭"
+            @click="dismissEditorCoach"
+          >
+            close
+          </button>
+        </div>
+        <ol class="space-y-2 text-xs text-on-surface-variant">
+          <li class="flex items-center gap-2.5">
+            <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-[11px] font-medium">1</span>
+            <span>选择生图分辨率</span>
+          </li>
+          <li class="flex items-center gap-2.5">
+            <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-[11px] font-medium">2</span>
+            <span>填写画面描述并生图</span>
+          </li>
+          <li class="flex items-center gap-2.5">
+            <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-[11px] font-medium">3</span>
+            <span>预览后选择添加方式</span>
+          </li>
+        </ol>
+        <button
+          type="button"
+          class="mt-3 w-full py-1.5 text-xs font-medium text-primary hover:bg-primary/5 rounded-lg transition-colors"
+          @click="dismissEditorCoach"
+        >
+          知道了
+        </button>
       </div>
       <EditorToolbox
         :slides="project?.slides || []"

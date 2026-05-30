@@ -1,6 +1,6 @@
 <template>
-  <div class="flex flex-col items-center gap-1 w-full max-w-full min-w-0" data-editor-chrome>
-    <div class="flex items-center gap-0.5 sm:gap-1 bg-white shadow-card rounded-lg px-1 sm:px-2 py-1 border border-outline-variant flex-wrap justify-center max-w-full overflow-x-auto">
+  <div class="flex flex-col items-center gap-1 w-full max-w-full min-w-0 overflow-visible" data-editor-chrome>
+    <div class="flex items-center gap-0.5 sm:gap-1 bg-white shadow-card rounded-lg px-1 sm:px-2 py-1 border border-outline-variant flex-wrap justify-center max-w-full overflow-visible">
       <button
         type="button"
         class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant disabled:opacity-35"
@@ -32,7 +32,7 @@
           添加
           <span class="material-symbols-outlined text-[14px] text-on-surface-variant">{{ addMenuOpen ? 'expand_less' : 'expand_more' }}</span>
         </button>
-        <div v-show="addMenuOpen" class="absolute left-0 top-[calc(100%-2px)] pt-2 w-44 z-[60]" @click.stop>
+        <div v-show="addMenuOpen" class="absolute left-0 top-full mt-1 w-44 z-[80]" @click.stop>
           <div class="bg-white border border-outline-variant rounded-lg shadow-lg py-1">
             <button type="button" class="w-full text-left px-3 py-2 text-sm hover:bg-surface-container-low flex items-center gap-2" @click.stop="pickAdd('text')">
               <span class="material-symbols-outlined text-[16px] text-primary">text_fields</span>
