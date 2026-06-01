@@ -232,6 +232,7 @@ function onPrimaryLayoutClick(item) {
 function onSpecialClick(item) {
   if (item.action === 'dialogue') emit('open-dialogue-generator')
   else if (item.action === 'wordcloud') emit('open-wordcloud-editor')
+  else if (item.action === 'chartstack') emit('add', { id: 'chartstack', label: '图表卡组', type: 'chartStack' })
 }
 
 const chartPreviewBars = [10, 18, 12, 22]
@@ -239,6 +240,7 @@ const chartPreviewBars = [10, 18, 12, 22]
 const specialComponents = [
   { id: 'dialogue', label: '对话生成器', icon: 'forum', colorClass: 'text-primary', action: 'dialogue' },
   { id: 'wordcloud', label: '文字云', icon: 'cloud', colorClass: 'text-secondary', action: 'wordcloud' },
+  { id: 'chartstack', label: '图表卡组', icon: 'stacked_bar_chart', colorClass: 'text-primary', action: 'chartstack' },
 ]
 
 const basicComponents = [

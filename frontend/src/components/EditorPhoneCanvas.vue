@@ -55,6 +55,7 @@
           @image-crop="$emit('image-crop')"
           @undo="$emit('undo')"
           @redo="$emit('redo')"
+          @edit-chart-stack="$emit('edit-chart-stack')"
         />
       </div>
     </div>
@@ -171,6 +172,7 @@
               @batch-end="$emit('batch-end')"
               @move-delta="$emit('move-delta', $event)"
               @edit-wordcloud="$emit('edit-wordcloud', $event)"
+              @edit-chart-stack="$emit('edit-chart-stack', $event)"
             />
 
             <div
@@ -261,6 +263,7 @@ const emit = defineEmits([
   'batch-end',
   'move-delta',
   'edit-wordcloud',
+  'edit-chart-stack',
   'marquee-select',
   'update:show-dialogue-preview',
   'toggle-bgm-mute',

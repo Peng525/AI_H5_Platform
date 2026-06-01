@@ -178,6 +178,31 @@ function defaultChartContent() {
   return { chartType: 'bar', values: [35, 65, 45, 80, 55] }
 }
 
+function chartCardId() {
+  return `c_${Math.random().toString(36).slice(2, 10)}`
+}
+
+export function defaultChartStackContent() {
+  return {
+    cards: [
+      {
+        id: chartCardId(),
+        title: '您对未来「吃谷」消费的期望',
+        chartType: 'pie',
+        labels: ['增加', '维持', '减少'],
+        values: [45, 35, 20],
+      },
+      {
+        id: chartCardId(),
+        title: '您对「吃谷」规划和安排的建议',
+        chartType: 'bar',
+        labels: ['规划1', '规划2', '规划3', '规划4'],
+        values: [60, 40, 55, 70],
+      },
+    ],
+  }
+}
+
 function defaultWordCloudContent() {
   return {
     words: [
@@ -205,19 +230,19 @@ export function defaultElement(type, overrides = {}) {
     type,
     x: 24,
     y: 120,
-    height: type === 'shape' ? 80 : type === 'image' ? 120 : type === 'table' ? 100 : type === 'chart' ? 120 : type === 'wordcloud' ? 200 : type === 'icon' ? 64 : 48,
-    width: type === 'table' ? 220 : type === 'chart' ? 200 : type === 'wordcloud' ? 280 : type === 'icon' ? 64 : type === 'shape' ? 120 : 200,
+    height: type === 'shape' ? 80 : type === 'image' ? 120 : type === 'table' ? 100 : type === 'chart' ? 120 : type === 'chartStack' ? 260 : type === 'wordcloud' ? 200 : type === 'icon' ? 64 : 48,
+    width: type === 'table' ? 220 : type === 'chart' ? 200 : type === 'chartStack' ? 320 : type === 'wordcloud' ? 280 : type === 'icon' ? 64 : type === 'shape' ? 120 : 200,
     zIndex: CANVAS_Z.CONTENT_BASE,
-    content: type === 'text' ? '双击编辑文本' : type === 'icon' ? 'star' : type === 'table' ? defaultTableContent() : type === 'chart' ? defaultChartContent() : type === 'wordcloud' ? defaultWordCloudContent() : type === 'image' ? '' : '',
+    content: type === 'text' ? '双击编辑文本' : type === 'icon' ? 'star' : type === 'table' ? defaultTableContent() : type === 'chart' ? defaultChartContent() : type === 'chartStack' ? defaultChartStackContent() : type === 'wordcloud' ? defaultWordCloudContent() : type === 'image' ? '' : '',
     style: {
       fontSize: 16,
       color: '#1b1b1c',
-      background: type === 'shape' ? '#005daa' : type === 'table' ? '#ffffff' : type === 'chart' ? '#ffffff' : type === 'icon' ? '#e8f0fe' : 'transparent',
+      background: type === 'shape' ? '#005daa' : type === 'table' ? '#ffffff' : type === 'chart' || type === 'chartStack' ? '#ffffff' : type === 'icon' ? '#e8f0fe' : 'transparent',
       borderRadius: type === 'shape' || type === 'icon' ? 8 : 0,
       headerBackground: type === 'table' ? '#005daa' : undefined,
       headerColor: type === 'table' ? '#ffffff' : undefined,
       borderColor: type === 'table' ? '#c0c7d6' : undefined,
-      chartColor: type === 'chart' ? '#005daa' : undefined,
+      chartColor: type === 'chart' || type === 'chartStack' ? '#005daa' : undefined,
       fontWeight: 'normal',
       textAlign: 'left',
       fontFamily: '"Microsoft YaHei", "PingFang SC", sans-serif',

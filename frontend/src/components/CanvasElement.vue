@@ -2,7 +2,7 @@
   <div
     class="absolute select-none"
     :class="[
-      readonly ? 'pointer-events-none' : 'touch-none',
+      readonly && element.type !== 'chartStack' ? 'pointer-events-none' : readonly ? '' : 'touch-none',
       selectionRingClass,
       staggerClass,
     ]"
@@ -137,6 +137,26 @@
     </div>
 
     <div
+      v-else-if="element.type === 'chartStack'"
+      class="w-full h-full overflow-hidden relative"
+      :class="readonly ? '' : 'cursor-move'"
+      @dblclick.stop="openChartStackEditor"
+    >
+      <div
+        v-if="selected && !readonly"
+        class="absolute top-0 inset-x-0 h-5 z-20 cursor-move bg-primary/10 border-b border-primary/20 flex items-center justify-center"
+        @mousedown.stop="startDragFromHandle"
+      >
+        <span class="material-symbols-outlined text-[14px] text-primary pointer-events-none">drag_indicator</span>
+      </div>
+      <ChartStack
+        :cards="chartStackCards"
+        :chart-color="element.style?.chartColor || '#005daa'"
+        :interactive="true"
+      />
+    </div>
+
+    <div
       v-else-if="element.type === 'wordcloud'"
       class="w-full h-full cursor-move overflow-hidden"
       @dblclick.stop="openWordCloudEditor"
@@ -172,6 +192,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { CANVAS_Z } from '../composables/useSlideCanvas.js'
 import { renderWordCloud } from './wordcloud/WordCloudRenderer.js'
+import ChartStack from './charts/ChartStack.vue'
 
 const props = defineProps({
   element: { type: Object, required: true },
@@ -182,7 +203,7 @@ const props = defineProps({
   themeId: { type: String, default: 'zjy-minimal' },
 })
 
-const emit = defineEmits(['select', 'update', 'remove', 'batch-start', 'batch-end', 'edit-wordcloud', 'move-delta'])
+const emit = defineEmits(['select', 'update', 'remove', 'batch-start', 'batch-end', 'edit-wordcloud', 'edit-chart-stack', 'move-delta'])
 
 const wordCloudCanvasRef = ref(null)
 
@@ -299,6 +320,16 @@ const chartValues = computed(() => {
   return c?.values?.length ? c.values : [35, 65, 45, 80, 55]
 })
 
+const chartStackCards = computed(() => {
+  const c = props.element.content
+  return c?.cards?.length ? c.cards : []
+})
+
+function openChartStackEditor() {
+  if (props.readonly) return
+  emit('edit-chart-stack', props.element)
+}
+
 function barHeight(v) {
   const max = Math.max(...chartValues.value, 1)
   return Math.max(8, (v / max) * 100)
@@ -306,10 +337,11 @@ function barHeight(v) {
 
 function onRootMouseDown(e) {
   if (props.readonly) return
-  onSelect(e)
+  const skipDrag = props.element.type === 'chartStack' && e.target.closest('.chart-stack')
+  onSelect(e, !skipDrag)
 }
 
-function onSelect(e) {
+function onSelect(e, allowDrag = true) {
   const payload = {
     id: props.element.id,
     ctrlKey: e.ctrlKey || e.metaKey,
@@ -317,6 +349,7 @@ function onSelect(e) {
   }
   emit('select', payload)
   if (e.target.closest('.cursor-se-resize')) return
+  if (!allowDrag) return
   if (payload.ctrlKey || payload.shiftKey) return
   startDrag(e)
 }
@@ -350,6 +383,11 @@ function commitCellEdit() {
   if (rows[ri]) rows[ri][ci] = editCellValue.value
   editingCell.value = null
   emit('update', props.element.id, { content: { rows } })
+}
+
+function startDragFromHandle(e) {
+  emit('select', { id: props.element.id, ctrlKey: false, shiftKey: false })
+  startDrag(e)
 }
 
 function startDrag(e) {

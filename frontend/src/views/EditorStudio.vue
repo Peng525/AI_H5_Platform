@@ -144,6 +144,7 @@
         @batch-end="onBatchEnd"
         @move-delta="onMoveDelta"
         @edit-wordcloud="onEditWordCloud"
+        @edit-chart-stack="onEditChartStack"
         @update:show-dialogue-preview="showDialoguePreview = $event"
       />
 
@@ -172,6 +173,12 @@
       @close="wordCloudOpen = false; wordCloudEditContent = null"
       @insert-vector="onInsertWordCloud"
       @insert-image="onInsertWordCloudImage"
+    />
+    <ChartStackEditorModal
+      :open="chartStackOpen"
+      :initial-content="chartStackEditContent"
+      @close="chartStackOpen = false; chartStackEditContent = null"
+      @save="onSaveChartStack"
     />
     <ImageCropModal
       :open="cropModalOpen"
@@ -218,6 +225,7 @@ import EditorTopBar from '../components/EditorTopBar.vue'
 import EditorShortcutsHelp from '../components/EditorShortcutsHelp.vue'
 import DialogueGeneratorModal from '../components/dialogue/DialogueGeneratorModal.vue'
 import WordCloudEditorModal from '../components/wordcloud/WordCloudEditorModal.vue'
+import ChartStackEditorModal from '../components/charts/ChartStackEditorModal.vue'
 import ImageCropModal from '../components/ImageCropModal.vue'
 import PageLoading from '../components/PageLoading.vue'
 import EmptyState from '../components/EmptyState.vue'
@@ -246,6 +254,8 @@ const shortcutsHelpOpen = ref(false)
 const dialogueGeneratorOpen = ref(false)
 const wordCloudOpen = ref(false)
 const wordCloudEditContent = ref(null)
+const chartStackOpen = ref(false)
+const chartStackEditContent = ref(null)
 const showDialoguePreview = ref(false)
 const cropModalOpen = ref(false)
 const cropTargetId = ref(null)
@@ -557,6 +567,12 @@ function addMaterial(item) {
     addElement('chart', {
       style: { background: '#ffffff', chartColor: '#005daa' },
     })
+  } else if (item.type === 'chartStack') {
+    const vp = viewport.value
+    addElement('chartStack', {
+      x: Math.round((vp.width - 320) / 2),
+      y: 80,
+    })
   } else if (item.type === 'wordcloud') {
     wordCloudOpen.value = true
   }
@@ -617,6 +633,38 @@ function onInsertWordCloud(content) {
 function onEditWordCloud(el) {
   wordCloudEditContent.value = el.content
   wordCloudOpen.value = true
+}
+
+function onEditChartStack(el) {
+  if (el?.content) {
+    chartStackEditContent.value = el.content
+  } else if (selectedId.value) {
+    const selected = elements.value.find((e) => e.id === selectedId.value)
+    chartStackEditContent.value = selected?.type === 'chartStack' ? selected.content : null
+  } else {
+    chartStackEditContent.value = null
+  }
+  chartStackOpen.value = true
+}
+
+function onSaveChartStack(content) {
+  chartStackOpen.value = false
+  const targetId = selectedId.value
+  if (targetId) {
+    const el = elements.value.find((e) => e.id === targetId)
+    if (el?.type === 'chartStack') {
+      updateElement(targetId, { content })
+      chartStackEditContent.value = null
+      return
+    }
+  }
+  const vp = viewport.value
+  addElement('chartStack', {
+    x: Math.round((vp.width - 320) / 2),
+    y: 80,
+    content,
+  })
+  chartStackEditContent.value = null
 }
 
 function onInsertWordCloudImage(dataUrl) {

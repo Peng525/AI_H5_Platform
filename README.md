@@ -39,7 +39,7 @@ docker compose -f docker-compose.yml -f docker-compose.cn.yml up -d --build
 - **画布多选**、复制粘贴、撤回重做（工具栏按钮或 Ctrl+Z/Y；F1 查看快捷键）
 - **三栏编辑器**：工具箱 + 画布 + AI 面板
 - **AI 全量生成 / 单页改写 / 配图**：生图前选分辨率，预览后自选适应宽度、填充页面或原始尺寸添加
-- **互动组件**：对话生成器、文字云（工具箱 → 素材 → 互动组件）
+- **互动组件**：对话生成器、文字云、**图表卡组**（素材 → 特殊组件；多图堆叠上下切换）
 - **管理员控制台**（`/admin`）：数据仪表盘（访问统计、订单、近 14 日趋势图）、待支付订单确认、用户/模板/版式/提示词管理；**中转 API 充值**仅提供外链（推理令牌无法自动读余额）
 - **使用帮助**：登录后用户菜单 → `/help`（FAQ、快捷键）
 
@@ -86,6 +86,10 @@ RELAY_DASHBOARD_RECHARGE_URL=https://once-cf.novai.su/wallet
 **H5 模板可视化编辑：** `/admin/templates` 点「编辑」进入与用户端相同的三栏编辑器（版式、音乐、素材、AI）；顶栏「保存为预设」写回探索模板库；「从 PPT 导入」可替换草稿内容。模板编辑草稿不会出现在「我的项目」列表。
 
 侧栏「返回用户端 / 退出登录」固定于屏幕底部；右侧主内容区独立滚动，长页面无需滚到底部才能退出。
+
+### 外部生成 PPT（Cursor + PPT Master）
+
+在本机用 Cursor 生成可编辑 `.pptx` 并导入探索模板，见 **[docs/AI-PPT生成指南.md](docs/AI-PPT生成指南.md)**（最终版入口，含五模型横评与 H5 导入步骤）。方案详表见 [docs/AI-PPT生成方案对比.md](docs/AI-PPT生成方案对比.md)。
 
 ---
 
@@ -151,7 +155,8 @@ cd frontend && npm install && npm run dev
 | [`docs/部署说明.md`](docs/部署说明.md) | Docker、EC2、分享链接、Nginx |
 | [`docs/Push与发布规范.md`](docs/Push与发布规范.md) | push 前检查、分支约定、EC2 发布 |
 | [`docs/CI-CD与分支策略.md`](docs/CI-CD与分支策略.md) | GitHub Actions、分支与 Secrets |
-| [`docs/互动组件-对话生成器与文字云.md`](docs/互动组件-对话生成器与文字云.md) | 互动组件说明 |
+| [`docs/互动组件-对话生成器与文字云.md`](docs/互动组件-对话生成器与文字云.md) | 对话生成器、文字云 |
+| [`docs/互动组件-图表卡组.md`](docs/互动组件-图表卡组.md) | 图表卡组（堆叠卡片、上下切换） |
 | [`docs/需求清单.md`](docs/需求清单.md) | 功能需求与完成状态 |
 | 应用内 [`/help`](frontend/src/views/Help.vue) | 登录后用户菜单「使用帮助」 |
 

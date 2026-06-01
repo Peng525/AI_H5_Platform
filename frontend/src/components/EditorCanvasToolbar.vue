@@ -204,6 +204,23 @@
             @change="onStyle({ chartColor: $event })"
           />
         </template>
+        <template v-else-if="selected.type === 'chartStack'">
+          <button
+            type="button"
+            class="px-2 py-1 text-xs font-medium rounded border border-outline-variant hover:bg-surface-container whitespace-nowrap"
+            title="编辑图表卡组"
+            @click="$emit('edit-chart-stack')"
+          >
+            编辑卡组
+          </button>
+          <WordColorPicker
+            :model-value="selected.style?.chartColor || '#005daa'"
+            :context-key="colorPickerContextKey"
+            label="图表颜色"
+            icon="format_color_fill"
+            @change="onStyle({ chartColor: $event })"
+          />
+        </template>
         <template v-else-if="selected.type === 'icon'">
           <WordColorPicker
             :model-value="selected.style?.color || '#005daa'"
@@ -296,7 +313,7 @@ const props = defineProps({
   canRedo: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['add-text', 'add-shape', 'add-image', 'style-change', 'duplicate', 'delete', 'bring-front', 'send-back', 'bring-forward', 'send-backward', 'center-element', 'image-fit', 'image-crop', 'undo', 'redo'])
+const emit = defineEmits(['add-text', 'add-shape', 'add-image', 'style-change', 'duplicate', 'delete', 'bring-front', 'send-back', 'bring-forward', 'send-backward', 'center-element', 'image-fit', 'image-crop', 'undo', 'redo', 'edit-chart-stack'])
 
 const imageFitModes = [
   { id: 'width', label: '适应宽度', short: '适应宽' },
