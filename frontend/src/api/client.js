@@ -87,6 +87,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  generateAiDeck: (body) =>
+    request('/api/v1/项目/ai-生成', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   getProject: (id) => request(`/api/v1/项目/${id}`),
   updateProjectSettings: (id, body) =>
     request(`/api/v1/项目/${id}/设置`, { method: 'PUT', body: JSON.stringify(body) }),
@@ -103,6 +108,7 @@ export const api = {
       body: JSON.stringify({ elements }),
     }),
   deleteProject: (id) => request(`/api/v1/项目/${id}`, { method: 'DELETE' }),
+  importProjectPptx: (formData) => uploadForm('/api/v1/项目/导入-pptx', formData),
   generateImage: (projectId, body) =>
     request(`/api/v1/项目/${projectId}/生成/配图`, {
       method: 'POST',

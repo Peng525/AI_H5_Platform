@@ -143,7 +143,7 @@ function goAfterLogin(data) {
     router.replace(redirect)
     return
   }
-  router.replace('/templates')
+  router.replace('/create/generate')
 }
 
 async function submit() {

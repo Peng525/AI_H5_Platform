@@ -30,7 +30,9 @@ docker compose -f docker-compose.yml -f docker-compose.cn.yml up -d --build
 ## 功能概览
 
 - 项目管理、页面编辑、全屏 H5 预览与分享链接 `/s/{slug}`
-- **探索模板**：按类型与终端筛选；封面渲染第一页缩略图
+- **AI 生成向导**（登录默认）：选演示文稿/图片 → 输入提示词 → 提示编辑器 → 全量生成并进入编辑器
+- **我的工作台**：双栏侧栏显示用户名；**首页**为项目列表、**模板库**可选模板；顶栏 **新建演示** 与 **导入 PPT**
+- **模板库**：按类型与终端筛选；封面渲染第一页缩略图
 - **简约模板体系**：商务 + 叙事双主题，多种版式与 JSON 模板
 - **背景音乐**：`backend/static/bgm/` 放置 MP3，编辑器内选曲播放
 - **版式叠加**：素材面板版式追加到画布；**新建页面默认为空白页**
@@ -38,7 +40,6 @@ docker compose -f docker-compose.yml -f docker-compose.cn.yml up -d --build
 - **组件层级**：置顶 / 置底 / 上移 / 下移
 - **画布多选**、复制粘贴、撤回重做（工具栏按钮或 Ctrl+Z/Y；F1 查看快捷键）
 - **三栏编辑器**：工具箱 + 画布 + AI 面板
-- **AI 全量生成 / 单页改写 / 配图**：生图前选分辨率，预览后自选适应宽度、填充页面或原始尺寸添加
 - **互动组件**：对话生成器、文字云、**图表卡组**（素材 → 特殊组件；多图堆叠上下切换，后大前小景深；编辑器内嵌拖拽条）
 - **管理员控制台**（`/admin`）：数据仪表盘（访问统计、订单、近 14 日趋势图）、待支付订单确认、用户/模板/版式/提示词管理；**中转 API 充值**仅提供外链（推理令牌无法自动读余额）
 - **使用帮助**：登录后用户菜单 → `/help`（FAQ、快捷键）
@@ -88,6 +89,25 @@ RELAY_DASHBOARD_RECHARGE_URL=https://once-cf.novai.su/wallet
 **版式可视化编辑：** `/admin/layouts` 点「编辑」同样进入 EditorStudio（`?adminLayout=`）；顶栏「保存版式」将画布写回版式库，素材面板即时生效。
 
 管理端侧栏已移除「返回用户端」；退出请用右上角用户菜单。右侧主内容区独立滚动，长页面无需滚到底部才能退出。
+
+## 用户端路由
+
+| 路由 | 说明 |
+|------|------|
+| `/create/generate` | **登录默认** — AI 生成向导（演示文稿 / 图片） |
+| `/create/generate/prompt` | 输入提示词 |
+| `/create/generate/review` | 提示编辑器 → 全量生成 |
+| `/create/generate/image` | 图片 AI 生成 |
+| `/create/blank` | 创建空白项目 |
+| `/dashboard` | 工作台 · 首页（项目列表） |
+| `/templates` | 工作台 · 模板库 |
+| `/editor/:id` | 三栏编辑器 |
+| `/preview/:id` | 全屏预览 |
+| `/publish/:id` | 发布成功页 |
+| `/upgrade` | 套餐升级 |
+| `/help` | 使用帮助 |
+
+向导详细说明见 [`docs/AI生成向导.md`](docs/AI生成向导.md)。
 
 ### 外部生成 PPT（Cursor + PPT Master）
 
@@ -157,6 +177,7 @@ cd frontend && npm install && npm run dev
 | [`docs/部署说明.md`](docs/部署说明.md) | Docker、EC2、分享链接、Nginx |
 | [`docs/Push与发布规范.md`](docs/Push与发布规范.md) | push 前检查、分支约定、EC2 发布 |
 | [`docs/CI-CD与分支策略.md`](docs/CI-CD与分支策略.md) | GitHub Actions、分支与 Secrets |
+| [`docs/AI生成向导.md`](docs/AI生成向导.md) | 三步向导、API、冒烟检查 |
 | [`docs/互动组件-对话生成器与文字云.md`](docs/互动组件-对话生成器与文字云.md) | 对话生成器、文字云 |
 | [`docs/互动组件-图表卡组.md`](docs/互动组件-图表卡组.md) | 图表卡组（堆叠卡片、上下切换） |
 | [`docs/需求清单.md`](docs/需求清单.md) | 功能需求与完成状态 |
@@ -167,6 +188,7 @@ cd frontend && npm install && npm run dev
 | 问题 | 处理建议 |
 |------|----------|
 | AI 生图失败 | 检查 `.env` 中 `LLM_RELAY_*` 或 `LLM_OFFICIAL_*`；管理员在系统设置测试连通性 |
+| AI 全量生成失败 | 同上；确认配额未用尽；查看 [`docs/AI生成向导.md`](docs/AI生成向导.md) |
 | 管理端看不到中转余额 | 正常：推理令牌无法查余额；在 `/admin` 点击「前往中转平台钱包」登录控制台查看 |
 | BGM 列表为空 | 将 MP3 放入 `backend/static/bgm/` 后重启服务 |
 | 分享链接打不开 | 确认端口与安全组放行；项目需有有效 `share_slug` |

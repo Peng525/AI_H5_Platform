@@ -1,10 +1,9 @@
 <template>
-  <div class="min-h-screen bg-background flex flex-col">
-    <AppShell />
-    <div class="max-w-6xl mx-auto p-6 md:p-10 flex-1 w-full">
+  <div>
+    <div class="max-w-6xl mx-auto p-6 md:p-10 w-full">
       <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
-          <h1 class="text-2xl font-bold">我的演示项目</h1>
+          <h2 class="text-xl font-bold">全部项目</h2>
           <p class="text-on-surface-variant text-sm mt-1">管理、编辑与分享您的 H5 演示</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
@@ -42,13 +41,6 @@
             >
               批量删除
             </button>
-            <router-link
-              to="/create"
-              class="px-5 py-2.5 rounded-lg bg-primary text-on-primary font-medium shadow-card hover:bg-primary-container transition flex items-center gap-1"
-            >
-              <span class="material-symbols-outlined text-[18px]">add</span>
-              新建演示
-            </router-link>
           </template>
         </div>
       </div>
@@ -58,7 +50,7 @@
 
       <div v-else-if="projects.length === 0" class="text-center py-20 bg-surface-container-low rounded-xl border border-dashed border-outline-variant">
         <span class="material-symbols-outlined text-5xl text-on-surface-variant/40">folder_open</span>
-        <p class="text-on-surface-variant mt-4 mb-4">暂无项目，从新建演示开始</p>
+        <p class="text-on-surface-variant mt-4 mb-4">暂无项目，点击顶部「新建演示」或「导入 PPT」开始</p>
         <router-link to="/create" class="text-primary font-medium hover:underline">立即创建 →</router-link>
       </div>
 
@@ -139,7 +131,6 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api/client'
-import AppShell from '../components/AppShell.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import PageLoading from '../components/PageLoading.vue'
 

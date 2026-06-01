@@ -122,6 +122,22 @@ class ProjectCreate(BaseModel):
     template_id: str | None = Field(None, description="H5 探索模板 ID")
 
 
+class AiDeckGenerateRequest(BaseModel):
+    topic: str = Field(..., min_length=2, max_length=8000, description="主题或提示词")
+    page_count: int = Field(10, ge=1, le=30, description="页数")
+    audience: str = Field("", max_length=500, description="受众")
+    style: str = Field("", max_length=500, description="风格补充")
+    tone: str = Field("专业、清晰、具说服力", max_length=200, description="语气")
+    text_density: str = Field("精炼", description="简约|精炼|详细|繁琐")
+    language: str = Field("简体中文", description="简体中文|English")
+    viewport_mode: str = Field("auto", description="auto|web|mobile")
+    background_preset: str = Field("classic_white", description="classic_white|light_gray")
+    extra_content: str = Field("", max_length=12000, description="扩写内容")
+    extra_instructions: str = Field("", max_length=2000, description="附加说明")
+    channel: str | None = Field(None, description="LLM 通道")
+    tier: str | None = Field(None, description="free|pro")
+
+
 class OrderOut(BaseModel):
     id: int
     plan_id: str

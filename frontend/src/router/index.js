@@ -5,16 +5,37 @@ const routes = [
   { path: '/login', name: 'login', component: () => import('../views/Login.vue'), meta: { title: '登录', public: true } },
   {
     path: '/',
-    name: 'home',
-    redirect: () => {
-      const { isLoggedIn, user } = useAuth()
-      if (!isLoggedIn.value) return { name: 'login' }
-      return user.value?.is_admin ? { name: 'admin' } : { name: 'templates' }
-    },
+    component: () => import('../components/WorkbenchShell.vue'),
+    meta: { requiresAuth: true, workbench: true },
+    children: [
+      {
+        path: '',
+        name: 'home',
+        redirect: () => {
+          const { user } = useAuth()
+          return user.value?.is_admin ? { name: 'admin' } : { name: 'ai-generate-start' }
+        },
+      },
+      {
+        path: 'dashboard',
+        name: 'dashboard',
+        component: () => import('../views/Dashboard.vue'),
+        meta: { title: '首页', workbenchSection: 'home' },
+      },
+      {
+        path: 'templates',
+        name: 'templates',
+        component: () => import('../views/Templates.vue'),
+        meta: { title: '模板库', workbenchSection: 'templates' },
+      },
+    ],
   },
-  { path: '/templates', name: 'templates', component: () => import('../views/Templates.vue'), meta: { title: '探索模板', requiresAuth: true } },
-  { path: '/dashboard', name: 'dashboard', component: () => import('../views/Dashboard.vue'), meta: { title: '我的项目', requiresAuth: true } },
-  { path: '/create', name: 'create', component: () => import('../views/Create.vue'), meta: { title: '新建演示', requiresAuth: true } },
+  { path: '/create', redirect: '/create/generate' },
+  { path: '/create/generate', name: 'ai-generate-start', component: () => import('../views/create/AiGenerateStart.vue'), meta: { title: '生成', requiresAuth: true } },
+  { path: '/create/generate/prompt', name: 'ai-generate-prompt', component: () => import('../views/create/AiGeneratePrompt.vue'), meta: { title: '输入提示词', requiresAuth: true } },
+  { path: '/create/generate/review', name: 'ai-generate-review', component: () => import('../views/create/AiGenerateReview.vue'), meta: { title: '提示编辑器', requiresAuth: true } },
+  { path: '/create/generate/image', name: 'ai-generate-image', component: () => import('../views/create/AiGenerateImage.vue'), meta: { title: '生成图片', requiresAuth: true } },
+  { path: '/create/blank', name: 'create-blank', component: () => import('../views/Create.vue'), meta: { title: '新建演示', requiresAuth: true } },
   { path: '/editor/:id', name: 'editor', component: () => import('../views/EditorStudio.vue'), meta: { title: '编辑器', requiresAuth: true } },
   { path: '/upgrade', name: 'upgrade', component: () => import('../views/Upgrade.vue'), meta: { title: '套餐升级', requiresAuth: true } },
   { path: '/help', name: 'help', component: () => import('../views/Help.vue'), meta: { title: '使用帮助', requiresAuth: true } },
@@ -49,7 +70,6 @@ async function waitAuthReady() {
   })
 }
 
-/** 确保已登录；未登录时仅在有「记住密码」时尝试静默登录 */
 async function ensureAuthenticated() {
   const { isLoggedIn, refreshProfile, logout, getStoredToken } = useAuth()
   if (!isLoggedIn.value) {
@@ -68,10 +88,8 @@ router.beforeEach(async (to) => {
   await waitAuthReady()
   const { isLoggedIn, user } = useAuth()
 
-  // 公开页：分享
   if (to.meta.public) return
 
-  // 登录页
   if (to.name === 'login') {
     if (to.query.from === 'logout') return
     if (isLoggedIn.value) {
@@ -82,25 +100,24 @@ router.beforeEach(async (to) => {
       if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('/admin')) {
         return redirect
       }
-      return { name: 'templates' }
+      return { name: 'ai-generate-start' }
     }
     return
   }
 
-  // 所有受保护路由（含 /admin、/editor 等）
   const authed = await ensureAuthenticated()
   if (!authed) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
 
   if (to.meta.admin && !user.value?.is_admin) {
-    return { name: 'templates' }
+    return { name: 'ai-generate-start' }
   }
 })
 
 router.afterEach((to) => {
   document.title = `${to.meta.title || '页面'} · AI智能H5演示平台`
-  if (to.meta.requiresAuth || to.meta.admin) {
+  if (to.meta.requiresAuth || to.meta.admin || to.meta.workbench) {
     fetch('/api/v1/统计/访问', { method: 'POST' }).catch(() => {})
   }
 })

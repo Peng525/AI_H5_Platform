@@ -1,7 +1,7 @@
 """项目与页面 API。"""
 import json
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -11,6 +11,7 @@ from app.deps.auth import get_current_user
 from app.deps.projects import get_owned_project, get_owned_slide
 from app.models import Project, Slide, User
 from app.schemas import (
+    AiDeckGenerateRequest,
     GenerateImageRequest,
     GenerateImageResponse,
     ProjectCreate,
@@ -24,11 +25,14 @@ from app.schemas import (
     parse_project_settings,
     project_settings_out,
 )
+from app.services.deck_generation_service import generate_deck_from_ai
 from app.services.deck_generator import new_share_slug
 from app.services.h5_template_service import get_template as get_h5_template
 from app.services.image_generator import generate_slide_image
 from app.services.llm.provider import LlmError
+from app.services.project_seed_service import reload_project, seed_project_slides
 from app.services.prompt_template_service import list_templates
+from app.services.pptx_template_parser import PptxParseError, parse_pptx_bytes
 
 router = APIRouter(prefix="/api/v1", tags=["项目"])
 
@@ -56,6 +60,19 @@ def _merge_settings(project: Project, patch: dict) -> None:
         if val is not None:
             current[key] = val
     project.settings_json = json.dumps(current, ensure_ascii=False)
+
+
+async def _seed_project_slides(
+    db: AsyncSession,
+    project: Project,
+    slides_seed: list[dict],
+    template_settings: dict,
+) -> None:
+    await seed_project_slides(db, project, slides_seed, template_settings)
+
+
+async def _reload_project(db: AsyncSession, project_id: int) -> Project:
+    return await reload_project(db, project_id)
 
 
 @router.get("/模板", summary="列出提示词模板")
@@ -104,51 +121,62 @@ async def create_project(
     db.add(project)
     await db.flush()
 
-    if slides_seed:
-        for idx, s in enumerate(slides_seed):
-            canvas_elements = s.get("canvas_elements") or []
-            chat_script = s.get("chat_script") or {}
-            db.add(
-                Slide(
-                    project_id=project.id,
-                    sort_order=idx,
-                    layout=s.get("layout", "bullets"),
-                    title=s.get("title", ""),
-                    subtitle=s.get("subtitle", ""),
-                    bullets_json=json.dumps(s.get("bullets", []), ensure_ascii=False),
-                    speaker_notes=s.get("speakerNotes", s.get("speaker_notes", "")),
-                    animation=s.get("animation", "fade"),
-                    canvas_json=json.dumps(canvas_elements, ensure_ascii=False),
-                    chat_script_json=json.dumps(chat_script, ensure_ascii=False),
-                )
-            )
-        await db.flush()
-        backgrounds: dict[str, str] = {}
-        sorted_slides = sorted(project.slides, key=lambda x: x.sort_order)
-        for slide, seed in zip(sorted_slides, slides_seed):
-            bg = seed.get("canvas_background")
-            if bg:
-                backgrounds[str(slide.id)] = bg
-        if backgrounds:
-            merged = {**template_settings, "slideBackgrounds": {**(template_settings.get("slideBackgrounds") or {}), **backgrounds}}
-            project.settings_json = json.dumps(merged, ensure_ascii=False)
-    else:
-        db.add(
-            Slide(
-                project=project,
-                sort_order=0,
-                layout="title",
-                title=body.title,
-                subtitle="点击右侧 AI 生图或手动编辑",
-                bullets_json="[]",
-            )
-        )
+    await _seed_project_slides(db, project, slides_seed, template_settings)
 
     await db.commit()
-    result = await db.execute(
-        select(Project).where(Project.id == project.id).options(selectinload(Project.slides))
+    project = await _reload_project(db, project.id)
+    return _project_out(project)
+
+
+@router.post("/项目/导入-pptx", response_model=ProjectOut, summary="上传 PPTX 并创建演示项目")
+async def import_project_pptx(
+    file: UploadFile = File(...),
+    device: str = Form("mobile"),
+    title: str | None = Form(None),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    raw = await file.read()
+    inferred_title = title or (file.filename or "导入的演示").rsplit(".", 1)[0]
+    try:
+        parsed = parse_pptx_bytes(
+            raw,
+            device=device if device in ("mobile", "web") else "mobile",
+            title=inferred_title,
+        )
+    except PptxParseError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    slides_seed = parsed.get("slides_json") or []
+    template_settings = parsed.get("settings_json") or {}
+    project = Project(
+        title=parsed.get("title") or inferred_title,
+        theme="imported",
+        share_slug=new_share_slug(),
+        user_id=user.id,
+        settings_json=json.dumps(template_settings, ensure_ascii=False),
     )
-    return _project_out(result.scalar_one())
+    db.add(project)
+    await db.flush()
+    await _seed_project_slides(db, project, slides_seed, template_settings)
+    await db.commit()
+    project = await _reload_project(db, project.id)
+    return _project_out(project)
+
+
+@router.post("/项目/ai-生成", response_model=ProjectOut, summary="AI 全量生成演示项目")
+async def ai_generate_project(
+    body: AiDeckGenerateRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        project = await generate_deck_from_ai(db, user, body)
+    except LlmError as exc:
+        msg = str(exc)
+        status = 402 if "配额" in msg else 502
+        raise HTTPException(status_code=status, detail=msg) from exc
+    return _project_out(project)
 
 
 @router.get("/项目/{project_id}", response_model=ProjectOut, summary="获取项目")

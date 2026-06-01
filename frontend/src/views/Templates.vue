@@ -1,12 +1,6 @@
 <template>
-  <div class="min-h-screen bg-background flex flex-col">
-    <AppShell />
-
-    <div class="max-w-7xl mx-auto px-3 py-4 sm:p-6 md:p-10 flex-1 w-full min-w-0">
-      <div class="mb-5 sm:mb-8">
-        <h1 class="text-xl sm:text-2xl md:text-3xl font-bold">探索模板</h1>
-      </div>
-
+  <div>
+    <div class="max-w-7xl mx-auto px-3 py-4 sm:p-6 md:p-10 w-full min-w-0">
       <div class="flex flex-col sm:flex-row gap-2 mb-5">
         <div class="flex-1 min-w-0">
           <input
@@ -150,7 +144,6 @@
 import { defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api/client'
-import AppShell from '../components/AppShell.vue'
 import EmptyState from '../components/EmptyState.vue'
 import TemplateCoverThumb from '../components/TemplateCoverThumb.vue'
 

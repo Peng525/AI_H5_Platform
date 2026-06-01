@@ -19,7 +19,10 @@ system: |
       }
     ]
   }
-  约束：页数为 {{ page_count }}；语言为简体中文；内容准确、结构清晰、适合投影阅读。
+  约束：页数为 {{ page_count }}；语言为 {{ language }}；文本密度为 {{ text_density }}；内容准确、结构清晰、适合投影阅读。
+  {% if extra_instructions and extra_instructions != "无" %}
+  附加说明：{{ extra_instructions }}
+  {% endif %}
   字符串内勿包含未转义的换行符；bullets 每项为单行文本；确保输出是合法 JSON。
   主题：{{ topic }}
   受众：{{ audience }}

@@ -90,10 +90,10 @@
           <router-link
             v-if="navMode === 'user'"
             to="/dashboard"
-            class="block px-3 py-2 text-sm hover:bg-surface-container-low lg:hidden"
+            class="block px-3 py-2 text-sm hover:bg-surface-container-low"
             @click="menuOpen = false"
           >
-            我的项目
+            我的工作台
           </router-link>
           <router-link
             to="/help"
@@ -157,7 +157,7 @@ const menuRef = ref(null)
 const quota = ref({ remaining: 5, total: 5 })
 const quotaFailed = ref(false)
 
-const logoTo = computed(() => (props.navMode === 'admin' ? '/admin' : '/templates'))
+const logoTo = computed(() => (props.navMode === 'admin' ? '/admin' : '/dashboard'))
 
 const showQuotaBar = computed(() => props.showQuota && props.navMode !== 'admin')
 
@@ -167,14 +167,10 @@ const navLinks = computed(() => {
   if (props.navMode === 'admin') {
     return [{ label: '管理控制台', to: '/admin', match: '/admin' }]
   }
-  const links = [
-    { label: '探索模板', to: '/templates', match: '/templates' },
-    { label: '我的项目', to: '/dashboard', match: '/dashboard' },
-  ]
   if (isAdmin.value) {
-    links.push({ label: '管理控制台', to: '/admin', match: '/admin' })
+    return [{ label: '管理控制台', to: '/admin', match: '/admin' }]
   }
-  return links
+  return []
 })
 
 const displayName = computed(() => user.value?.username || user.value?.email || '用户')
