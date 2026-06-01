@@ -187,6 +187,18 @@ export const api = {
   updateAdminLayout: (id, body) =>
     request(`/api/v1/管理/版式/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteAdminLayout: (id) => request(`/api/v1/管理/版式/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  startLayoutDraft: (layoutId, seed) =>
+    request(`/api/v1/管理/版式/${encodeURIComponent(layoutId)}/编辑草稿`, {
+      method: 'POST',
+      body: JSON.stringify(seed || {}),
+    }),
+  quickCreateLayoutDraft: (body) =>
+    request('/api/v1/管理/版式/快速创建', { method: 'POST', body: JSON.stringify(body || {}) }),
+  saveLayoutFromProject: (layoutId, body) =>
+    request(`/api/v1/管理/版式/${encodeURIComponent(layoutId)}/保存`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   listImagePromptTemplates: () => request('/api/v1/生图提示词'),
   listAdminImagePrompts: () => request('/api/v1/管理/生图提示词'),
   getAdminImagePrompt: (id) => request(`/api/v1/管理/生图提示词/${encodeURIComponent(id)}`),

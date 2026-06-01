@@ -2,14 +2,15 @@
   <AdminShell title="版式管理">
     <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
       <p class="text-sm text-on-surface-variant">
-        管理编辑器素材面板中的版式块。内置 14 种版式可编辑覆盖；自定义版式可新增。保存后用户在「版式」区即可使用。
+        点击「编辑」进入与用户端相同的可视化编辑器修改版式；保存后素材面板即时生效。内置 14 种版式可覆盖编辑。
       </p>
       <button
         type="button"
-        class="px-4 py-2 rounded-lg bg-primary text-on-primary text-sm font-medium"
-        @click="openCreate"
+        class="px-4 py-2 rounded-lg bg-primary text-on-primary text-sm font-medium disabled:opacity-50"
+        :disabled="!!openingAction || cooldownLeft > 0"
+        @click="quickCreate"
       >
-        新建版式
+        {{ openingAction === 'create' ? '创建中…' : cooldownLeft > 0 ? `请稍候 ${cooldownLeft}s` : '新建版式' }}
       </button>
     </div>
 
@@ -58,7 +59,14 @@
                 </span>
               </td>
               <td class="px-4 py-3 text-right space-x-2 whitespace-nowrap">
-                <button type="button" class="text-primary hover:underline" @click="openEdit(item)">编辑</button>
+                <button
+                  type="button"
+                  class="text-primary hover:underline disabled:opacity-40"
+                  :disabled="!!openingAction || cooldownLeft > 0"
+                  @click="openVisualEdit(item)"
+                >
+                  {{ openingAction === item.id ? '打开中…' : '编辑' }}
+                </button>
                 <button
                   v-if="item.overridden"
                   type="button"
@@ -82,14 +90,6 @@
       </div>
     </div>
 
-    <AdminLayoutEditor
-      :open="editor.open"
-      :mode="editor.mode"
-      :initial="editor.data"
-      :is-override-create="editor.isOverrideCreate"
-      @close="editor.open = false"
-      @saved="onSaved"
-    />
     <ConfirmDialog
       :open="!!deleteConfirm"
       title="删除版式"
@@ -113,10 +113,10 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { api } from '../../api/client'
 import AdminShell from '../../components/AdminShell.vue'
-import AdminLayoutEditor from '../../components/admin/AdminLayoutEditor.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import { useToast } from '../../composables/useToast.js'
 import {
@@ -126,6 +126,9 @@ import {
   resetLayoutBlockIds,
 } from '../../constants/layoutBlocks.js'
 
+const OPEN_COOLDOWN_MS = 3000
+
+const router = useRouter()
 const { success: toastSuccess, error: toastError } = useToast()
 const deleteConfirm = ref(null)
 const resetConfirm = ref(null)
@@ -133,7 +136,10 @@ const resetConfirm = ref(null)
 const dbLayouts = ref([])
 const loading = ref(true)
 const error = ref('')
-const editor = reactive({ open: false, mode: 'create', data: null, isOverrideCreate: false })
+const openingAction = ref(null)
+const cooldownLeft = ref(0)
+
+let cooldownTimer = null
 
 const PRIMARY_IDS = new Set(['cover-minimal', 'section-title', 'bullets-three'])
 
@@ -189,6 +195,26 @@ function mergeLayouts(dbRows) {
   })
 }
 
+function startCooldown() {
+  cooldownLeft.value = Math.ceil(OPEN_COOLDOWN_MS / 1000)
+  if (cooldownTimer) clearInterval(cooldownTimer)
+  cooldownTimer = setInterval(() => {
+    cooldownLeft.value -= 1
+    if (cooldownLeft.value <= 0) {
+      cooldownLeft.value = 0
+      clearInterval(cooldownTimer)
+      cooldownTimer = null
+    }
+  }, 1000)
+}
+
+function simplifyError(msg) {
+  if (!msg) return '打开失败，请稍后重试'
+  if (msg.includes('greenlet_spawn')) return '打开编辑草稿失败，请重启后端服务后再试'
+  if (msg.length > 120) return `${msg.slice(0, 120)}…`
+  return msg
+}
+
 async function load() {
   loading.value = true
   error.value = ''
@@ -201,43 +227,51 @@ async function load() {
   }
 }
 
-function openCreate() {
-  editor.mode = 'create'
-  editor.data = null
-  editor.isOverrideCreate = false
-  editor.open = true
+async function quickCreate() {
+  if (openingAction.value || cooldownLeft.value > 0) return
+  openingAction.value = 'create'
+  try {
+    const draft = await api.quickCreateLayoutDraft({ label: '新版式' })
+    goEditor({ layoutId: draft.layout_id, projectId: draft.project_id })
+  } catch (e) {
+    toastError(simplifyError(e.message))
+    startCooldown()
+  } finally {
+    openingAction.value = null
+  }
 }
 
-async function openEdit(item) {
+async function openVisualEdit(item) {
+  if (openingAction.value || cooldownLeft.value > 0) return
+  openingAction.value = item.id
   try {
+    let seed = null
     if (item.builtin && !item.overridden) {
       resetLayoutBlockIds()
-      const elements = buildBlock(item.id, 'iphone', 'zjy-minimal')
-      editor.mode = 'edit'
-      editor.isOverrideCreate = true
-      editor.data = {
-        id: item.id,
+      seed = {
         label: item.label,
         icon: item.icon,
         group: item.group,
         placement: item.placement,
-        canvas_background: '',
-        sort_order: item.sort_order ?? 0,
-        enabled: true,
-        elements,
+        elements: buildBlock(item.id, 'iphone', 'zjy-minimal'),
         elements_web: [],
       }
-      editor.open = true
-      return
     }
-    const detail = await api.getAdminLayout(item.id)
-    editor.mode = 'edit'
-    editor.isOverrideCreate = false
-    editor.data = detail
-    editor.open = true
+    const draft = await api.startLayoutDraft(item.id, seed)
+    goEditor({ layoutId: item.id, projectId: draft.project_id })
   } catch (e) {
-    toastError(e.message || '加载详情失败')
+    toastError(simplifyError(e.message))
+    startCooldown()
+  } finally {
+    openingAction.value = null
   }
+}
+
+function goEditor({ layoutId, projectId }) {
+  router.push({
+    path: `/editor/${projectId}`,
+    query: { adminLayout: layoutId },
+  })
 }
 
 function remove(item) {
@@ -280,9 +314,9 @@ async function onResetConfirm() {
   }
 }
 
-function onSaved() {
-  load()
-}
-
 onMounted(load)
+
+onUnmounted(() => {
+  if (cooldownTimer) clearInterval(cooldownTimer)
+})
 </script>

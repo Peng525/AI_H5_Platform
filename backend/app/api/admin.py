@@ -21,6 +21,9 @@ from app.schemas import (
     LayoutBlockCreate,
     LayoutBlockOut,
     LayoutBlockUpdate,
+    LayoutDraftOut,
+    LayoutDraftStartBody,
+    LayoutSaveFromProjectRequest,
     RelayLinkOut,
     TemplateDraftOut,
     TemplatePresetSaveRequest,
@@ -32,6 +35,12 @@ from app.services.h5_template_service import (
     delete_template,
     get_template,
     update_template,
+)
+from app.services.layout_draft_service import (
+    LayoutDraftError,
+    get_or_create_layout_draft,
+    quick_create_layout_draft,
+    save_layout_from_project,
 )
 from app.services.layout_block_service import (
     LayoutBlockError,
@@ -503,6 +512,71 @@ async def admin_delete_template(
     except H5TemplateError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"message": "已删除"}
+
+
+class LayoutQuickCreateBody(BaseModel):
+    id: str | None = Field(None, max_length=64)
+    label: str = "新版式"
+    group: str = "custom"
+    placement: str = "more"
+
+
+@router.post("/版式/快速创建", response_model=LayoutDraftOut, summary="一键创建空白版式并进入可视化编辑")
+async def admin_layout_quick_create(
+    body: LayoutQuickCreateBody | None = None,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    payload = body or LayoutQuickCreateBody()
+    try:
+        layout_id, project = await quick_create_layout_draft(
+            db,
+            admin,
+            block_id=payload.id,
+            label=payload.label,
+            group=payload.group,
+            placement=payload.placement,
+        )
+        await db.commit()
+    except LayoutDraftError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"创建版式草稿失败：{exc}") from exc
+    return LayoutDraftOut(project_id=project.id, layout_id=layout_id)
+
+
+@router.post("/版式/{block_id}/编辑草稿", response_model=LayoutDraftOut, summary="获取或创建版式可视化编辑草稿")
+async def admin_layout_edit_draft(
+    block_id: str,
+    body: LayoutDraftStartBody | None = None,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    seed = body.model_dump(exclude_unset=True) if body else None
+    try:
+        project = await get_or_create_layout_draft(db, block_id, admin, seed=seed)
+        await db.commit()
+    except LayoutDraftError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"打开版式编辑草稿失败：{exc}") from exc
+    return LayoutDraftOut(project_id=project.id, layout_id=block_id)
+
+
+@router.post("/版式/{block_id}/保存", response_model=LayoutBlockOut, summary="将草稿项目保存为版式块")
+async def admin_layout_save_from_project(
+    block_id: str,
+    body: LayoutSaveFromProjectRequest,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    meta = body.model_dump(exclude={"project_id"}, exclude_unset=True)
+    try:
+        row = await save_layout_from_project(db, block_id, body.project_id, admin, meta or None)
+        await db.commit()
+    except LayoutDraftError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return LayoutBlockOut(**{**row, "enabled": bool(row.get("enabled"))})
 
 
 @router.get("/版式", response_model=list[LayoutBlockOut], summary="版式块列表（管理）")

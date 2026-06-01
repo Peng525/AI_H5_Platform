@@ -1,7 +1,55 @@
 <template>
   <div class="h-screen flex flex-col bg-background overflow-hidden">
-    <EditorTopBar :project-id="projectId" :hide-publish="!!adminPresetId" :nav-mode="adminPresetId ? 'admin' : 'user'">
-      <template v-if="adminPresetId" #actions>
+    <EditorTopBar
+      :project-id="projectId"
+      :hide-publish="!!isAdminEditorMode"
+      :nav-mode="isAdminEditorMode ? 'admin' : 'user'"
+    >
+      <template v-if="adminLayoutId" #actions>
+        <router-link
+          to="/admin/layouts"
+          class="hidden lg:inline-flex items-center px-3 py-1.5 rounded-lg border border-outline-variant text-xs sm:text-sm hover:bg-surface-container-high whitespace-nowrap"
+        >
+          返回版式管理
+        </router-link>
+        <button
+          type="button"
+          class="hidden lg:inline-flex px-3 py-1.5 rounded-lg bg-secondary text-on-secondary text-xs sm:text-sm font-medium whitespace-nowrap"
+          @click="openLayoutSave"
+        >
+          保存版式
+        </button>
+        <div ref="adminLayoutActionsRef" class="relative lg:hidden">
+          <button
+            type="button"
+            class="px-2.5 py-1.5 rounded-lg border border-outline-variant text-xs hover:bg-surface-container-high"
+            aria-label="更多操作"
+            @click="adminLayoutActionsOpen = !adminLayoutActionsOpen"
+          >
+            <span class="material-symbols-outlined text-[20px] leading-none">more_vert</span>
+          </button>
+          <div
+            v-if="adminLayoutActionsOpen"
+            class="absolute right-0 top-full mt-1 w-44 bg-white border border-outline-variant rounded-lg shadow-lg py-1 z-50 text-sm"
+          >
+            <router-link
+              to="/admin/layouts"
+              class="block px-3 py-2 hover:bg-surface-container-low"
+              @click="adminLayoutActionsOpen = false"
+            >
+              返回版式管理
+            </router-link>
+            <button
+              type="button"
+              class="w-full text-left px-3 py-2 hover:bg-surface-container-low"
+              @click="adminLayoutActionsOpen = false; openLayoutSave()"
+            >
+              保存版式
+            </button>
+          </div>
+        </div>
+      </template>
+      <template v-else-if="adminPresetId" #actions>
         <!-- 大屏：完整按钮 -->
         <router-link
           to="/admin/templates"
@@ -15,7 +63,7 @@
         </label>
         <button
           type="button"
-          class="hidden lg:inline-flex px-3 py-1.5 rounded-lg bg-secondary text-on-secondary text-xs sm:text-sm font-medium whitespace-nowrap disabled:opacity-50"
+          class="hidden lg:inline-flex px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs sm:text-sm font-medium whitespace-nowrap disabled:opacity-50"
           :disabled="pptImporting"
           @click="openPresetSave"
         >
@@ -73,9 +121,9 @@
     <div
       v-else
       class="editor-workspace flex flex-1 min-h-0 min-w-0 relative"
-      :class="adminPresetId ? 'editor-workspace--admin-responsive overflow-hidden' : 'overflow-x-auto overflow-y-hidden'"
+      :class="isAdminEditorMode ? 'editor-workspace--admin-responsive overflow-hidden' : 'overflow-x-auto overflow-y-hidden'"
     >
-      <template v-if="adminPresetId && !isWideLayout">
+      <template v-if="isAdminEditorMode && !isWideLayout">
         <button
           type="button"
           class="admin-drawer-fab admin-drawer-fab--left"
@@ -273,6 +321,14 @@
       @close="presetSaveOpen = false"
       @saved="onPresetSaved"
     />
+    <AdminLayoutSaveDialog
+      :open="layoutSaveOpen"
+      :layout-id="adminLayoutId"
+      :project-id="projectId"
+      :initial="layoutMeta"
+      @close="layoutSaveOpen = false"
+      @saved="onLayoutSaved"
+    />
   </div>
 </template>
 
@@ -298,6 +354,7 @@ import PageLoading from '../components/PageLoading.vue'
 import EmptyState from '../components/EmptyState.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import AdminPresetSaveDialog from '../components/admin/AdminPresetSaveDialog.vue'
+import AdminLayoutSaveDialog from '../components/admin/AdminLayoutSaveDialog.vue'
 import { useToast } from '../composables/useToast.js'
 
 const COACH_KEY = 'ai_h5_editor_coach_seen'
@@ -310,21 +367,25 @@ const route = useRoute()
 const { user } = useAuth()
 const projectId = computed(() => route.params.id)
 const adminPresetId = computed(() => (typeof route.query.adminPreset === 'string' ? route.query.adminPreset : ''))
+const adminLayoutId = computed(() => (typeof route.query.adminLayout === 'string' ? route.query.adminLayout : ''))
+const isAdminEditorMode = computed(() => !!(adminPresetId.value || adminLayoutId.value))
 const isWideLayout = ref(true)
 const toolboxDrawerOpen = ref(false)
 const aiDrawerOpen = ref(false)
 const adminActionsOpen = ref(false)
+const adminLayoutActionsOpen = ref(false)
 const adminActionsRef = ref(null)
+const adminLayoutActionsRef = ref(null)
 
 const toolboxPanelClass = computed(() => {
-  if (!adminPresetId.value || isWideLayout.value) return 'shrink-0 flex min-h-0'
+  if (!isAdminEditorMode.value || isWideLayout.value) return 'shrink-0 flex min-h-0'
   return toolboxDrawerOpen.value
     ? 'fixed left-0 top-14 bottom-0 z-[56] flex min-h-0 shadow-xl'
     : 'hidden shrink-0'
 })
 
 const aiPanelClass = computed(() => {
-  if (!adminPresetId.value || isWideLayout.value) return 'shrink-0 flex min-h-0'
+  if (!isAdminEditorMode.value || isWideLayout.value) return 'shrink-0 flex min-h-0'
   return aiDrawerOpen.value
     ? 'fixed right-0 top-14 bottom-0 z-[56] flex min-h-0 shadow-xl'
     : 'hidden shrink-0'
@@ -343,6 +404,9 @@ function onAdminPptxMenuImport(e) {
 function onAdminActionsClickOutside(e) {
   if (adminActionsRef.value && !adminActionsRef.value.contains(e.target)) {
     adminActionsOpen.value = false
+  }
+  if (adminLayoutActionsRef.value && !adminLayoutActionsRef.value.contains(e.target)) {
+    adminLayoutActionsOpen.value = false
   }
 }
 
@@ -373,8 +437,10 @@ const projectLoading = ref(true)
 const loadError = ref('')
 const deleteSlideConfirm = ref(null)
 const presetSaveOpen = ref(false)
+const layoutSaveOpen = ref(false)
 const pptImporting = ref(false)
 const templateMeta = ref(null)
+const layoutMeta = ref(null)
 const showEditorCoach = ref(false)
 
 const { settings, viewport, setViewport, setScrollEffect, getSlideBackground, setSlideBackground, applyFromServer, setBgm } = useProjectEditorSettings(projectId)
@@ -451,6 +517,38 @@ async function loadTemplateMeta() {
   }
 }
 
+async function loadLayoutMeta() {
+  if (!adminLayoutId.value) {
+    layoutMeta.value = null
+    return
+  }
+  try {
+    layoutMeta.value = await api.getAdminLayout(adminLayoutId.value)
+  } catch {
+    layoutMeta.value = {
+      id: adminLayoutId.value,
+      label: adminLayoutId.value,
+      icon: 'dashboard',
+      group: 'custom',
+      placement: 'more',
+      sort_order: 100,
+      enabled: true,
+    }
+  }
+}
+
+async function openLayoutSave() {
+  await flushCanvasSave()
+  await loadLayoutMeta()
+  layoutSaveOpen.value = true
+}
+
+async function onLayoutSaved() {
+  toastSuccess('版式已保存')
+  await layoutCatalog.reload()
+  await loadLayoutMeta()
+}
+
 async function openPresetSave() {
   await flushCanvasSave()
   presetSaveOpen.value = true
@@ -519,13 +617,15 @@ onMounted(() => {
   isWideLayout.value = layoutMq.matches
   layoutMq.addEventListener('change', onLayoutMqChange)
   layoutCatalog.load()
-  if (!adminPresetId.value) {
+  if (!isAdminEditorMode.value) {
     showEditorCoach.value = !localStorage.getItem(COACH_KEY)
   }
   loadTemplateMeta()
+  loadLayoutMeta()
   load()
 })
 watch(() => route.query.adminPreset, loadTemplateMeta)
+watch(() => route.query.adminLayout, loadLayoutMeta)
 watch(() => route.params.id, load)
 onBeforeRouteLeave(async () => {
   await flushCanvasSave()
@@ -540,6 +640,10 @@ function selectSlide(slide) {
 }
 
 async function addSlide() {
+  if (adminLayoutId.value) {
+    toastError('版式编辑仅支持单页画布')
+    return
+  }
   saveElements()
   try {
     const slide = await api.addSlide(project.value.id, {
@@ -585,6 +689,10 @@ function applyLayoutBlock(blockId, slideId = null, { mode = 'append' } = {}) {
 }
 
 async function removeSlide(slideId) {
+  if (adminLayoutId.value) {
+    toastError('版式编辑仅支持单页画布')
+    return
+  }
   if ((project.value.slides?.length || 0) <= 1) {
     toastError('至少保留一页')
     return

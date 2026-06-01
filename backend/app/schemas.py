@@ -200,6 +200,34 @@ class TemplateDraftOut(BaseModel):
     template_id: str
 
 
+class LayoutDraftOut(BaseModel):
+    project_id: int
+    layout_id: str
+
+
+class LayoutDraftStartBody(BaseModel):
+    label: str | None = None
+    icon: str | None = None
+    group: str | None = None
+    placement: str | None = None
+    elements: list[dict[str, Any]] | None = None
+    elements_web: list[dict[str, Any]] | None = None
+    canvas_background: str | None = None
+    sort_order: int | None = None
+    enabled: bool | None = None
+
+
+class LayoutSaveFromProjectRequest(BaseModel):
+    project_id: int
+    label: str | None = None
+    icon: str | None = None
+    group: str | None = None
+    placement: str | None = None
+    canvas_background: str | None = None
+    sort_order: int | None = None
+    enabled: bool | None = None
+
+
 class TemplatePresetSaveRequest(BaseModel):
     project_id: int
     title: str | None = None

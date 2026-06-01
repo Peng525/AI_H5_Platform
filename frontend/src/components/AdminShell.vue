@@ -23,16 +23,6 @@
           {{ item.label }}
         </router-link>
       </nav>
-
-      <div class="p-3 border-t border-outline-variant shrink-0">
-        <router-link
-          to="/templates"
-          class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container-high"
-        >
-          <span class="material-symbols-outlined text-[20px]">storefront</span>
-          返回用户端
-        </router-link>
-      </div>
     </aside>
 
     <!-- 主内容 -->
@@ -63,13 +53,6 @@
             <p class="px-3 py-2 text-xs text-on-surface-variant border-b border-outline-variant truncate">
               {{ displayName }}
             </p>
-            <router-link
-              to="/templates"
-              class="block px-3 py-2 text-sm hover:bg-surface-container-low"
-              @click="menuOpen = false"
-            >
-              返回用户端
-            </router-link>
             <router-link
               to="/settings"
               class="block px-3 py-2 text-sm hover:bg-surface-container-low"

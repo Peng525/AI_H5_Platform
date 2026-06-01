@@ -96,8 +96,13 @@ watch(
 const cards = computed(() => (props.cards?.length ? props.cards : []))
 
 function idleSlotForIndex(cardIndex) {
-  const offset = cardIndex - activeIndex.value
-  if (offset >= 0 && offset <= 2) return offset
+  const rel = cardIndex - activeIndex.value
+  if (rel === 0) return 0
+  if (rel === 1) return 1
+  if (rel === 2) return 2
+  // 刚离开顶层的卡片保留在最远后方，避免切换完成后从 DOM 移除
+  if (rel === -1) return 2
+  if (rel === -2) return 1
   return null
 }
 
@@ -129,15 +134,18 @@ function visibleCardIndices() {
   if (phase.value === 'toNext') {
     const start = activeIndex.value
     const end = Math.min(list.length - 1, activeIndex.value + 3)
-    const indices = []
-    for (let i = start; i <= end; i += 1) indices.push(i)
-    return indices
+    const indices = new Set()
+    for (let i = start; i <= end; i += 1) indices.add(i)
+    if (start > 0) indices.add(start - 1)
+    return [...indices].sort((a, b) => a - b)
   }
 
   const end = Math.min(list.length - 1, activeIndex.value + 2)
-  const indices = []
-  for (let i = activeIndex.value; i <= end; i += 1) indices.push(i)
-  return indices
+  const indices = new Set()
+  for (let i = activeIndex.value; i <= end; i += 1) indices.add(i)
+  if (activeIndex.value > 0) indices.add(activeIndex.value - 1)
+  if (activeIndex.value > 1) indices.add(activeIndex.value - 2)
+  return [...indices].sort((a, b) => a - b)
 }
 
 function slotStyle(slot) {

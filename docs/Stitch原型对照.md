@@ -36,7 +36,7 @@
 | 用户管理（创建/编辑/配额） | `/admin/users` | ✅ |
 | H5 模板管理 | `/admin/templates` | ✅ 列表 + 可视化编辑（EditorStudio 复用） |
 | 模板保存预设 / PPT 导入 | 编辑器顶栏（adminPreset 模式） | ✅ |
-| 版式管理 | `/admin/layouts` | ✅ 自定义 `canvas_elements` 上架素材面板 |
+| 版式管理 | `/admin/layouts` | ✅ 可视化编辑（EditorStudio）；14 内置 + 自定义 |
 | 文稿提示词模板编辑 | `/admin/prompts` | ✅ |
 | 生图提示词模板 | `/admin/image-prompts` | ✅ |
 | 大模型配置（在线保存 `.env`） | `/settings` | ✅ 仅管理员 |
