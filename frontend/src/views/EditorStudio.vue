@@ -1,25 +1,61 @@
 <template>
   <div class="h-screen flex flex-col bg-background overflow-hidden">
-    <EditorTopBar :project-id="projectId" :hide-publish="!!adminPresetId">
+    <EditorTopBar :project-id="projectId" :hide-publish="!!adminPresetId" :nav-mode="adminPresetId ? 'admin' : 'user'">
       <template v-if="adminPresetId" #actions>
+        <!-- 大屏：完整按钮 -->
         <router-link
           to="/admin/templates"
-          class="hidden sm:inline-flex items-center px-3 py-1.5 rounded-lg border border-outline-variant text-xs sm:text-sm hover:bg-surface-container-high whitespace-nowrap"
+          class="hidden lg:inline-flex items-center px-3 py-1.5 rounded-lg border border-outline-variant text-xs sm:text-sm hover:bg-surface-container-high whitespace-nowrap"
         >
           返回模板管理
         </router-link>
-        <label class="inline-flex items-center px-3 py-1.5 rounded-lg border border-outline-variant text-xs sm:text-sm hover:bg-surface-container-high cursor-pointer whitespace-nowrap">
+        <label class="hidden lg:inline-flex items-center px-3 py-1.5 rounded-lg border border-outline-variant text-xs sm:text-sm hover:bg-surface-container-high cursor-pointer whitespace-nowrap">
           从 PPT 导入
           <input type="file" accept=".pptx" class="hidden" :disabled="pptImporting" @change="onAdminPptxImport" />
         </label>
         <button
           type="button"
-          class="px-3 py-1.5 rounded-lg bg-secondary text-on-secondary text-xs sm:text-sm font-medium whitespace-nowrap disabled:opacity-50"
+          class="hidden lg:inline-flex px-3 py-1.5 rounded-lg bg-secondary text-on-secondary text-xs sm:text-sm font-medium whitespace-nowrap disabled:opacity-50"
           :disabled="pptImporting"
           @click="openPresetSave"
         >
           保存为预设
         </button>
+        <!-- 小屏：更多菜单 -->
+        <div ref="adminActionsRef" class="relative lg:hidden">
+          <button
+            type="button"
+            class="px-2.5 py-1.5 rounded-lg border border-outline-variant text-xs hover:bg-surface-container-high"
+            aria-label="更多操作"
+            @click="adminActionsOpen = !adminActionsOpen"
+          >
+            <span class="material-symbols-outlined text-[20px] leading-none">more_vert</span>
+          </button>
+          <div
+            v-if="adminActionsOpen"
+            class="absolute right-0 top-full mt-1 w-44 bg-white border border-outline-variant rounded-lg shadow-lg py-1 z-50 text-sm"
+          >
+            <router-link
+              to="/admin/templates"
+              class="block px-3 py-2 hover:bg-surface-container-low"
+              @click="adminActionsOpen = false"
+            >
+              返回模板管理
+            </router-link>
+            <label class="block px-3 py-2 hover:bg-surface-container-low cursor-pointer">
+              从 PPT 导入
+              <input type="file" accept=".pptx" class="hidden" :disabled="pptImporting" @change="onAdminPptxMenuImport" />
+            </label>
+            <button
+              type="button"
+              class="w-full text-left px-3 py-2 hover:bg-surface-container-low disabled:opacity-50"
+              :disabled="pptImporting"
+              @click="adminActionsOpen = false; openPresetSave()"
+            >
+              保存为预设
+            </button>
+          </div>
+        </div>
       </template>
     </EditorTopBar>
     <div v-if="projectLoading" class="flex-1 flex items-center justify-center min-h-0">
@@ -34,7 +70,34 @@
         @action="load"
       />
     </div>
-    <div v-else class="editor-workspace flex flex-1 min-h-0 min-w-0 overflow-x-auto overflow-y-hidden relative">
+    <div
+      v-else
+      class="editor-workspace flex flex-1 min-h-0 min-w-0 relative"
+      :class="adminPresetId ? 'editor-workspace--admin-responsive overflow-hidden' : 'overflow-x-auto overflow-y-hidden'"
+    >
+      <template v-if="adminPresetId && !isWideLayout">
+        <button
+          type="button"
+          class="admin-drawer-fab admin-drawer-fab--left"
+          @click="aiDrawerOpen = false; toolboxDrawerOpen = true"
+        >
+          <span class="material-symbols-outlined text-[18px]">widgets</span>
+          工具箱
+        </button>
+        <button
+          type="button"
+          class="admin-drawer-fab admin-drawer-fab--right"
+          @click="toolboxDrawerOpen = false; aiDrawerOpen = true"
+        >
+          <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+          AI
+        </button>
+        <div
+          v-if="toolboxDrawerOpen || aiDrawerOpen"
+          class="fixed inset-0 top-14 bg-black/30 z-[55]"
+          @click="closeAdminDrawers"
+        />
+      </template>
       <div
         v-if="showEditorCoach"
         class="absolute top-3 left-1/2 -translate-x-1/2 z-[70] max-w-sm w-[calc(100%-2rem)] bg-white border border-outline-variant/60 rounded-xl px-4 py-3.5 shadow-md"
@@ -72,6 +135,7 @@
           知道了
         </button>
       </div>
+      <div :class="toolboxPanelClass">
       <EditorToolbox
         :slides="project?.slides || []"
         :current-id="current?.id"
@@ -100,6 +164,7 @@
         @open-dialogue-generator="openDialogueGenerator"
         @open-wordcloud-editor="wordCloudOpen = true"
       />
+      </div>
 
       <EditorPhoneCanvas
         class="editor-canvas-panel"
@@ -148,6 +213,7 @@
         @update:show-dialogue-preview="showDialoguePreview = $event"
       />
 
+      <div :class="aiPanelClass">
       <AiPanel
         ref="aiPanelRef"
         :image-loading="imageLoading"
@@ -157,6 +223,7 @@
         @generate-image="onGenerateImage"
         @add-image-to-page="onAddImageToPage"
       />
+      </div>
     </div>
 
     <EditorShortcutsHelp v-model:open="shortcutsHelpOpen" />
@@ -243,6 +310,47 @@ const route = useRoute()
 const { user } = useAuth()
 const projectId = computed(() => route.params.id)
 const adminPresetId = computed(() => (typeof route.query.adminPreset === 'string' ? route.query.adminPreset : ''))
+const isWideLayout = ref(true)
+const toolboxDrawerOpen = ref(false)
+const aiDrawerOpen = ref(false)
+const adminActionsOpen = ref(false)
+const adminActionsRef = ref(null)
+
+const toolboxPanelClass = computed(() => {
+  if (!adminPresetId.value || isWideLayout.value) return 'shrink-0 flex min-h-0'
+  return toolboxDrawerOpen.value
+    ? 'fixed left-0 top-14 bottom-0 z-[56] flex min-h-0 shadow-xl'
+    : 'hidden shrink-0'
+})
+
+const aiPanelClass = computed(() => {
+  if (!adminPresetId.value || isWideLayout.value) return 'shrink-0 flex min-h-0'
+  return aiDrawerOpen.value
+    ? 'fixed right-0 top-14 bottom-0 z-[56] flex min-h-0 shadow-xl'
+    : 'hidden shrink-0'
+})
+
+function closeAdminDrawers() {
+  toolboxDrawerOpen.value = false
+  aiDrawerOpen.value = false
+}
+
+function onAdminPptxMenuImport(e) {
+  adminActionsOpen.value = false
+  onAdminPptxImport(e)
+}
+
+function onAdminActionsClickOutside(e) {
+  if (adminActionsRef.value && !adminActionsRef.value.contains(e.target)) {
+    adminActionsOpen.value = false
+  }
+}
+
+let layoutMq = null
+function onLayoutMqChange(e) {
+  isWideLayout.value = e.matches
+  if (e.matches) closeAdminDrawers()
+}
 const project = ref(null)
 const current = ref(null)
 const imageLoading = ref(false)
@@ -406,6 +514,10 @@ function onBgmChange(patch) {
 onMounted(() => {
   registerCanvasFlush(flushCanvasSave)
   window.addEventListener('keydown', onKeyDown)
+  document.addEventListener('click', onAdminActionsClickOutside)
+  layoutMq = window.matchMedia('(min-width: 1024px)')
+  isWideLayout.value = layoutMq.matches
+  layoutMq.addEventListener('change', onLayoutMqChange)
   layoutCatalog.load()
   if (!adminPresetId.value) {
     showEditorCoach.value = !localStorage.getItem(COACH_KEY)
@@ -847,6 +959,8 @@ function onKeyDown(e) {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeyDown)
+  document.removeEventListener('click', onAdminActionsClickOutside)
+  layoutMq?.removeEventListener('change', onLayoutMqChange)
   unregisterCanvasFlush()
 })
 
@@ -933,6 +1047,37 @@ function onPreviewAnimation(anim) {
   scrollbar-width: thin;
 }
 
+.editor-workspace--admin-responsive :deep(.editor-canvas-panel) {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+}
+
+.admin-drawer-fab {
+  position: fixed;
+  bottom: 1.25rem;
+  z-index: 54;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 9999px;
+  background: white;
+  border: 1px solid var(--color-outline-variant, #c0c7d6);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #1b1b1c;
+}
+
+.admin-drawer-fab--left {
+  left: 1rem;
+}
+
+.admin-drawer-fab--right {
+  right: 1rem;
+}
+
 .editor-workspace :deep(.editor-canvas-panel) {
   flex: 1 1 22rem;
   min-width: 18rem;
@@ -941,6 +1086,10 @@ function onPreviewAnimation(anim) {
 @media (min-width: 1024px) {
   .editor-workspace :deep(.editor-canvas-panel) {
     flex: 1 1 28rem;
+    min-width: 24rem;
+  }
+
+  .editor-workspace--admin-responsive :deep(.editor-canvas-panel) {
     min-width: 24rem;
   }
 }

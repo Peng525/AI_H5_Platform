@@ -2,6 +2,18 @@ import { useAuth } from '../composables/useAuth'
 
 const BASE = ''
 
+let authRedirectPending = false
+
+function redirectToLogin() {
+  if (authRedirectPending) return
+  if (window.location.pathname.startsWith('/login')) return
+  authRedirectPending = true
+  const { logout } = useAuth()
+  logout()
+  const redirect = encodeURIComponent(window.location.pathname + window.location.search)
+  window.location.replace(`/login?redirect=${redirect}`)
+}
+
 async function request(path, options = {}) {
   const { authHeaders } = useAuth()
   const res = await fetch(`${BASE}${path}`, {
@@ -14,10 +26,7 @@ async function request(path, options = {}) {
   })
   const data = await res.json().catch(() => ({}))
   if (res.status === 401 && !path.includes('/认证/')) {
-    const { logout } = useAuth()
-    logout()
-    const redirect = encodeURIComponent(window.location.pathname + window.location.search)
-    window.location.replace(`/login?redirect=${redirect}`)
+    redirectToLogin()
     throw new Error('登录已过期，请重新登录')
   }
   if (!res.ok) {
@@ -39,10 +48,7 @@ async function uploadForm(path, formData) {
   })
   const data = await res.json().catch(() => ({}))
   if (res.status === 401) {
-    const { logout } = useAuth()
-    logout()
-    const redirect = encodeURIComponent(window.location.pathname + window.location.search)
-    window.location.replace(`/login?redirect=${redirect}`)
+    redirectToLogin()
     throw new Error('登录已过期，请重新登录')
   }
   if (!res.ok) {
@@ -143,7 +149,14 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ admin_remark }),
     }),
-  listAdminOrders: () => request('/api/v1/管理/订单'),
+  listAdminOrders: (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.status) q.set('status', params.status)
+    if (params.limit) q.set('limit', String(params.limit))
+    const qs = q.toString()
+    return request(`/api/v1/管理/订单${qs ? `?${qs}` : ''}`)
+  },
+  deleteExpiredAdminOrders: () => request('/api/v1/管理/订单/超时', { method: 'DELETE' }),
   listAdminUsers: (q = '') => request(`/api/v1/管理/用户?q=${encodeURIComponent(q)}`),
   createAdminUser: (body) => request('/api/v1/管理/用户', { method: 'POST', body: JSON.stringify(body) }),
   updateAdminUser: (id, body) => request(`/api/v1/管理/用户/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),

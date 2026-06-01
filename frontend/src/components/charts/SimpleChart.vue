@@ -4,17 +4,19 @@
       <div
         v-for="(v, i) in normalizedValues"
         :key="i"
-        class="flex flex-col items-center gap-0.5 flex-1 max-w-[22%] min-w-0"
+        class="flex flex-col items-center gap-0.5 flex-1 max-w-[22%] min-w-0 h-full"
       >
-        <div
-          class="w-full rounded-t-sm transition-all"
-          :style="{
-            height: barHeight(v) + '%',
-            background: segmentColor(i),
-            minHeight: '4px',
-          }"
-        />
-        <span v-if="showLabels && normalizedLabels[i]" class="text-[9px] text-gray-500 truncate w-full text-center leading-tight">
+        <div class="flex-1 w-full flex items-end min-h-0">
+          <div
+            class="w-full rounded-t-sm transition-all"
+            :style="{
+              height: barHeight(v) + '%',
+              background: segmentColor(i),
+              minHeight: '4px',
+            }"
+          />
+        </div>
+        <span v-if="showLabels && normalizedLabels[i]" class="text-[9px] text-gray-500 truncate w-full text-center leading-tight shrink-0">
           {{ normalizedLabels[i] }}
         </span>
       </div>

@@ -18,7 +18,7 @@
     </div>
 
     <p class="text-xs text-on-surface-variant mb-4">
-      收款后也可在此直接将用户改为 Pro 会员，无需走订单（适合补发或赠送）。
+      收款后也可在此直接将用户改为 Pro 会员，无需走订单（适合补发或赠送）。管理员权限可在下方开关设置，无需再手动修改 .env。
     </p>
 
     <PageLoading v-if="loading" />
@@ -29,6 +29,7 @@
             <tr class="text-left text-on-surface-variant">
               <th class="px-4 py-3 font-medium">ID</th>
               <th class="px-4 py-3 font-medium">用户名</th>
+              <th class="px-4 py-3 font-medium">角色</th>
               <th class="px-4 py-3 font-medium">会员类型</th>
               <th class="px-4 py-3 font-medium">已用 / 配额</th>
               <th class="px-4 py-3 font-medium">剩余次数</th>
@@ -40,6 +41,14 @@
             <tr v-for="u in users" :key="u.id" class="border-t border-outline-variant/50 hover:bg-surface-container-low/50">
               <td class="px-4 py-3 font-mono text-xs">{{ u.id }}</td>
               <td class="px-4 py-3">{{ u.username }}</td>
+              <td class="px-4 py-3">
+                <span
+                  class="px-2 py-0.5 rounded-full text-xs"
+                  :class="u.is_admin ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface-variant'"
+                >
+                  {{ u.is_admin ? '管理员' : '普通用户' }}
+                </span>
+              </td>
               <td class="px-4 py-3">
                 <span
                   class="px-2 py-0.5 rounded-full text-xs"
@@ -91,6 +100,10 @@
               <option value="pro">Pro 会员</option>
             </select>
           </label>
+          <label class="flex items-center gap-2 text-sm">
+            <input v-model="form.is_admin" type="checkbox" class="rounded border-outline-variant" />
+            <span>设为管理员（可访问管理控制台）</span>
+          </label>
           <label v-if="form.tier === 'free'" class="block text-sm">
             <span class="text-on-surface-variant text-xs">API 配额上限</span>
             <input v-model.number="form.quota_limit" type="number" min="0" class="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2" placeholder="留空使用系统默认" />
@@ -125,7 +138,7 @@ const modalOpen = ref(false)
 const editing = ref(null)
 const saving = ref(false)
 const formError = ref('')
-const form = ref({ username: '', password: '', tier: 'free', quota_limit: null, quota_used: 0 })
+const form = ref({ username: '', password: '', tier: 'free', quota_limit: null, quota_used: 0, is_admin: false })
 
 onMounted(loadUsers)
 
@@ -140,7 +153,7 @@ async function loadUsers() {
 
 function openCreate() {
   editing.value = null
-  form.value = { username: '', password: '', tier: 'free', quota_limit: 5, quota_used: 0 }
+  form.value = { username: '', password: '', tier: 'free', quota_limit: 5, quota_used: 0, is_admin: false }
   formError.value = ''
   modalOpen.value = true
 }
@@ -153,6 +166,7 @@ function openEdit(u) {
     tier: u.tier,
     quota_limit: u.quota_total === 9999 ? null : u.quota_total,
     quota_used: u.quota_used,
+    is_admin: !!u.is_admin,
   }
   formError.value = ''
   modalOpen.value = true
@@ -166,6 +180,7 @@ async function submitForm() {
       const body = {
         tier: form.value.tier,
         free_quota_used: form.value.quota_used,
+        is_admin: form.value.is_admin,
       }
       if (form.value.tier === 'free' && form.value.quota_limit != null) {
         body.quota_limit = form.value.quota_limit
@@ -178,6 +193,7 @@ async function submitForm() {
         password: form.value.password,
         tier: form.value.tier,
         quota_limit: form.value.tier === 'free' ? form.value.quota_limit : null,
+        is_admin: form.value.is_admin,
       })
     }
     modalOpen.value = false

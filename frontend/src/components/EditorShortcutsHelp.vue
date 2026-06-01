@@ -46,7 +46,7 @@
                   <span class="text-on-surface">{{ item.label }}</span>
                   <span class="flex flex-wrap items-center justify-end gap-1 shrink-0">
                     <template v-for="(key, ki) in item.keys" :key="ki">
-                      <span v-if="ki > 0" class="text-on-surface-variant text-xs">+</span>
+                      <span v-if="ki > 0" class="text-on-surface-variant text-sm font-medium">+</span>
                       <kbd class="kbd">{{ key }}</kbd>
                     </template>
                   </span>
@@ -92,15 +92,19 @@ watch(open, (v) => {
 <style scoped>
 .kbd {
   display: inline-block;
-  padding: 0.125rem 0.375rem;
-  font-size: 11px;
-  font-family: ui-monospace, monospace;
-  line-height: 1.4;
-  color: #1b1b1c;
-  background: #f3f4f6;
-  border: 1px solid #c0c7d6;
-  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  color: #111827;
+  background: #f9fafb;
+  border: 1px solid #9ca3af;
+  border-radius: 5px;
+  box-shadow: 0 1px 0 rgba(17, 24, 39, 0.06);
   white-space: nowrap;
+  -webkit-font-smoothing: antialiased;
 }
 
 .fade-enter-active,

@@ -1,7 +1,7 @@
 """订单创建与查询。"""
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -300,6 +300,13 @@ async def list_pending_wechat_orders(db: AsyncSession, limit: int = 50) -> list[
         .limit(limit)
     )
     return list(result.scalars().all())
+
+
+async def delete_expired_orders(db: AsyncSession) -> int:
+    """物理删除 status=expired 的订单，返回删除条数。"""
+    result = await db.execute(delete(Order).where(Order.status == "expired"))
+    await db.flush()
+    return int(result.rowcount or 0)
 
 
 async def list_claimed_orders(db: AsyncSession, limit: int = 50) -> list[Order]:

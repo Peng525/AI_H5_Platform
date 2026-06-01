@@ -100,6 +100,19 @@ export function useAuth() {
     clearPersistedSession()
   }
 
+  function cachedMe() {
+    if (!user.value?.username) return null
+    return {
+      user_id: user.value.user_id,
+      username: user.value.username,
+      tier: user.value.tier,
+      is_admin: user.value.is_admin,
+      quota_remaining: user.value.quota_remaining,
+      quota_total: user.value.quota_total,
+    }
+  }
+
+  /** 刷新用户信息；仅 401/无 token 返回 null，网络或服务端异常时保留已有会话 */
   async function refreshProfile() {
     const token = getStoredToken()
     if (!token) return null
@@ -107,7 +120,8 @@ export function useAuth() {
       const res = await fetch('/api/v1/认证/我', {
         headers: { Authorization: `Bearer ${token}` },
       })
-      if (!res.ok) return null
+      if (res.status === 401) return null
+      if (!res.ok) return cachedMe()
       const me = await res.json()
       user.value = {
         ...user.value,
@@ -124,7 +138,7 @@ export function useAuth() {
       }
       return me
     } catch {
-      return null
+      return cachedMe()
     }
   }
 

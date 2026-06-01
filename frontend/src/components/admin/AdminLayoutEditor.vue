@@ -141,6 +141,8 @@ const props = defineProps({
   open: { type: Boolean, default: false },
   mode: { type: String, default: 'create' },
   initial: { type: Object, default: null },
+  /** 编辑内置版式首次保存时走创建 */
+  isOverrideCreate: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['close', 'saved'])
@@ -235,7 +237,7 @@ async function save() {
       elements,
       elements_web,
     }
-    if (props.mode === 'create') {
+    if (props.mode === 'create' || props.isOverrideCreate) {
       body.id = form.id.trim()
       await api.createAdminLayout(body)
     } else {

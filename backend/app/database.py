@@ -47,6 +47,21 @@ async def _migrate_sqlite_columns(conn) -> None:
             sync_conn.execute(text("ALTER TABLE users ADD COLUMN tier VARCHAR(16) DEFAULT 'free'"))
         if "free_quota_used" not in names:
             sync_conn.execute(text("ALTER TABLE users ADD COLUMN free_quota_used INTEGER DEFAULT 0"))
+        if "is_admin" not in names:
+            sync_conn.execute(text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0"))
+            from app.config import settings as app_settings
+
+            env_admins = {
+                u.strip().lower()
+                for u in app_settings.admin_usernames.split(",")
+                if u.strip()
+            }
+            if env_admins:
+                for admin_name in env_admins:
+                    sync_conn.execute(
+                        text("UPDATE users SET is_admin = 1 WHERE lower(username) = :u"),
+                        {"u": admin_name},
+                    )
         slide_cols = sync_conn.execute(text("PRAGMA table_info(slides)")).fetchall()
         slide_names = {row[1] for row in slide_cols}
         if "canvas_json" not in slide_names:

@@ -7,7 +7,8 @@
       <div class="flex gap-2">
         <button
           type="button"
-          class="px-4 py-2 rounded-lg border border-outline-variant text-sm font-medium hover:bg-surface-container-low"
+          class="px-4 py-2 rounded-lg border border-outline-variant text-sm font-medium hover:bg-surface-container-low disabled:opacity-50"
+          :disabled="!!openingAction"
           @click="openImport"
         >
           从 PPT 导入
@@ -15,10 +16,10 @@
         <button
           type="button"
           class="px-4 py-2 rounded-lg bg-primary text-on-primary text-sm font-medium disabled:opacity-50"
-          :disabled="creating"
+          :disabled="!!openingAction || cooldownLeft > 0"
           @click="quickCreate"
         >
-          {{ creating ? '创建中…' : '新建模板' }}
+          {{ openingAction === 'create' ? '创建中…' : cooldownLeft > 0 ? `请稍候 ${cooldownLeft}s` : '新建模板' }}
         </button>
       </div>
     </div>
@@ -55,8 +56,22 @@
               </span>
             </td>
             <td class="px-4 py-3 text-right space-x-2 whitespace-nowrap">
-              <button type="button" class="text-primary hover:underline" @click="openVisualEdit(t)">编辑</button>
-              <button type="button" class="text-red-600 hover:underline" @click="remove(t)">删除</button>
+              <button
+                type="button"
+                class="text-primary hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
+                :disabled="!!openingAction || cooldownLeft > 0"
+                @click="openVisualEdit(t)"
+              >
+                {{ openingAction === t.id ? '打开中…' : '编辑' }}
+              </button>
+              <button
+                type="button"
+                class="text-red-600 hover:underline disabled:opacity-40"
+                :disabled="!!openingAction"
+                @click="remove(t)"
+              >
+                删除
+              </button>
             </td>
           </tr>
         </tbody>
@@ -82,7 +97,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../../api/client'
 import AdminShell from '../../components/AdminShell.vue'
@@ -90,17 +105,39 @@ import AdminTemplateEditor from '../../components/admin/AdminTemplateEditor.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import { useToast } from '../../composables/useToast.js'
 
+const OPEN_COOLDOWN_MS = 3000
+
 const router = useRouter()
 const { success: toastSuccess, error: toastError } = useToast()
 const deleteConfirm = ref(null)
 
 const templates = ref([])
 const loading = ref(true)
-const creating = ref(false)
+const openingAction = ref(null)
+const cooldownLeft = ref(0)
 const error = ref('')
 const editor = reactive({ open: false })
 
+let cooldownTimer = null
+
 onMounted(load)
+
+onUnmounted(() => {
+  if (cooldownTimer) clearInterval(cooldownTimer)
+})
+
+function startCooldown() {
+  cooldownLeft.value = Math.ceil(OPEN_COOLDOWN_MS / 1000)
+  if (cooldownTimer) clearInterval(cooldownTimer)
+  cooldownTimer = setInterval(() => {
+    cooldownLeft.value -= 1
+    if (cooldownLeft.value <= 0) {
+      cooldownLeft.value = 0
+      clearInterval(cooldownTimer)
+      cooldownTimer = null
+    }
+  }, 1000)
+}
 
 async function load() {
   loading.value = true
@@ -115,29 +152,43 @@ async function load() {
 }
 
 async function quickCreate() {
-  creating.value = true
+  if (openingAction.value || cooldownLeft.value > 0) return
+  openingAction.value = 'create'
   try {
     const draft = await api.quickCreateAdminTemplate()
     goEditor({ templateId: draft.template_id, projectId: draft.project_id })
   } catch (e) {
-    toastError(e.message || '创建失败，请重启后端服务后再试')
+    toastError(simplifyError(e.message))
+    startCooldown()
   } finally {
-    creating.value = false
+    openingAction.value = null
   }
 }
 
 function openImport() {
-  editor.mode = 'import'
+  if (openingAction.value) return
   editor.open = true
 }
 
 async function openVisualEdit(t) {
+  if (openingAction.value || cooldownLeft.value > 0) return
+  openingAction.value = t.id
   try {
     const draft = await api.startTemplateDraft(t.id)
     goEditor({ templateId: t.id, projectId: draft.project_id })
   } catch (e) {
-    toastError(e.message)
+    toastError(simplifyError(e.message))
+    startCooldown()
+  } finally {
+    openingAction.value = null
   }
+}
+
+function simplifyError(msg) {
+  if (!msg) return '打开失败，请稍后重试'
+  if (msg.includes('greenlet_spawn')) return '打开编辑草稿失败，请重启后端服务后再试'
+  if (msg.length > 120) return `${msg.slice(0, 120)}…`
+  return msg
 }
 
 function goEditor({ templateId, projectId }) {
@@ -164,7 +215,7 @@ async function onDeleteConfirm() {
     await load()
   } catch (e) {
     error.value = e.message
-    toastError(e.message)
+    toastError(simplifyError(e.message))
   }
 }
 </script>

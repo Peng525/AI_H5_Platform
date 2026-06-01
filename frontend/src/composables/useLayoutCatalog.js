@@ -15,6 +15,15 @@ function mapMeta(block) {
   return { id: block.id, label: block.label, icon: block.icon || 'dashboard' }
 }
 
+function dbMetaFor(id) {
+  const db = blocks.value.find((b) => b.id === id)
+  return db ? mapMeta(db) : null
+}
+
+function mergeMetaList(builtinList) {
+  return builtinList.map((item) => dbMetaFor(item.id) || item)
+}
+
 export function useLayoutCatalog() {
   async function load() {
     if (loaded.value) return blocks.value
@@ -46,19 +55,23 @@ export function useLayoutCatalog() {
 
   function getPrimaryLayoutItems() {
     const custom = blocks.value.filter((b) => b.placement === 'primary').map(mapMeta)
-    const builtins = PRIMARY_LAYOUT_SHORTCUTS.filter((x) => x.id !== '__table__')
+    const builtins = mergeMetaList(PRIMARY_LAYOUT_SHORTCUTS.filter((x) => x.id !== '__table__'))
     const table = PRIMARY_LAYOUT_SHORTCUTS.find((x) => x.addType === 'table')
-    return [...builtins, ...custom, table].filter(Boolean)
+    const seen = new Set(builtins.map((b) => b.id))
+    const extraCustom = custom.filter((c) => !seen.has(c.id))
+    return [...builtins, ...extraCustom, table].filter(Boolean)
   }
 
   function getMoreLayoutItems() {
-    const builtin = getMoreLayoutBlocks()
+    const builtin = mergeMetaList(getMoreLayoutBlocks())
     const custom = blocks.value.filter((b) => b.placement === 'more').map(mapMeta)
-    return [...builtin, ...custom]
+    const seen = new Set(builtin.map((b) => b.id))
+    const extraCustom = custom.filter((c) => !seen.has(c.id))
+    return [...builtin, ...extraCustom]
   }
 
   function getPickerLayoutItems() {
-    const builtin = [...BUSINESS_LAYOUT_BLOCKS, ...STORY_LAYOUT_BLOCKS]
+    const builtin = mergeMetaList([...BUSINESS_LAYOUT_BLOCKS, ...STORY_LAYOUT_BLOCKS])
     const custom = blocks.value.map(mapMeta)
     const seen = new Set()
     return [...builtin, ...custom].filter((item) => {

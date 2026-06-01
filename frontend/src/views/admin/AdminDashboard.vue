@@ -1,7 +1,14 @@
 <template>
   <AdminShell title="数据仪表盘">
-    <PageLoading v-if="loading" />
-    <template v-else-if="data">
+    <div v-if="dashboardLoading" class="mb-6">
+      <PageLoading />
+    </div>
+    <div v-else-if="dashboardError" class="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+      仪表盘数据加载失败：{{ dashboardError }}
+      <button type="button" class="ml-3 underline" @click="loadDashboard">重试</button>
+    </div>
+
+    <template v-if="data">
       <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <StatCard icon="visibility" label="今日访问" :value="data.visits_today" suffix="次" color="primary" />
         <StatCard icon="calendar_month" label="近 7 日访问" :value="data.visits_7d" suffix="次" color="secondary" />
@@ -82,11 +89,35 @@
           :summary="`近 30 日总访问 ${data.visits_30d} 次 · 注册用户 ${data.users_total}`"
         />
       </section>
+    </template>
 
-      <section class="bg-white rounded-xl border border-outline-variant p-5 shadow-card">
-        <div class="flex items-center justify-between mb-4">
+    <section class="bg-white rounded-xl border border-outline-variant p-5 shadow-card">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
           <h2 class="font-semibold text-sm">近期购买订单</h2>
-          <span class="text-xs text-on-surface-variant">共 {{ data.orders_total }} 笔</span>
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="inline-flex rounded-lg border border-outline-variant p-0.5 bg-surface-container-low">
+              <button
+                v-for="tab in orderTabs"
+                :key="tab.id"
+                type="button"
+                class="px-3 py-1 text-xs rounded-md transition-colors"
+                :class="orderFilter === tab.id ? 'bg-white text-primary font-medium shadow-sm' : 'text-on-surface-variant hover:text-on-surface'"
+                @click="setOrderFilter(tab.id)"
+              >
+                {{ tab.label }}
+              </button>
+            </div>
+            <button
+              v-if="orderFilter === 'expired'"
+              type="button"
+              class="px-3 py-1.5 text-xs rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
+              :disabled="!orders.length || deletingExpired"
+              @click="promptDeleteExpired"
+            >
+              一键删除已超时（{{ orders.length }} 笔）
+            </button>
+            <span class="text-xs text-on-surface-variant whitespace-nowrap">共 {{ orders.length }} 笔</span>
+          </div>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
@@ -101,11 +132,14 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-if="!data.recent_orders.length">
+              <tr v-if="ordersLoading">
+                <td colspan="6" class="py-8 text-center text-on-surface-variant">加载中…</td>
+              </tr>
+              <tr v-else-if="!orders.length">
                 <td colspan="6" class="py-8 text-center text-on-surface-variant">暂无订单</td>
               </tr>
               <tr
-                v-for="o in data.recent_orders"
+                v-for="o in orders"
                 :key="o.id"
                 class="border-b border-outline-variant/50 hover:bg-surface-container-low"
               >
@@ -122,8 +156,6 @@
           </table>
         </div>
       </section>
-    </template>
-    <p v-else-if="error" class="text-red-600">{{ error }}</p>
 
     <ConfirmDialog
       :open="!!confirmDialog"
@@ -132,7 +164,7 @@
       :confirm-text="confirmDialog?.confirmText || '确定'"
       :cancel-text="confirmDialog?.cancelText || '取消'"
       :danger="confirmDialog?.danger"
-      :loading="!!confirmingId"
+      :loading="!!confirmingId || deletingExpired"
       @confirm="onConfirmDialog"
       @cancel="confirmDialog = null"
     />
@@ -152,25 +184,67 @@ import { useToast } from '../../composables/useToast.js'
 const { error: toastError, success: toastSuccess } = useToast()
 
 const data = ref(null)
-const loading = ref(true)
-const error = ref('')
+const dashboardLoading = ref(true)
+const dashboardError = ref('')
 const relayLink = ref(null)
 const confirmingId = ref(null)
+const deletingExpired = ref(false)
 const confirmDialog = ref(null)
+const orders = ref([])
+const ordersLoading = ref(false)
+const orderFilter = ref('all')
+
+const orderTabs = [
+  { id: 'all', label: '全部' },
+  { id: 'paid', label: '已支付' },
+  { id: 'expired', label: '已超时' },
+]
 
 onMounted(async () => {
-  await Promise.all([loadDashboard(), loadRelayLink()])
+  await Promise.all([loadDashboard(), loadRelayLink(), loadOrders()])
 })
 
+async function loadOrders() {
+  ordersLoading.value = true
+  try {
+    const params = { limit: 50 }
+    if (orderFilter.value !== 'all') params.status = orderFilter.value
+    orders.value = await api.listAdminOrders(params)
+  } catch (e) {
+    toastError(e.message || '加载订单失败')
+    orders.value = []
+  } finally {
+    ordersLoading.value = false
+  }
+}
+
+function setOrderFilter(id) {
+  if (orderFilter.value === id) return
+  orderFilter.value = id
+  loadOrders()
+}
+
+function promptDeleteExpired() {
+  if (!orders.value.length) return
+  confirmDialog.value = {
+    title: '删除已超时订单',
+    message: `确定删除全部 ${orders.value.length} 笔已超时订单？此操作不可撤销。`,
+    confirmText: '全部删除',
+    cancelText: '取消',
+    danger: true,
+    action: 'deleteExpired',
+  }
+}
+
 async function loadDashboard() {
-  loading.value = true
-  error.value = ''
+  dashboardLoading.value = true
+  dashboardError.value = ''
   try {
     data.value = await api.getAdminDashboard()
   } catch (e) {
-    error.value = e.message
+    dashboardError.value = e.message || '加载失败'
   } finally {
-    loading.value = false
+    dashboardLoading.value = false
   }
 }
 
@@ -206,7 +280,24 @@ async function rejectOrder(o) {
 
 async function onConfirmDialog() {
   const dlg = confirmDialog.value
-  if (!dlg?.order) return
+  if (!dlg) return
+
+  if (dlg.action === 'deleteExpired') {
+    deletingExpired.value = true
+    try {
+      const res = await api.deleteExpiredAdminOrders()
+      toastSuccess(`已删除 ${res.deleted} 笔已超时订单`)
+      confirmDialog.value = null
+      await Promise.all([loadDashboard(), loadOrders()])
+    } catch (e) {
+      toastError(e.message)
+    } finally {
+      deletingExpired.value = false
+    }
+    return
+  }
+
+  if (!dlg.order) return
   const o = dlg.order
   confirmingId.value = o.id
   try {
@@ -218,7 +309,7 @@ async function onConfirmDialog() {
       toastSuccess('已拒绝该订单')
     }
     confirmDialog.value = null
-    await loadDashboard()
+    await Promise.all([loadDashboard(), loadOrders()])
   } catch (e) {
     toastError(e.message)
   } finally {

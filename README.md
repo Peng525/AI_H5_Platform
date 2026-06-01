@@ -15,7 +15,7 @@ docker compose up -d --build
 
 2. 浏览器打开 **http://localhost:8080**
 
-3. 使用**邮箱注册/登录**；在 `.env` 的 `ADMIN_USERNAMES` 中配置的邮箱可进入管理控制台 `/admin`
+3. 使用**邮箱注册/登录**；管理员可在用户管理页授予，或 `.env` 的 `ADMIN_USERNAMES` 配置邮箱（兜底）
 
 **国内 Docker Hub 较慢时：**
 
@@ -50,7 +50,7 @@ docker compose -f docker-compose.yml -f docker-compose.cn.yml up -d --build
 | 变量 | 说明 |
 |------|------|
 | `JWT_SECRET` | 登录令牌密钥（随机长字符串） |
-| `ADMIN_USERNAMES` | 管理员邮箱，逗号分隔 |
+| `ADMIN_USERNAMES` | 管理员邮箱（逗号分隔，启动时同步至 `users.is_admin`，兜底授权） |
 | `CAPTCHA_PROVIDER` | `mock`（开发）或 `tencent`（上线推荐） |
 | `LLM_RELAY_*` / `LLM_OFFICIAL_*` | AI 文稿与配图通道 |
 | `RELAY_DASHBOARD_RECHARGE_URL` | 管理端「前往中转平台钱包」链接（可选；NovAI 示例见下） |
@@ -69,21 +69,21 @@ RELAY_DASHBOARD_RECHARGE_URL=https://once-cf.novai.su/wallet
 
 ## 管理员控制台
 
-登录邮箱须在 `.env` 的 `ADMIN_USERNAMES` 中；登录后自动进入 `/admin`。
+管理员可在 `/admin/users` 勾选「设为管理员」，或登录邮箱在 `.env` 的 `ADMIN_USERNAMES` 中；登录后自动进入 `/admin`。
 
 | 页面 | 功能 |
 |------|------|
 | `/admin` | 今日/近 7 日访问、成交订单与成交额、近 14 日访问趋势图、待支付微信订单确认、近期订单列表、**中转 API 充值外链** |
-| `/admin/users` | 创建用户、改会员档位、调整 API 配额 |
+| `/admin/users` | 创建用户、改会员档位、调整 API 配额、**UI 授予管理员** |
 | `/admin/templates` | H5 探索模板 CRUD、可视化编辑（EditorStudio）、保存预设、PPTX 导入 |
-| `/admin/layouts` | 素材版式块管理 |
-| `/admin/prompts` | 文稿提示词（全量生成 / 单页改写） |
+| `/admin/layouts` | **14 内置版式 + 自定义**；内置可覆盖编辑与恢复默认 |
+| `/admin/prompts` | 文稿提示词（Gamma 三栏布局：设置 / System·User / 说明） |
 | `/admin/image-prompts` | 生图提示词模板 |
 | `/settings` | 大模型通道与 `.env` 在线保存 |
 
 **中转 API 充值：** 配置 `RELAY_DASHBOARD_RECHARGE_URL` 后，仪表盘显示「前往中转平台钱包」。余额须在中转站控制台用账号密码登录查看；`LLM_RELAY_API_KEY` 只负责调模型，不能代替网页登录查余额。
 
-**H5 模板可视化编辑：** `/admin/templates` 点「编辑」进入与用户端相同的三栏编辑器（版式、音乐、素材、AI）；顶栏「保存为预设」写回探索模板库；「从 PPT 导入」可替换草稿内容。模板编辑草稿不会出现在「我的项目」列表。
+**H5 模板可视化编辑：** `/admin/templates` 点「编辑」进入三栏编辑器；顶栏仅显示「管理控制台」（无探索模板/我的项目）；小屏侧栏以抽屉打开。顶栏「保存为预设」写回探索模板库；「从 PPT 导入」可替换草稿内容。
 
 侧栏「返回用户端 / 退出登录」固定于屏幕底部；右侧主内容区独立滚动，长页面无需滚到底部才能退出。
 

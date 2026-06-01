@@ -1,9 +1,25 @@
 """应用配置（从环境变量读取）。"""
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_BACKEND_ROOT = Path(__file__).resolve().parent.parent
+_PROJECT_ROOT = _BACKEND_ROOT.parent
+
+
+def _env_files() -> tuple[str, ...]:
+    """backend/.env 与项目根 .env（Docker 挂载 ../.env）均尝试加载。"""
+    candidates = (_BACKEND_ROOT / ".env", _PROJECT_ROOT / ".env")
+    existing = tuple(str(p) for p in candidates if p.is_file())
+    return existing or (".env",)
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=_env_files(),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     app_name: str = "AI智能H5演示平台"
     app_port: int = 8080

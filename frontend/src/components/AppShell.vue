@@ -4,7 +4,7 @@
   >
     <div class="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0 flex-1">
       <router-link
-        to="/templates"
+        :to="logoTo"
         class="text-sm sm:text-base md:text-lg font-bold text-primary truncate min-w-0"
         title="AI智能H5演示平台"
       >
@@ -28,14 +28,14 @@
 
     <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
       <span
-        v-if="showQuota"
+        v-if="showQuotaBar"
         class="hidden md:inline-flex items-center gap-1 text-xs text-on-surface-variant bg-surface-container-low px-2 py-1 rounded-full whitespace-nowrap"
         :title="quotaFailed ? '配额加载失败' : undefined"
       >
         配额 {{ quotaFailed ? '—' : `${quota.remaining}/${quota.total}` }}
       </span>
       <router-link
-        v-if="user?.tier !== 'pro'"
+        v-if="showUpgradeLink"
         to="/upgrade"
         class="hidden sm:inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200"
       >
@@ -81,13 +81,14 @@
           v-if="menuOpen"
           class="absolute right-0 top-full mt-1 w-48 sm:w-52 bg-white border border-outline-variant rounded-lg shadow-lg py-1 z-50"
         >
-          <p v-if="showQuota" class="px-3 py-2 text-xs text-on-surface-variant border-b border-outline-variant md:hidden">
+          <p v-if="showQuotaBar" class="px-3 py-2 text-xs text-on-surface-variant border-b border-outline-variant md:hidden">
             配额 {{ quotaFailed ? '—' : `${quota.remaining}/${quota.total}` }}
           </p>
           <p class="px-3 py-2 text-xs text-on-surface-variant border-b border-outline-variant truncate">
             {{ displayName }}
           </p>
           <router-link
+            v-if="navMode === 'user'"
             to="/dashboard"
             class="block px-3 py-2 text-sm hover:bg-surface-container-low lg:hidden"
             @click="menuOpen = false"
@@ -143,6 +144,8 @@ const props = defineProps({
   projectId: { type: [String, Number], default: null },
   showQuota: { type: Boolean, default: true },
   hidePublish: { type: Boolean, default: false },
+  /** user = 用户端导航；admin = 管理/模板编辑场景 */
+  navMode: { type: String, default: 'user', validator: (v) => ['user', 'admin'].includes(v) },
 })
 
 const route = useRoute()
@@ -154,7 +157,16 @@ const menuRef = ref(null)
 const quota = ref({ remaining: 5, total: 5 })
 const quotaFailed = ref(false)
 
+const logoTo = computed(() => (props.navMode === 'admin' ? '/admin' : '/templates'))
+
+const showQuotaBar = computed(() => props.showQuota && props.navMode !== 'admin')
+
+const showUpgradeLink = computed(() => props.navMode !== 'admin' && user.value?.tier !== 'pro')
+
 const navLinks = computed(() => {
+  if (props.navMode === 'admin') {
+    return [{ label: '管理控制台', to: '/admin', match: '/admin' }]
+  }
   const links = [
     { label: '探索模板', to: '/templates', match: '/templates' },
     { label: '我的项目', to: '/dashboard', match: '/dashboard' },

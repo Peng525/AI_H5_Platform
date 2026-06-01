@@ -16,6 +16,7 @@ class User(Base):
     tier: Mapped[str] = mapped_column(String(16), default="free")
     free_quota_used: Mapped[int] = mapped_column(Integer, default=0)
     quota_limit: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
+    is_admin: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     projects: Mapped[list["Project"]] = relationship(back_populates="owner")

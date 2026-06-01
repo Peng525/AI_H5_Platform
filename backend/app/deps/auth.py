@@ -10,8 +10,10 @@ from app.models import User
 
 
 def is_admin_user(user: User) -> bool:
-    allowed = {u.strip() for u in settings.admin_usernames.split(",") if u.strip()}
-    return user.username in allowed
+    if getattr(user, "is_admin", False):
+        return True
+    allowed = {u.strip().lower() for u in settings.admin_usernames.split(",") if u.strip()}
+    return user.username.strip().lower() in allowed
 
 
 async def get_current_user(

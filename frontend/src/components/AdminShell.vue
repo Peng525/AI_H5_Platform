@@ -7,10 +7,7 @@
           <div class="w-9 h-9 rounded-lg bg-primary text-on-primary flex items-center justify-center font-bold text-sm">
             AD
           </div>
-          <div>
-            <p class="text-sm font-bold">管理控制台</p>
-            <p class="text-[10px] text-on-surface-variant truncate max-w-[120px]">{{ user?.username }}</p>
-          </div>
+          <p class="text-sm font-bold">管理控制台</p>
         </div>
       </div>
 
@@ -27,7 +24,7 @@
         </router-link>
       </nav>
 
-      <div class="p-3 border-t border-outline-variant space-y-1 shrink-0">
+      <div class="p-3 border-t border-outline-variant shrink-0">
         <router-link
           to="/templates"
           class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container-high"
@@ -35,21 +32,60 @@
           <span class="material-symbols-outlined text-[20px]">storefront</span>
           返回用户端
         </router-link>
-        <button
-          type="button"
-          class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50"
-          @click="logoutOpen = true"
-        >
-          <span class="material-symbols-outlined text-[20px]">logout</span>
-          退出登录
-        </button>
       </div>
     </aside>
 
     <!-- 主内容 -->
     <div class="flex-1 flex flex-col min-h-0 min-w-0">
-      <header class="h-14 border-b border-outline-variant bg-white flex items-center px-6 shrink-0">
+      <header class="h-14 border-b border-outline-variant bg-white flex items-center justify-between px-6 shrink-0">
         <h1 class="text-lg font-semibold">{{ title }}</h1>
+        <div ref="menuRef" class="relative">
+          <button
+            type="button"
+            class="flex items-center gap-1.5 max-w-[12rem] pl-1 pr-2 py-1 rounded-lg hover:bg-surface-container-high text-sm min-w-0"
+            :title="displayName"
+            @click="menuOpen = !menuOpen"
+          >
+            <span class="w-7 h-7 shrink-0 rounded-full bg-primary text-on-primary flex items-center justify-center text-xs font-bold">
+              {{ avatarLetter }}
+            </span>
+            <span class="truncate text-sm text-on-surface font-medium min-w-0">{{ displayName }}</span>
+            <span
+              class="shrink-0 text-[10px] text-on-surface-variant transition-transform"
+              :class="menuOpen ? 'rotate-180' : ''"
+              aria-hidden="true"
+            >▼</span>
+          </button>
+          <div
+            v-if="menuOpen"
+            class="absolute right-0 top-full mt-1 w-52 bg-white border border-outline-variant rounded-lg shadow-lg py-1 z-50"
+          >
+            <p class="px-3 py-2 text-xs text-on-surface-variant border-b border-outline-variant truncate">
+              {{ displayName }}
+            </p>
+            <router-link
+              to="/templates"
+              class="block px-3 py-2 text-sm hover:bg-surface-container-low"
+              @click="menuOpen = false"
+            >
+              返回用户端
+            </router-link>
+            <router-link
+              to="/settings"
+              class="block px-3 py-2 text-sm hover:bg-surface-container-low"
+              @click="menuOpen = false"
+            >
+              系统设置
+            </router-link>
+            <button
+              type="button"
+              class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+              @click="openLogout"
+            >
+              退出登录
+            </button>
+          </div>
+        </div>
       </header>
       <main class="flex-1 overflow-y-auto p-6">
         <slot />
@@ -69,7 +105,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ConfirmDialog from './ConfirmDialog.vue'
 import { useAuth } from '../composables/useAuth'
@@ -80,8 +116,13 @@ defineProps({
 
 const route = useRoute()
 const router = useRouter()
-const { user, performLogout } = useAuth()
+const { user, refreshProfile, performLogout } = useAuth()
 const logoutOpen = ref(false)
+const menuOpen = ref(false)
+const menuRef = ref(null)
+
+const displayName = computed(() => user.value?.username || user.value?.email || '管理员')
+const avatarLetter = computed(() => displayName.value.charAt(0).toUpperCase())
 
 const navItems = [
   { label: '数据仪表盘', to: '/admin', match: '/admin', icon: 'dashboard' },
@@ -98,8 +139,26 @@ function isActive(match) {
   return route.path.startsWith(match)
 }
 
+function openLogout() {
+  menuOpen.value = false
+  logoutOpen.value = true
+}
+
 function onLogoutConfirm() {
   logoutOpen.value = false
   performLogout(router)
 }
+
+function onClickOutside(e) {
+  if (menuRef.value && !menuRef.value.contains(e.target)) menuOpen.value = false
+}
+
+onMounted(async () => {
+  document.addEventListener('click', onClickOutside)
+  if (!user.value?.username) {
+    await refreshProfile()
+  }
+})
+
+onUnmounted(() => document.removeEventListener('click', onClickOutside))
 </script>

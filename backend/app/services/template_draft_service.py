@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -62,14 +62,20 @@ def project_to_template_payload(project: Project) -> tuple[list[dict[str, Any]],
     return slides_json, settings_dict
 
 
+async def _load_project_slides(db: AsyncSession, project_id: int) -> list[Slide]:
+    result = await db.execute(
+        select(Slide).where(Slide.project_id == project_id).order_by(Slide.sort_order)
+    )
+    return list(result.scalars().all())
+
+
 async def _seed_project_slides(
     db: AsyncSession,
     project: Project,
     slides_seed: list[dict],
     template_settings: dict,
 ) -> None:
-    for slide in list(project.slides):
-        await db.delete(slide)
+    await db.execute(delete(Slide).where(Slide.project_id == project.id))
     await db.flush()
 
     if not slides_seed:
@@ -105,10 +111,9 @@ async def _seed_project_slides(
             )
         )
     await db.flush()
-    await db.refresh(project, attribute_names=["slides"])
 
+    sorted_slides = await _load_project_slides(db, project.id)
     backgrounds: dict[str, str] = {}
-    sorted_slides = sorted(project.slides, key=lambda x: x.sort_order)
     for slide, seed in zip(sorted_slides, slides_seed):
         bg = seed.get("canvas_background")
         if bg:
@@ -195,8 +200,12 @@ async def get_or_create_template_draft(
     db.add(project)
     await db.flush()
     await _seed_project_slides(db, project, slides_seed, template_settings)
-    await db.refresh(project, attribute_names=["slides"])
-    return project
+    result = await db.execute(
+        select(Project)
+        .where(Project.id == project.id)
+        .options(selectinload(Project.slides))
+    )
+    return result.scalar_one()
 
 
 async def get_owned_template_draft(
@@ -270,5 +279,4 @@ async def apply_parsed_template_to_draft(
     if parsed.get("title"):
         project.title = parsed["title"]
     await db.flush()
-    await db.refresh(project, attribute_names=["slides"])
-    return project
+    return await get_owned_template_draft(db, template_id, project_id, admin)

@@ -3,13 +3,13 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.auth import pwd_context
 from app.database import get_db
-from app.deps.auth import require_admin
+from app.deps.auth import is_admin_user, require_admin
 from app.models import Order, User
 from app.schemas import (
     H5TemplateCreate,
@@ -60,6 +60,7 @@ from app.services.template_draft_service import (
 from app.services.order_service import (
     OrderServiceError,
     confirm_order_payment,
+    delete_expired_orders,
     expire_stale_orders,
     get_order_by_id,
     list_pending_wechat_orders,
@@ -71,6 +72,8 @@ from app.services.visits import visit_stats
 
 router = APIRouter(prefix="/api/v1/管理", tags=["管理"])
 
+ORDER_STATUS_FILTER = frozenset({"paid", "expired", "pending", "claimed", "rejected", "failed"})
+
 
 class AdminUserOut(BaseModel):
     id: int
@@ -79,6 +82,7 @@ class AdminUserOut(BaseModel):
     quota_used: int
     quota_total: int
     quota_remaining: int
+    is_admin: bool = False
     created_at: datetime | None = None
 
 
@@ -87,6 +91,7 @@ class AdminUserCreate(BaseModel):
     password: str = Field(..., min_length=6)
     tier: str = Field("free", description="free | pro")
     quota_limit: int | None = Field(None, description="免费档配额上限，留空用系统默认")
+    is_admin: bool = False
 
 
 class AdminUserUpdate(BaseModel):
@@ -94,6 +99,7 @@ class AdminUserUpdate(BaseModel):
     quota_limit: int | None = None
     free_quota_used: int | None = Field(None, ge=0)
     password: str | None = Field(None, min_length=6)
+    is_admin: bool | None = None
 
 
 class AdminOrderOut(BaseModel):
@@ -110,6 +116,10 @@ class AdminOrderOut(BaseModel):
     quota_remaining: int
     created_at: datetime | None = None
     claimed_at: datetime | None = None
+
+
+class BulkDeleteExpiredOut(BaseModel):
+    deleted: int
 
 
 class AdminDashboardOut(BaseModel):
@@ -135,8 +145,21 @@ def _user_out(user: User) -> AdminUserOut:
         quota_used=user.free_quota_used,
         quota_total=total,
         quota_remaining=quota_remaining(user),
+        is_admin=is_admin_user(user),
         created_at=user.created_at,
     )
+
+
+async def _ensure_admin_remains(db: AsyncSession, target: User, new_is_admin: bool) -> None:
+    if new_is_admin:
+        return
+    old_flag = target.is_admin
+    target.is_admin = False
+    result = await db.execute(select(User))
+    has_any = any(is_admin_user(u) for u in result.scalars().all())
+    target.is_admin = old_flag
+    if not has_any:
+        raise HTTPException(status_code=400, detail="至少需要保留一名管理员")
 
 
 def _order_out(order: Order, user: User | None = None) -> AdminOrderOut:
@@ -205,11 +228,25 @@ async def list_orders(
     _admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
     limit: int = Query(50, ge=1, le=200),
+    status: str | None = Query(None, description="按状态筛选：paid / expired / pending / claimed / rejected / failed"),
 ):
-    result = await db.execute(
-        select(Order).options(selectinload(Order.user)).order_by(Order.created_at.desc()).limit(limit)
-    )
+    if status is not None and status not in ORDER_STATUS_FILTER:
+        raise HTTPException(status_code=400, detail="无效的订单状态")
+    stmt = select(Order).options(selectinload(Order.user)).order_by(Order.created_at.desc()).limit(limit)
+    if status:
+        stmt = stmt.where(Order.status == status)
+    result = await db.execute(stmt)
     return [_order_out(o) for o in result.scalars().all()]
+
+
+@router.delete("/订单/超时", response_model=BulkDeleteExpiredOut, summary="批量删除已超时订单")
+async def admin_delete_expired_orders(
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    deleted = await delete_expired_orders(db)
+    await db.commit()
+    return BulkDeleteExpiredOut(deleted=deleted)
 
 
 @router.get("/用户", response_model=list[AdminUserOut], summary="用户列表")
@@ -241,6 +278,7 @@ async def create_user(
         tier=body.tier,
         free_quota_used=0,
         quota_limit=body.quota_limit,
+        is_admin=body.is_admin,
     )
     db.add(user)
     await db.commit()
@@ -266,6 +304,9 @@ async def update_user(
         user.free_quota_used = body.free_quota_used
     if body.password:
         user.password_hash = pwd_context.hash(body.password)
+    if body.is_admin is not None:
+        await _ensure_admin_remains(db, user, body.is_admin)
+        user.is_admin = body.is_admin
     await db.commit()
     await db.refresh(user)
     return _user_out(user)

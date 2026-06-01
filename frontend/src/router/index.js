@@ -51,14 +51,14 @@ async function waitAuthReady() {
 
 /** 确保已登录；未登录时仅在有「记住密码」时尝试静默登录 */
 async function ensureAuthenticated() {
-  const { isLoggedIn, refreshProfile, logout } = useAuth()
+  const { isLoggedIn, refreshProfile, logout, getStoredToken } = useAuth()
   if (!isLoggedIn.value) {
     const ok = await tryRememberLogin()
     if (!ok) return false
   }
   const me = await refreshProfile()
   if (!me) {
-    logout()
+    if (getStoredToken()) logout()
     return false
   }
   return true
@@ -66,7 +66,7 @@ async function ensureAuthenticated() {
 
 router.beforeEach(async (to) => {
   await waitAuthReady()
-  const { isLoggedIn, user, logout } = useAuth()
+  const { isLoggedIn, user } = useAuth()
 
   // 公开页：分享
   if (to.meta.public) return
@@ -94,8 +94,7 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.admin && !user.value?.is_admin) {
-    logout()
-    return { name: 'login', query: { redirect: to.fullPath } }
+    return { name: 'templates' }
   }
 })
 
