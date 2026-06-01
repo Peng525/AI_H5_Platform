@@ -100,8 +100,11 @@ function idleSlotForIndex(cardIndex) {
   if (rel === 0) return 0
   if (rel === 1) return 1
   if (rel === 2) return 2
-  // 刚离开顶层的卡片保留在最远后方，避免切换完成后从 DOM 移除
-  if (rel === -1) return 2
+  // 刚离开顶层的卡片保留在后方；仅当仍有更后卡片时才用最远槽位，避免 2 张卡组 idle 时整体放大
+  if (rel === -1) {
+    const hasForwardBack = activeIndex.value + 1 < cards.value.length
+    return hasForwardBack ? 2 : 1
+  }
   if (rel === -2) return 1
   return null
 }
