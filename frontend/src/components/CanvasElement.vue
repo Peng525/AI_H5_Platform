@@ -138,22 +138,23 @@
 
     <div
       v-else-if="element.type === 'chartStack'"
-      class="w-full h-full overflow-hidden relative"
-      :class="readonly ? '' : 'cursor-move'"
+      class="w-full h-full relative flex flex-col min-h-0"
       @dblclick.stop="openChartStackEditor"
     >
       <div
         v-if="selected && !readonly"
-        class="absolute top-0 inset-x-0 h-5 z-20 cursor-move bg-primary/10 border-b border-primary/20 flex items-center justify-center"
+        class="shrink-0 z-30 h-6 px-3 cursor-move bg-white/95 border-b border-primary/25 shadow-sm flex items-center justify-center"
         @mousedown.stop="startDragFromHandle"
       >
         <span class="material-symbols-outlined text-[14px] text-primary pointer-events-none">drag_indicator</span>
       </div>
-      <ChartStack
-        :cards="chartStackCards"
-        :chart-color="element.style?.chartColor || '#005daa'"
-        :interactive="true"
-      />
+      <div class="flex-1 min-h-0 overflow-hidden">
+        <ChartStack
+          :cards="chartStackCards"
+          :chart-color="element.style?.chartColor || '#005daa'"
+          :interactive="true"
+        />
+      </div>
     </div>
 
     <div
