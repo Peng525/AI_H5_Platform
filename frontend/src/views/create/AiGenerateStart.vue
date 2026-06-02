@@ -19,8 +19,9 @@
       </button>
     </div>
 
-    <div class="mx-auto space-y-6 w-full px-0 max-w-3xl">
-      <div v-if="type === 'deck'" class="flex flex-wrap justify-start gap-1.5">
+    <div class="mx-auto w-full px-0 max-w-3xl space-y-6">
+      <!-- 胶囊固定于输入框上方（sticky，滚动时不离开视口顶部） -->
+      <div v-if="type === 'deck'" class="generate-pills-bar flex flex-wrap justify-start gap-1.5">
         <label class="relative inline-flex items-center">
           <select v-model.number="pageCount" class="pill-select">
             <option v-for="n in 10" :key="n" :value="n">{{ n }} 张卡片</option>
@@ -51,13 +52,8 @@
         </label>
       </div>
 
-      <div v-if="type === 'image'" class="flex flex-wrap justify-start gap-1.5">
-        <label class="relative inline-flex items-center">
-          <select v-model="imageRatio" class="pill-select">
-            <option v-for="opt in imageRatioOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-          </select>
-          <span class="material-symbols-outlined pill-chevron">expand_more</span>
-        </label>
+      <div v-if="type === 'image'" class="generate-pills-bar flex flex-wrap justify-start gap-1.5 items-center">
+        <ImageAspectRatioSelect v-model="imageAspectRatio" />
         <label class="relative inline-flex items-center">
           <select v-model="imageColor" class="pill-select">
             <option v-for="opt in imageColorOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
@@ -66,12 +62,13 @@
         </label>
         <label class="relative inline-flex items-center">
           <select v-model="imageStyle" class="pill-select">
-            <option v-for="opt in imageStyleOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            <option v-for="opt in imageStyleOptions" :key="opt.value || 'none'" :value="opt.value">{{ opt.label }}</option>
           </select>
           <span class="material-symbols-outlined pill-chevron">expand_more</span>
         </label>
       </div>
 
+      <!-- 输入区 -->
       <div>
         <div class="rounded-2xl border border-outline-variant shadow-card overflow-hidden bg-white">
           <textarea
@@ -87,6 +84,7 @@
         <p class="text-right text-xs text-on-surface-variant/60 mt-1.5 tabular-nums">{{ charCount }}</p>
       </div>
 
+      <!-- 有输入：居中编辑按钮 -->
       <div v-if="hasTopic" class="flex justify-center pt-2">
         <button
           type="button"
@@ -183,28 +181,31 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AiCreateLayout from '../../components/create/AiCreateLayout.vue'
+import ImageAspectRatioSelect from '../../components/create/ImageAspectRatioSelect.vue'
 import PageLoading from '../../components/PageLoading.vue'
 import { EXAMPLE_PROMPT_GROUPS, loadDraft, saveDraft } from '../../composables/useAiCreateDraft.js'
 import { useImagePromptTemplates } from '../../composables/useImagePromptTemplates.js'
 import { formatImagePromptTemplate } from '../../constants/imagePromptTemplates.js'
 import {
   IMAGE_COLOR_OPTIONS,
-  IMAGE_RATIO_OPTIONS,
   IMAGE_STYLE_OPTIONS,
+  aspectRatioToViewportMode,
   isValidImageStyle,
+  viewportModeToAspectRatio,
 } from '../../constants/imageGenerateOptions.js'
 
 const TOPIC_MIN_PX = 44
-const TOPIC_MAX_PX = 192
+const TOPIC_MAX_EMPTY_PX = 192
+const TOPIC_MAX_FILLED_PX = 320
 
 const router = useRouter()
 const type = ref('deck')
 const pageCount = ref(10)
 const background = ref('classic_white')
 const viewportMode = ref('auto')
-const imageRatio = ref('mobile')
+const imageAspectRatio = ref('9:16')
 const imageColor = ref('classic_white')
-const imageStyle = ref('扁平插画')
+const imageStyle = ref('')
 const language = ref('简体中文')
 const topic = ref('')
 const topicEl = ref(null)
@@ -226,13 +227,19 @@ const typeTabs = [
   { id: 'image', label: '生成图片', icon: 'image' },
 ]
 
-const imageRatioOptions = IMAGE_RATIO_OPTIONS
 const imageColorOptions = IMAGE_COLOR_OPTIONS
 const imageStyleOptions = IMAGE_STYLE_OPTIONS
 
 const charCount = computed(() => topic.value.length)
 const hasTopic = computed(() => topic.value.trim().length > 0)
 const currentExamples = computed(() => EXAMPLE_PROMPT_GROUPS[exampleGroup.value % EXAMPLE_PROMPT_GROUPS.length])
+
+function topicMaxPx() {
+  if (hasTopic.value && typeof window !== 'undefined') {
+    return Math.min(TOPIC_MAX_FILLED_PX, Math.round(window.innerHeight * 0.35))
+  }
+  return TOPIC_MAX_EMPTY_PX
+}
 
 onMounted(() => {
   const draft = loadDraft()
@@ -241,18 +248,17 @@ onMounted(() => {
   background.value = draft.background || 'classic_white'
   viewportMode.value = draft.viewportMode || 'auto'
   imageColor.value = draft.imageColor || 'classic_white'
-  imageStyle.value = draft.imageStyle || '扁平插画'
-  imageRatio.value = draft.viewportMode === 'web' ? 'web' : 'mobile'
+  imageStyle.value = draft.imageStyle ?? ''
+  imageAspectRatio.value = draft.imageAspectRatio
+    || viewportModeToAspectRatio(draft.viewportMode)
   language.value = draft.language || '简体中文'
   topic.value = draft.topic || ''
   loadPromptTemplates()
   nextTick(resizeTopicInput)
 })
 
-watch(type, (val) => {
-  if (val === 'image' && viewportMode.value === 'auto') {
-    imageRatio.value = 'mobile'
-  }
+watch(hasTopic, () => {
+  nextTick(resizeTopicInput)
 })
 
 watch(topic, (val) => {
@@ -264,9 +270,10 @@ function resizeTopicInput() {
   const el = topicEl.value
   if (!el) return
   el.style.height = 'auto'
-  const next = Math.min(Math.max(el.scrollHeight, TOPIC_MIN_PX), TOPIC_MAX_PX)
+  const maxPx = topicMaxPx()
+  const next = Math.min(Math.max(el.scrollHeight, TOPIC_MIN_PX), maxPx)
   el.style.height = `${next}px`
-  el.style.overflowY = el.scrollHeight > TOPIC_MAX_PX ? 'auto' : 'hidden'
+  el.style.overflowY = el.scrollHeight > maxPx ? 'auto' : 'hidden'
 }
 
 function scrollInputToTop() {
@@ -315,7 +322,8 @@ function goNext() {
   if (type.value === 'image') {
     saveDraft({
       type: 'image',
-      viewportMode: imageRatio.value,
+      imageAspectRatio: imageAspectRatio.value,
+      viewportMode: aspectRatioToViewportMode(imageAspectRatio.value),
       imageColor: imageColor.value,
       imageStyle: imageStyle.value,
       topic: topic.value.trim(),
@@ -336,6 +344,16 @@ function goNext() {
 </script>
 
 <style scoped>
+.generate-pills-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin-bottom: 0.25rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.5rem;
+  background: linear-gradient(to bottom, rgb(248 250 252 / 0.97) 75%, rgb(248 250 252 / 0));
+}
+
 .pill-select {
   @apply appearance-none rounded-full border border-outline-variant bg-white pl-2.5 pr-7 py-0.5 text-xs leading-5 text-on-surface cursor-pointer hover:bg-surface-container-low/50 transition max-w-full;
 }

@@ -20,13 +20,9 @@
         />
         <label class="block text-sm shrink-0">
           <span class="font-medium text-on-surface-variant">尺寸</span>
-          <select
-            v-model="viewportMode"
-            class="mt-1.5 w-full border border-outline-variant rounded-xl px-3 py-2.5 bg-white text-sm"
-          >
-            <option value="mobile">9:16 移动端</option>
-            <option value="web">16:9 网页</option>
-          </select>
+          <div class="mt-1.5">
+            <ImageAspectRatioSelect v-model="imageAspectRatio" />
+          </div>
         </label>
         <p v-if="error" class="text-sm text-red-600 shrink-0">{{ error }}</p>
         <button
@@ -98,19 +94,24 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../../api/client'
 import AiCreateLayout from '../../components/create/AiCreateLayout.vue'
+import ImageAspectRatioSelect from '../../components/create/ImageAspectRatioSelect.vue'
 import ImageCropModal from '../../components/ImageCropModal.vue'
 import { useToast } from '../../composables/useToast.js'
 import { loadDraft } from '../../composables/useAiCreateDraft.js'
-import { enrichImagePrompt } from '../../constants/imageGenerateOptions.js'
+import {
+  aspectRatioToPresetId,
+  enrichImagePrompt,
+  viewportModeToAspectRatio,
+} from '../../constants/imageGenerateOptions.js'
 import { cropImageToBlobUrl, urlToBlob } from '../../utils/cropImage.js'
 
 const router = useRouter()
 const { success: toastSuccess, error: toastError } = useToast()
 
 const prompt = ref('')
-const viewportMode = ref('mobile')
+const imageAspectRatio = ref('9:16')
 const imageColor = ref('classic_white')
-const imageStyle = ref('扁平插画')
+const imageStyle = ref('')
 const generating = ref(false)
 const error = ref('')
 const resultPrompt = ref('')
@@ -122,11 +123,10 @@ const lastCrop = ref(null)
 onMounted(() => {
   const draft = loadDraft()
   if (draft.topic) prompt.value = draft.topic
-  if (draft.viewportMode && draft.viewportMode !== 'auto') {
-    viewportMode.value = draft.viewportMode === 'web' ? 'web' : 'mobile'
-  }
+  imageAspectRatio.value = draft.imageAspectRatio
+    || viewportModeToAspectRatio(draft.viewportMode)
   if (draft.imageColor) imageColor.value = draft.imageColor
-  if (draft.imageStyle) imageStyle.value = draft.imageStyle
+  imageStyle.value = draft.imageStyle ?? ''
 })
 
 onUnmounted(() => {
@@ -142,7 +142,7 @@ async function submit() {
   generating.value = true
   error.value = ''
   try {
-    const preset = viewportMode.value === 'web' ? 'web-1280' : 'mobile-375'
+    const preset = aspectRatioToPresetId(imageAspectRatio.value)
     const finalPrompt = enrichImagePrompt(prompt.value.trim(), {
       imageStyle: imageStyle.value,
       imageColor: imageColor.value,

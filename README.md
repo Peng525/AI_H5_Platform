@@ -106,7 +106,7 @@ RELAY_DASHBOARD_RECHARGE_URL=https://once-cf.novai.su/wallet
 | `/upgrade` | 套餐升级 |
 | `/help` | 使用帮助 |
 
-向导详细说明见 [`docs/AI生成向导.md`](docs/AI生成向导.md)；**按钮交互与 LLM 映射**见 [`docs/功能开发说明书.md`](docs/功能开发说明书.md)。
+向导详细说明见 [`docs/AI生成向导.md`](docs/AI生成向导.md)；**按钮交互与 LLM 映射**见 [`docs/功能开发说明书.md`](docs/功能开发说明书.md)；**生成页组件开发逻辑**见 [`docs/生成页组件与开发逻辑.md`](docs/生成页组件与开发逻辑.md)；**UI 测试用例**见 [`docs/生成页测试用例.md`](docs/生成页测试用例.md)。
 
 ### 外部生成 PPT（Cursor + PPT Master）
 
