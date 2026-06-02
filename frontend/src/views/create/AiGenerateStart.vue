@@ -1,5 +1,5 @@
 <template>
-  <AiCreateLayout :quota-text="quotaText">
+  <AiCreateLayout header-variant="entry">
     <div class="text-center mb-8 sm:mb-10">
       <h1 class="text-3xl sm:text-4xl font-bold text-on-surface">生成</h1>
       <p class="text-on-surface-variant mt-2 text-sm sm:text-base">您今天想创建什么？</p>
@@ -27,8 +27,8 @@
         <div class="h-28 rounded-xl bg-gradient-to-br from-violet-100 to-fuchsia-200 mb-4 flex items-center justify-center">
           <span class="material-symbols-outlined text-4xl text-secondary">image</span>
         </div>
-        <h2 class="font-semibold text-lg">图片</h2>
-        <p class="text-sm text-on-surface-variant mt-1">AI 生成单张配图并创建项目</p>
+        <h2 class="font-semibold text-lg">生成图片</h2>
+        <p class="text-sm text-on-surface-variant mt-1">输入提示词生成图片，可编辑、裁切与复制</p>
       </button>
     </div>
 
@@ -65,10 +65,7 @@
       </div>
     </div>
 
-    <div class="max-w-2xl mx-auto mt-8 flex flex-col sm:flex-row items-center justify-between gap-3">
-      <router-link to="/create/blank" class="text-sm text-on-surface-variant hover:text-primary">
-        创建空白项目
-      </router-link>
+    <div class="max-w-2xl mx-auto mt-8 flex justify-end">
       <button
         type="button"
         class="w-full sm:w-auto px-8 py-2.5 rounded-xl bg-primary text-on-primary font-medium shadow-card hover:bg-primary-container transition"
@@ -83,7 +80,6 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { api } from '../../api/client'
 import AiCreateLayout from '../../components/create/AiCreateLayout.vue'
 import { loadDraft, saveDraft } from '../../composables/useAiCreateDraft.js'
 
@@ -93,21 +89,14 @@ const pageCount = ref(10)
 const background = ref('classic_white')
 const viewportMode = ref('auto')
 const language = ref('简体中文')
-const quotaText = ref('')
 
-onMounted(async () => {
+onMounted(() => {
   const draft = loadDraft()
   type.value = draft.type || 'deck'
   pageCount.value = draft.pageCount || 10
   background.value = draft.background || 'classic_white'
   viewportMode.value = draft.viewportMode || 'auto'
   language.value = draft.language || '简体中文'
-  try {
-    const q = await api.getQuota()
-    quotaText.value = `${q.quota_remaining}/${q.quota_total}`
-  } catch {
-    quotaText.value = '—'
-  }
 })
 
 function goNext() {

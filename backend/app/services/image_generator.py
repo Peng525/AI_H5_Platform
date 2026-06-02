@@ -45,9 +45,45 @@ async def generate_slide_image(
     }
 
 
+async def generate_standalone_image(
+    db: AsyncSession,
+    body: GenerateImageRequest,
+    user_id: int | None = None,
+) -> dict:
+    try:
+        await check_and_consume(db, user_id, body.tier)
+    except QuotaExceeded as exc:
+        raise LlmError(str(exc)) from exc
+
+    try:
+        image_url, channel, model, width, height = await generate_image(
+            body.prompt,
+            body.channel,
+            body.tier,
+            body.style,
+            body.fit_mode,
+            body.viewport_width,
+            body.viewport_height,
+            body.viewport_preset_id,
+        )
+    except LlmError as exc:
+        await _log(db, None, body.channel or "auto", False, str(exc))
+        raise
+
+    await _log(db, None, channel, True, f"独立生图成功 · 模型 {model}")
+    await db.commit()
+    return {
+        "image_url": image_url,
+        "channel": channel,
+        "model": model,
+        "width": width,
+        "height": height,
+    }
+
+
 async def _log(
     db: AsyncSession,
-    project_id: int,
+    project_id: int | None,
     channel: str | None,
     success: bool,
     message: str,

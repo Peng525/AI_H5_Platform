@@ -90,14 +90,25 @@ async def generate_deck_from_ai(
     except QuotaExceeded as exc:
         raise LlmError(str(exc)) from exc
 
+    content_mode = body.content_mode or "free"
+    page_contents = list(body.page_contents or [])
+    if content_mode == "per_page":
+        while len(page_contents) < body.page_count:
+            page_contents.append("")
+        page_contents = page_contents[: body.page_count]
+    else:
+        page_contents = []
+
     variables = {
         "page_count": body.page_count,
-        "topic": _build_topic(body),
+        "topic": _build_topic(body) if content_mode == "free" else body.topic.strip(),
         "audience": (body.audience or "通用受众").strip(),
         "style": _build_style(body),
         "language": body.language or "简体中文",
         "text_density": body.text_density or "精炼",
         "extra_instructions": (body.extra_instructions or "").strip() or "无",
+        "content_mode": content_mode,
+        "page_contents": page_contents,
     }
 
     messages = render_template("全量生成.yaml", variables)

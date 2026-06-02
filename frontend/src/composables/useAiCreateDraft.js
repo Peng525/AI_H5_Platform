@@ -12,6 +12,18 @@ export const DEFAULT_DRAFT = {
   textDensity: '精炼',
   extraContent: '',
   extraInstructions: '',
+  contentMode: 'free',
+  cardSplitMode: null,
+  pageContents: [],
+}
+
+/** 将 pageContents 长度对齐到 pageCount（补空或截断） */
+export function syncPageContents(pageContents, pageCount) {
+  const n = Math.max(1, Math.min(30, pageCount))
+  const arr = Array.isArray(pageContents) ? [...pageContents] : []
+  while (arr.length < n) arr.push('')
+  if (arr.length > n) arr.length = n
+  return arr
 }
 
 export function loadDraft() {

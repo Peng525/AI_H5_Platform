@@ -35,7 +35,7 @@ const routes = [
   { path: '/create/generate/prompt', name: 'ai-generate-prompt', component: () => import('../views/create/AiGeneratePrompt.vue'), meta: { title: '输入提示词', requiresAuth: true } },
   { path: '/create/generate/review', name: 'ai-generate-review', component: () => import('../views/create/AiGenerateReview.vue'), meta: { title: '提示编辑器', requiresAuth: true } },
   { path: '/create/generate/image', name: 'ai-generate-image', component: () => import('../views/create/AiGenerateImage.vue'), meta: { title: '生成图片', requiresAuth: true } },
-  { path: '/create/blank', name: 'create-blank', component: () => import('../views/Create.vue'), meta: { title: '新建演示', requiresAuth: true } },
+  { path: '/create/blank', redirect: '/create/generate' },
   { path: '/editor/:id', name: 'editor', component: () => import('../views/EditorStudio.vue'), meta: { title: '编辑器', requiresAuth: true } },
   { path: '/upgrade', name: 'upgrade', component: () => import('../views/Upgrade.vue'), meta: { title: '套餐升级', requiresAuth: true } },
   { path: '/help', name: 'help', component: () => import('../views/Help.vue'), meta: { title: '使用帮助', requiresAuth: true } },

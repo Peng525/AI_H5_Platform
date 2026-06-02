@@ -97,8 +97,7 @@ RELAY_DASHBOARD_RECHARGE_URL=https://once-cf.novai.su/wallet
 | `/create/generate` | **登录默认** — AI 生成向导（演示文稿 / 图片） |
 | `/create/generate/prompt` | 输入提示词 |
 | `/create/generate/review` | 提示编辑器 → 全量生成 |
-| `/create/generate/image` | 图片 AI 生成 |
-| `/create/blank` | 创建空白项目 |
+| `/create/generate/image` | 独立 AI 生图（裁切/复制/下载） |
 | `/dashboard` | 工作台 · 首页（项目列表） |
 | `/templates` | 工作台 · 模板库 |
 | `/editor/:id` | 三栏编辑器 |
@@ -107,7 +106,7 @@ RELAY_DASHBOARD_RECHARGE_URL=https://once-cf.novai.su/wallet
 | `/upgrade` | 套餐升级 |
 | `/help` | 使用帮助 |
 
-向导详细说明见 [`docs/AI生成向导.md`](docs/AI生成向导.md)。
+向导详细说明见 [`docs/AI生成向导.md`](docs/AI生成向导.md)；**按钮交互与 LLM 映射**见 [`docs/功能开发说明书.md`](docs/功能开发说明书.md)。
 
 ### 外部生成 PPT（Cursor + PPT Master）
 
@@ -178,6 +177,7 @@ cd frontend && npm install && npm run dev
 | [`docs/Push与发布规范.md`](docs/Push与发布规范.md) | push 前检查、分支约定、EC2 发布 |
 | [`docs/CI-CD与分支策略.md`](docs/CI-CD与分支策略.md) | GitHub Actions、分支与 Secrets |
 | [`docs/AI生成向导.md`](docs/AI生成向导.md) | 三步向导、API、冒烟检查 |
+| [`docs/功能开发说明书.md`](docs/功能开发说明书.md) | 各按钮逻辑、草稿字段、LLM 映射 |
 | [`docs/互动组件-对话生成器与文字云.md`](docs/互动组件-对话生成器与文字云.md) | 对话生成器、文字云 |
 | [`docs/互动组件-图表卡组.md`](docs/互动组件-图表卡组.md) | 图表卡组（堆叠卡片、上下切换） |
 | [`docs/需求清单.md`](docs/需求清单.md) | 功能需求与完成状态 |

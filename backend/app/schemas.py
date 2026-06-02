@@ -2,7 +2,9 @@
 import json
 from typing import Any
 
-from pydantic import BaseModel, Field
+from datetime import datetime
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class SlideOut(BaseModel):
@@ -114,6 +116,7 @@ class ProjectOut(BaseModel):
     share_slug: str | None
     settings: ProjectSettingsOut = Field(default_factory=ProjectSettingsOut)
     slides: list[SlideOut] = []
+    updated_at: datetime | None = None
 
 
 class ProjectCreate(BaseModel):
@@ -134,8 +137,20 @@ class AiDeckGenerateRequest(BaseModel):
     background_preset: str = Field("classic_white", description="classic_white|light_gray")
     extra_content: str = Field("", max_length=12000, description="扩写内容")
     extra_instructions: str = Field("", max_length=2000, description="附加说明")
+    content_mode: str = Field("free", description="free|per_page")
+    page_contents: list[str] = Field(default_factory=list, description="逐张卡片模式每页内容")
     channel: str | None = Field(None, description="LLM 通道")
     tier: str | None = Field(None, description="free|pro")
+
+    @field_validator("content_mode")
+    @classmethod
+    def normalize_content_mode(cls, v: str) -> str:
+        return v if v in ("free", "per_page") else "free"
+
+    @field_validator("page_contents")
+    @classmethod
+    def cap_page_contents(cls, v: list[str]) -> list[str]:
+        return [str(x) for x in (v or [])[:30]]
 
 
 class OrderOut(BaseModel):

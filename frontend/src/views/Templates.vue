@@ -1,20 +1,26 @@
 <template>
   <div>
-    <div class="max-w-7xl mx-auto px-3 py-4 sm:p-6 md:p-10 w-full min-w-0">
-      <div class="flex flex-col sm:flex-row gap-2 mb-5">
-        <div class="flex-1 min-w-0">
-          <input
-            v-model="search"
-            type="search"
-            enterkeyhint="search"
-            class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-sm bg-white"
-            placeholder="搜索模板名称或关键词…"
-            @keyup.enter="load"
-          />
+    <div class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-10 w-full min-w-0">
+      <div class="flex items-center gap-2 mb-6">
+        <span class="material-symbols-outlined text-[28px] text-on-surface-variant">dashboard_customize</span>
+        <div>
+          <h1 class="text-xl font-bold text-on-surface">模板库</h1>
+          <p class="text-sm text-on-surface-variant mt-0.5">探索模板，快速创建 H5 演示</p>
         </div>
+      </div>
+
+      <div class="flex items-center gap-2 w-full max-w-md mb-5">
+        <input
+          v-model="search"
+          type="search"
+          enterkeyhint="search"
+          class="flex-1 min-w-0 border border-outline-variant rounded-lg px-3 py-2.5 text-sm bg-white"
+          placeholder="搜索模板名称或关键词…"
+          @keyup.enter="load"
+        />
         <button
           type="button"
-          class="w-full sm:w-auto shrink-0 px-5 py-2.5 bg-primary text-on-primary rounded-lg text-sm font-medium"
+          class="shrink-0 px-5 py-2.5 bg-primary text-on-primary rounded-lg text-sm font-medium"
           @click="load"
         >
           搜索
@@ -23,13 +29,13 @@
 
       <div class="mb-4">
         <p class="text-xs font-medium text-on-surface-variant mb-2">终端类型</p>
-        <div class="flex flex-wrap gap-1.5 sm:gap-2">
+        <div class="flex flex-wrap gap-1.5">
           <button
             v-for="d in devices"
             :key="d.id"
             type="button"
-            class="px-2.5 sm:px-3 py-1.5 rounded-full text-xs sm:text-sm border whitespace-nowrap"
-            :class="device === d.id ? 'bg-secondary text-white border-secondary' : 'border-outline-variant hover:bg-white bg-white'"
+            class="whitespace-nowrap"
+            :class="device === d.id ? filterChipActive : filterChipDefault"
             @click="device = d.id; load()"
           >
             {{ d.label }}
@@ -39,13 +45,13 @@
 
       <div class="mb-6">
         <p class="text-xs font-medium text-on-surface-variant mb-2">模板类型</p>
-        <div class="flex flex-wrap gap-1.5 sm:gap-2">
+        <div class="flex flex-wrap gap-1.5">
           <button
             v-for="c in categories"
             :key="c"
             type="button"
-            class="px-2.5 sm:px-3 py-1.5 rounded-full text-xs sm:text-sm border whitespace-nowrap"
-            :class="category === c ? 'bg-primary text-on-primary border-primary' : 'border-outline-variant hover:bg-white bg-white'"
+            class="whitespace-nowrap"
+            :class="category === c ? filterChipActive : filterChipDefault"
             @click="category = c; load()"
           >
             {{ c }}
@@ -122,8 +128,8 @@
         <article class="bg-surface-container-low rounded-xl border border-dashed border-outline-variant p-6 flex flex-col items-center justify-center text-center min-h-[280px]">
           <p class="text-3xl text-primary font-light mb-2">＋</p>
           <h3 class="font-semibold">没有找到合适的？</h3>
-          <p class="text-sm text-on-surface-variant mt-2 mb-4">创建空白项目，在编辑器中用 AI 生图</p>
-          <router-link to="/create" class="px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-medium">
+          <p class="text-sm text-on-surface-variant mt-2 mb-4">使用 AI 向导创建演示或生成图片</p>
+          <router-link to="/create/generate" class="px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-medium">
             新建演示
           </router-link>
         </article>
@@ -168,6 +174,11 @@ const loadError = ref('')
 const previewOpen = ref(false)
 const previewTemplate = ref(null)
 const previewMounted = ref(false)
+
+const filterChipDefault =
+  'text-xs px-3 py-1 rounded-full bg-blue-50 text-blue-800 border border-blue-100 hover:bg-blue-100'
+const filterChipActive =
+  'text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-900 border border-blue-200 font-medium'
 
 onMounted(() => {
   void initPage()

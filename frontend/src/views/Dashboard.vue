@@ -4,7 +4,7 @@
       <div class="space-y-4 mb-6">
         <!-- Title -->
         <div class="flex items-center gap-2 min-w-0">
-          <span class="material-symbols-outlined text-[28px] text-on-surface-variant">stacked_bar_chart</span>
+          <span class="material-symbols-outlined text-[22px] text-on-surface-variant">stacked_bar_chart</span>
           <h1 class="text-xl font-bold text-on-surface">项目</h1>
         </div>
 
@@ -12,12 +12,12 @@
         <div class="flex w-full flex-wrap items-center justify-between gap-3">
           <div class="flex flex-wrap items-center gap-2">
             <router-link to="/create/generate" :class="btnPrimary">
-              <span class="material-symbols-outlined text-[18px]">add</span>
+              <span class="material-symbols-outlined text-[14px]">add</span>
               新建演示
             </router-link>
             <div class="relative">
               <button type="button" :class="btnAction" :disabled="importing" @click="triggerImport">
-                <span class="material-symbols-outlined text-[18px]">upload</span>
+                <span class="material-symbols-outlined text-[14px]">upload</span>
                 {{ importing ? '导入中…' : '导入 PPT' }}
               </button>
               <input
@@ -53,7 +53,7 @@
               :class="[btnDanger, 'inline-flex items-center gap-1']"
               @click="enterSelectMode"
             >
-              <span class="material-symbols-outlined text-[16px]">delete</span>
+              <span class="material-symbols-outlined text-[14px]">delete</span>
               批量删除
             </button>
           </div>

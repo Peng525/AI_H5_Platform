@@ -51,6 +51,7 @@ def _project_out(project: Project) -> ProjectOut:
             SlideOut.from_orm_slide(s, canvas_background=bg_map.get(str(s.id)))
             for s in slides
         ],
+        updated_at=project.updated_at,
     )
 
 

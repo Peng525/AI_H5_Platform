@@ -20,11 +20,22 @@ system: |
     ]
   }
   约束：页数为 {{ page_count }}；语言为 {{ language }}；文本密度为 {{ text_density }}；内容准确、结构清晰、适合投影阅读。
+  {% if content_mode == "per_page" %}
+  分页模式：逐张卡片。必须生成恰好 {{ page_count }} 页 slides，第 i 页内容严格来源于下方「第 i 页」文本，不得合并、跳过或打乱顺序；从每页文本提取 title、subtitle、bullets。
+  整体主题参考：{{ topic }}
+  逐页内容：
+  {% for chunk in page_contents %}
+  --- 第 {{ loop.index }} 页 ---
+  {{ chunk }}
+  {% endfor %}
+  {% else %}
+  分页模式：自由形式。请根据页数与风格自行将主题内容合理分页为 {{ page_count }} 页。
+  主题：{{ topic }}
+  {% endif %}
   {% if extra_instructions and extra_instructions != "无" %}
   附加说明：{{ extra_instructions }}
   {% endif %}
   字符串内勿包含未转义的换行符；bullets 每项为单行文本；确保输出是合法 JSON。
-  主题：{{ topic }}
   受众：{{ audience }}
   风格：{{ style }}
 user: |
