@@ -19,7 +19,7 @@
       </button>
     </div>
 
-    <div class="max-w-3xl mx-auto space-y-6">
+    <div class="mx-auto space-y-6 w-full px-0 max-w-3xl">
       <div v-if="type === 'deck'" class="flex flex-wrap justify-start gap-1.5">
         <label class="relative inline-flex items-center">
           <select v-model.number="pageCount" class="pill-select">
@@ -46,6 +46,27 @@
           <select v-model="language" class="pill-select">
             <option value="简体中文">简体中文</option>
             <option value="English">English</option>
+          </select>
+          <span class="material-symbols-outlined pill-chevron">expand_more</span>
+        </label>
+      </div>
+
+      <div v-if="type === 'image'" class="flex flex-wrap justify-start gap-1.5">
+        <label class="relative inline-flex items-center">
+          <select v-model="imageRatio" class="pill-select">
+            <option v-for="opt in imageRatioOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+          </select>
+          <span class="material-symbols-outlined pill-chevron">expand_more</span>
+        </label>
+        <label class="relative inline-flex items-center">
+          <select v-model="imageColor" class="pill-select">
+            <option v-for="opt in imageColorOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+          </select>
+          <span class="material-symbols-outlined pill-chevron">expand_more</span>
+        </label>
+        <label class="relative inline-flex items-center">
+          <select v-model="imageStyle" class="pill-select">
+            <option v-for="opt in imageStyleOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
           </select>
           <span class="material-symbols-outlined pill-chevron">expand_more</span>
         </label>
@@ -117,33 +138,39 @@
             <button type="button" class="text-primary ml-2 hover:underline" @click="reloadPromptTemplates">重试</button>
           </p>
           <p v-else-if="!imageTemplates.length" class="text-sm text-on-surface-variant">暂无提示词模板</p>
-          <ul v-else class="space-y-2">
+          <ul v-else class="flex md:grid md:grid-cols-3 gap-2 overflow-x-auto pb-1 md:overflow-visible snap-x snap-mandatory md:snap-none">
             <li
               v-for="tpl in imageTemplates"
               :key="tpl.id"
-              class="rounded-xl border bg-white shadow-sm overflow-hidden transition-colors"
-              :class="selectedImageTemplateId === tpl.id ? 'border-primary ring-1 ring-primary/20' : 'border-outline-variant/50 hover:border-primary/30'"
+              class="snap-start shrink-0 w-[min(78vw,14rem)] md:w-auto md:shrink flex"
             >
-              <button type="button" class="w-full text-left p-3 sm:p-4" @click="applyImageTemplate(tpl)">
-                <div class="flex items-start justify-between gap-2">
-                  <div class="min-w-0">
-                    <p class="text-sm font-medium text-on-surface">{{ tpl.title }}</p>
-                    <p v-if="tpl.description" class="text-xs text-on-surface-variant mt-0.5">{{ tpl.description }}</p>
+              <div
+                class="rounded-xl border bg-white shadow-sm overflow-hidden transition-colors flex flex-col w-full h-full"
+                :class="selectedImageTemplateId === tpl.id ? 'border-primary ring-1 ring-primary/20' : 'border-outline-variant/50 hover:border-primary/30'"
+              >
+                <button type="button" class="flex flex-col flex-1 text-left p-2.5 h-full min-h-[9.5rem]" @click="applyImageTemplate(tpl)">
+                  <div class="flex items-start justify-between gap-1.5 shrink-0">
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-on-surface leading-snug">{{ tpl.title }}</p>
+                      <p v-if="tpl.description" class="text-[11px] text-on-surface-variant mt-0.5 line-clamp-2">{{ tpl.description }}</p>
+                    </div>
+                    <span
+                      v-if="selectedImageTemplateId === tpl.id"
+                      class="material-symbols-outlined text-primary text-base shrink-0"
+                    >check_circle</span>
                   </div>
-                  <span
-                    v-if="selectedImageTemplateId === tpl.id"
-                    class="material-symbols-outlined text-primary text-lg shrink-0"
-                  >check_circle</span>
-                </div>
-                <table class="mt-2 w-full text-xs text-on-surface-variant border-collapse">
-                  <tbody>
-                    <tr v-for="field in tpl.fields" :key="field.label" class="align-top">
-                      <td class="pr-2 py-0.5 whitespace-nowrap text-on-surface/70 w-10">{{ field.label }}</td>
-                      <td class="py-0.5 leading-snug">{{ field.value }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </button>
+                  <div class="mt-2 flex-1 min-h-0 overflow-y-auto">
+                    <table class="w-full text-[11px] text-on-surface-variant border-collapse">
+                      <tbody>
+                        <tr v-for="field in tpl.fields" :key="field.label" class="align-top">
+                          <td class="pr-1.5 py-0.5 whitespace-nowrap text-on-surface/70 w-8">{{ field.label }}</td>
+                          <td class="py-0.5 leading-snug">{{ field.value }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </button>
+              </div>
             </li>
           </ul>
         </section>
@@ -160,6 +187,12 @@ import PageLoading from '../../components/PageLoading.vue'
 import { EXAMPLE_PROMPT_GROUPS, loadDraft, saveDraft } from '../../composables/useAiCreateDraft.js'
 import { useImagePromptTemplates } from '../../composables/useImagePromptTemplates.js'
 import { formatImagePromptTemplate } from '../../constants/imagePromptTemplates.js'
+import {
+  IMAGE_COLOR_OPTIONS,
+  IMAGE_RATIO_OPTIONS,
+  IMAGE_STYLE_OPTIONS,
+  isValidImageStyle,
+} from '../../constants/imageGenerateOptions.js'
 
 const TOPIC_MIN_PX = 44
 const TOPIC_MAX_PX = 192
@@ -169,6 +202,9 @@ const type = ref('deck')
 const pageCount = ref(10)
 const background = ref('classic_white')
 const viewportMode = ref('auto')
+const imageRatio = ref('mobile')
+const imageColor = ref('classic_white')
+const imageStyle = ref('扁平插画')
 const language = ref('简体中文')
 const topic = ref('')
 const topicEl = ref(null)
@@ -190,6 +226,10 @@ const typeTabs = [
   { id: 'image', label: '生成图片', icon: 'image' },
 ]
 
+const imageRatioOptions = IMAGE_RATIO_OPTIONS
+const imageColorOptions = IMAGE_COLOR_OPTIONS
+const imageStyleOptions = IMAGE_STYLE_OPTIONS
+
 const charCount = computed(() => topic.value.length)
 const hasTopic = computed(() => topic.value.trim().length > 0)
 const currentExamples = computed(() => EXAMPLE_PROMPT_GROUPS[exampleGroup.value % EXAMPLE_PROMPT_GROUPS.length])
@@ -200,10 +240,19 @@ onMounted(() => {
   pageCount.value = draft.pageCount || 10
   background.value = draft.background || 'classic_white'
   viewportMode.value = draft.viewportMode || 'auto'
+  imageColor.value = draft.imageColor || 'classic_white'
+  imageStyle.value = draft.imageStyle || '扁平插画'
+  imageRatio.value = draft.viewportMode === 'web' ? 'web' : 'mobile'
   language.value = draft.language || '简体中文'
   topic.value = draft.topic || ''
   loadPromptTemplates()
   nextTick(resizeTopicInput)
+})
+
+watch(type, (val) => {
+  if (val === 'image' && viewportMode.value === 'auto') {
+    imageRatio.value = 'mobile'
+  }
 })
 
 watch(topic, (val) => {
@@ -247,6 +296,9 @@ function applyExample(ex) {
 
 function applyImageTemplate(tpl) {
   selectedImageTemplateId.value = tpl.id
+  if (tpl.suggestedStyle && isValidImageStyle(tpl.suggestedStyle)) {
+    imageStyle.value = tpl.suggestedStyle
+  }
   topic.value = formatImagePromptTemplate(tpl)
   nextTick(() => {
     scrollInputToTop()
@@ -260,6 +312,17 @@ function rotateExamples() {
 
 function goNext() {
   if (!topic.value.trim()) return
+  if (type.value === 'image') {
+    saveDraft({
+      type: 'image',
+      viewportMode: imageRatio.value,
+      imageColor: imageColor.value,
+      imageStyle: imageStyle.value,
+      topic: topic.value.trim(),
+    })
+    router.push('/create/generate/image')
+    return
+  }
   saveDraft({
     type: type.value,
     pageCount: pageCount.value,
@@ -268,10 +331,6 @@ function goNext() {
     language: language.value,
     topic: topic.value.trim(),
   })
-  if (type.value === 'image') {
-    router.push('/create/generate/image')
-    return
-  }
   router.push('/create/generate/review')
 }
 </script>

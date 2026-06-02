@@ -5,6 +5,8 @@ export const DEFAULT_DRAFT = {
   pageCount: 10,
   background: 'classic_white',
   viewportMode: 'auto',
+  imageColor: 'classic_white',
+  imageStyle: '扁平插画',
   language: '简体中文',
   topic: '',
   audience: '',

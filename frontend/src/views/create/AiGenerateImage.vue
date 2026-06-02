@@ -24,8 +24,8 @@
             v-model="viewportMode"
             class="mt-1.5 w-full border border-outline-variant rounded-xl px-3 py-2.5 bg-white text-sm"
           >
-            <option value="mobile">移动端</option>
-            <option value="web">传统网页</option>
+            <option value="mobile">9:16 移动端</option>
+            <option value="web">16:9 网页</option>
           </select>
         </label>
         <p v-if="error" class="text-sm text-red-600 shrink-0">{{ error }}</p>
@@ -101,6 +101,7 @@ import AiCreateLayout from '../../components/create/AiCreateLayout.vue'
 import ImageCropModal from '../../components/ImageCropModal.vue'
 import { useToast } from '../../composables/useToast.js'
 import { loadDraft } from '../../composables/useAiCreateDraft.js'
+import { enrichImagePrompt } from '../../constants/imageGenerateOptions.js'
 import { cropImageToBlobUrl, urlToBlob } from '../../utils/cropImage.js'
 
 const router = useRouter()
@@ -108,6 +109,8 @@ const { success: toastSuccess, error: toastError } = useToast()
 
 const prompt = ref('')
 const viewportMode = ref('mobile')
+const imageColor = ref('classic_white')
+const imageStyle = ref('扁平插画')
 const generating = ref(false)
 const error = ref('')
 const resultPrompt = ref('')
@@ -122,6 +125,8 @@ onMounted(() => {
   if (draft.viewportMode && draft.viewportMode !== 'auto') {
     viewportMode.value = draft.viewportMode === 'web' ? 'web' : 'mobile'
   }
+  if (draft.imageColor) imageColor.value = draft.imageColor
+  if (draft.imageStyle) imageStyle.value = draft.imageStyle
 })
 
 onUnmounted(() => {
@@ -138,13 +143,17 @@ async function submit() {
   error.value = ''
   try {
     const preset = viewportMode.value === 'web' ? 'web-1280' : 'mobile-375'
+    const finalPrompt = enrichImagePrompt(prompt.value.trim(), {
+      imageStyle: imageStyle.value,
+      imageColor: imageColor.value,
+    })
     const result = await api.generateStandaloneImage({
-      prompt: prompt.value.trim(),
+      prompt: finalPrompt,
       tier: 'free',
       viewport_preset_id: preset,
       fit_mode: 'fill',
     })
-    resultPrompt.value = prompt.value.trim()
+    resultPrompt.value = finalPrompt
     displayUrl.value = result.image_url
     lastCrop.value = null
   } catch (e) {
