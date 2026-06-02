@@ -1,21 +1,24 @@
 <template>
-  <AiCreateLayout show-back back-label="上一步" @back="router.push('/create/generate')">
+  <AiCreateLayout
+    show-back
+    back-label="返回首页"
+    @back="router.push('/create/generate')"
+  >
     <div class="mb-6 text-center sm:text-left">
       <h1 class="text-2xl sm:text-3xl font-bold">生成图片</h1>
       <p class="text-on-surface-variant text-sm mt-1">左侧编辑提示词，右侧查看生成结果，可裁切与复制</p>
     </div>
 
-    <div class="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start">
+    <div class="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-stretch">
       <!-- 左栏：提示词编辑 -->
-      <section class="bg-white rounded-2xl border border-outline-variant shadow-card p-4 sm:p-5 space-y-4">
-        <h2 class="text-base font-semibold text-on-surface">提示词编辑</h2>
+      <section class="bg-white rounded-2xl border border-outline-variant shadow-card p-4 sm:p-5 flex flex-col h-full gap-4">
+        <h2 class="text-base font-semibold text-on-surface shrink-0">提示词编辑</h2>
         <textarea
           v-model="prompt"
-          rows="8"
-          class="w-full rounded-2xl border border-outline-variant shadow-sm px-4 py-3 text-sm leading-relaxed resize-none min-h-[10rem] focus:outline-none focus:ring-2 focus:ring-primary/20"
+          class="flex-1 w-full rounded-2xl border border-outline-variant shadow-sm px-4 py-3 text-sm leading-relaxed resize-none min-h-[280px] sm:min-h-[360px] focus:outline-none focus:ring-2 focus:ring-primary/20"
           placeholder="描述画面内容，例如：科技感蓝色渐变背景的产品发布主视觉"
         />
-        <label class="block text-sm">
+        <label class="block text-sm shrink-0">
           <span class="font-medium text-on-surface-variant">尺寸</span>
           <select
             v-model="viewportMode"
@@ -25,10 +28,10 @@
             <option value="web">传统网页</option>
           </select>
         </label>
-        <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
+        <p v-if="error" class="text-sm text-red-600 shrink-0">{{ error }}</p>
         <button
           type="button"
-          class="w-full py-2.5 rounded-xl bg-primary text-on-primary font-medium disabled:opacity-50 inline-flex items-center justify-center gap-2"
+          class="w-full py-2.5 rounded-xl bg-primary text-on-primary font-medium disabled:opacity-50 inline-flex items-center justify-center gap-2 shrink-0"
           :disabled="generating || !prompt.trim()"
           @click="submit"
         >
@@ -38,18 +41,18 @@
       </section>
 
       <!-- 右栏：生成结果 -->
-      <section class="bg-white rounded-2xl border border-outline-variant shadow-card p-4 sm:p-5 space-y-4">
-        <h2 class="text-base font-semibold text-on-surface">生成结果</h2>
+      <section class="bg-white rounded-2xl border border-outline-variant shadow-card p-4 sm:p-5 flex flex-col h-full gap-4">
+        <h2 class="text-base font-semibold text-on-surface shrink-0">生成结果</h2>
 
-        <p v-if="resultPrompt" class="text-sm text-on-surface-variant leading-relaxed line-clamp-4">
-          {{ resultPrompt }}
-        </p>
-        <p v-else-if="!generating" class="text-sm text-on-surface-variant/70">
-          生成后将在此显示所用提示词
+        <p
+          class="text-sm leading-relaxed shrink-0 min-h-[2.5rem]"
+          :class="resultPrompt ? 'text-on-surface-variant line-clamp-2' : 'text-on-surface-variant/70'"
+        >
+          {{ resultPrompt || '生成后将在此显示所用提示词' }}
         </p>
 
         <div
-          class="relative rounded-2xl border border-outline-variant bg-surface-container-low min-h-[280px] sm:min-h-[360px] flex items-center justify-center overflow-hidden"
+          class="flex-1 relative rounded-2xl border border-outline-variant bg-surface-container-low min-h-[280px] sm:min-h-[360px] flex items-center justify-center overflow-hidden"
           :class="displayUrl && !generating ? 'border-solid' : 'border-dashed'"
         >
           <div v-if="generating" class="flex flex-col items-center gap-2 text-on-surface-variant">
@@ -64,14 +67,14 @@
             :src="displayUrl"
             alt="生成结果"
             title="点击裁切"
-            class="w-full h-full max-h-[min(70vh,480px)] object-contain cursor-pointer hover:opacity-95 transition"
+            class="w-full h-full max-h-full object-contain cursor-pointer hover:opacity-95 transition"
             @click="cropOpen = true"
           />
         </div>
 
         <button
           type="button"
-          class="w-full py-2.5 rounded-xl border border-outline-variant text-sm font-medium hover:bg-surface-container-low/50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          class="w-full py-2.5 rounded-xl border border-outline-variant text-sm font-medium hover:bg-surface-container-low/50 disabled:opacity-40 disabled:cursor-not-allowed transition shrink-0"
           :disabled="!displayUrl || generating"
           @click="copyImage"
         >

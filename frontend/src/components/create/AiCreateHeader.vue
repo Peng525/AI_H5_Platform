@@ -20,7 +20,7 @@
       </nav>
     </div>
 
-    <!-- step: 上一步 / 返回 -->
+    <!-- step: 返回 -->
     <div v-else class="flex items-center gap-2 min-w-0 shrink-0">
       <button
         v-if="showBack"
