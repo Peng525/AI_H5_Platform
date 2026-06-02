@@ -2,75 +2,82 @@
   <AiCreateLayout show-back back-label="上一步" @back="router.push('/create/generate')">
     <div class="mb-6 text-center sm:text-left">
       <h1 class="text-2xl sm:text-3xl font-bold">生成图片</h1>
-      <p class="text-on-surface-variant text-sm mt-1">
-        {{ phase === 'form' ? '输入提示词生成图片，可裁切、复制与下载' : '图片已生成，可进行裁切或复制' }}
-      </p>
+      <p class="text-on-surface-variant text-sm mt-1">左侧编辑提示词，右侧查看生成结果，可裁切与复制</p>
     </div>
 
-    <div v-if="phase === 'form'" class="max-w-xl mx-auto bg-white rounded-2xl border border-outline-variant/60 shadow-sm p-4 sm:p-5 space-y-4">
-      <textarea
-        v-model="prompt"
-        rows="5"
-        class="w-full border border-outline-variant rounded-xl px-3 py-2.5 text-sm resize-none"
-        placeholder="描述画面内容，例如：科技感蓝色渐变背景的产品发布主视觉"
-      />
-      <label class="block text-sm">
-        <span class="font-medium text-on-surface-variant">尺寸</span>
-        <select v-model="viewportMode" class="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2 bg-white">
-          <option value="mobile">移动端</option>
-          <option value="web">传统网页</option>
-        </select>
-      </label>
-      <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
-      <button
-        type="button"
-        class="w-full py-2.5 rounded-xl bg-primary text-on-primary font-medium disabled:opacity-50"
-        :disabled="generating || !prompt.trim()"
-        @click="submit"
-      >
-        {{ generating ? '生成中…' : '生成图片' }}
-      </button>
-    </div>
-
-    <div v-else class="max-w-2xl mx-auto space-y-4">
-      <div class="bg-white rounded-2xl border border-outline-variant/60 shadow-sm p-4 overflow-hidden">
-        <img
-          :src="displayUrl"
-          alt="生成结果"
-          class="w-full max-h-[min(70vh,520px)] object-contain mx-auto rounded-lg bg-surface-container-low"
+    <div class="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 items-start">
+      <!-- 左栏：提示词编辑 -->
+      <section class="bg-white rounded-2xl border border-outline-variant shadow-card p-4 sm:p-5 space-y-4">
+        <h2 class="text-base font-semibold text-on-surface">提示词编辑</h2>
+        <textarea
+          v-model="prompt"
+          rows="8"
+          class="w-full rounded-2xl border border-outline-variant shadow-sm px-4 py-3 text-sm leading-relaxed resize-none min-h-[10rem] focus:outline-none focus:ring-2 focus:ring-primary/20"
+          placeholder="描述画面内容，例如：科技感蓝色渐变背景的产品发布主视觉"
         />
-      </div>
-      <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
-      <div class="flex flex-wrap gap-2 justify-center sm:justify-end">
+        <label class="block text-sm">
+          <span class="font-medium text-on-surface-variant">尺寸</span>
+          <select
+            v-model="viewportMode"
+            class="mt-1.5 w-full border border-outline-variant rounded-xl px-3 py-2.5 bg-white text-sm"
+          >
+            <option value="mobile">移动端</option>
+            <option value="web">传统网页</option>
+          </select>
+        </label>
+        <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
         <button
           type="button"
-          class="px-4 py-2 rounded-lg border border-outline-variant text-sm font-medium hover:bg-white bg-white/90"
-          @click="cropOpen = true"
+          class="w-full py-2.5 rounded-xl bg-primary text-on-primary font-medium disabled:opacity-50 inline-flex items-center justify-center gap-2"
+          :disabled="generating || !prompt.trim()"
+          @click="submit"
         >
-          裁切
+          <span v-if="generating" class="material-symbols-outlined animate-spin text-lg">progress_activity</span>
+          {{ generating ? '生成中…' : '生成图片' }}
         </button>
+      </section>
+
+      <!-- 右栏：生成结果 -->
+      <section class="bg-white rounded-2xl border border-outline-variant shadow-card p-4 sm:p-5 space-y-4">
+        <h2 class="text-base font-semibold text-on-surface">生成结果</h2>
+
+        <p v-if="resultPrompt" class="text-sm text-on-surface-variant leading-relaxed line-clamp-4">
+          {{ resultPrompt }}
+        </p>
+        <p v-else-if="!generating" class="text-sm text-on-surface-variant/70">
+          生成后将在此显示所用提示词
+        </p>
+
+        <div
+          class="relative rounded-2xl border border-outline-variant bg-surface-container-low min-h-[280px] sm:min-h-[360px] flex items-center justify-center overflow-hidden"
+          :class="displayUrl && !generating ? 'border-solid' : 'border-dashed'"
+        >
+          <div v-if="generating" class="flex flex-col items-center gap-2 text-on-surface-variant">
+            <span class="material-symbols-outlined animate-spin text-3xl text-primary">progress_activity</span>
+            <span class="text-sm">生成中…</span>
+          </div>
+          <div v-else-if="!displayUrl" class="text-sm text-on-surface-variant/70 px-4 text-center">
+            生成后将在此显示结果
+          </div>
+          <img
+            v-else
+            :src="displayUrl"
+            alt="生成结果"
+            title="点击裁切"
+            class="w-full h-full max-h-[min(70vh,480px)] object-contain cursor-pointer hover:opacity-95 transition"
+            @click="cropOpen = true"
+          />
+        </div>
+
         <button
           type="button"
-          class="px-4 py-2 rounded-lg border border-outline-variant text-sm font-medium hover:bg-white bg-white/90"
+          class="w-full py-2.5 rounded-xl border border-outline-variant text-sm font-medium hover:bg-surface-container-low/50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          :disabled="!displayUrl || generating"
           @click="copyImage"
         >
-          复制图片
+          复制
         </button>
-        <button
-          type="button"
-          class="px-4 py-2 rounded-lg border border-outline-variant text-sm font-medium hover:bg-white bg-white/90"
-          @click="downloadImage"
-        >
-          下载
-        </button>
-        <button
-          type="button"
-          class="px-4 py-2 rounded-lg bg-primary text-on-primary text-sm font-medium"
-          @click="resetToForm"
-        >
-          重新生成
-        </button>
-      </div>
+      </section>
     </div>
 
     <ImageCropModal
@@ -98,10 +105,9 @@ const { success: toastSuccess, error: toastError } = useToast()
 
 const prompt = ref('')
 const viewportMode = ref('mobile')
-const phase = ref('form')
 const generating = ref(false)
 const error = ref('')
-const originalUrl = ref('')
+const resultPrompt = ref('')
 const displayUrl = ref('')
 const blobUrls = ref([])
 const cropOpen = ref(false)
@@ -109,6 +115,7 @@ const lastCrop = ref(null)
 
 onMounted(() => {
   const draft = loadDraft()
+  if (draft.topic) prompt.value = draft.topic
   if (draft.viewportMode && draft.viewportMode !== 'auto') {
     viewportMode.value = draft.viewportMode === 'web' ? 'web' : 'mobile'
   }
@@ -134,10 +141,9 @@ async function submit() {
       viewport_preset_id: preset,
       fit_mode: 'fill',
     })
-    originalUrl.value = result.image_url
+    resultPrompt.value = prompt.value.trim()
     displayUrl.value = result.image_url
     lastCrop.value = null
-    phase.value = 'result'
   } catch (e) {
     error.value = e.message || '生成失败'
   } finally {
@@ -159,6 +165,7 @@ async function onCropConfirm(crop) {
 }
 
 async function copyImage() {
+  if (!displayUrl.value) return
   try {
     const blob = await urlToBlob(displayUrl.value)
     if (navigator.clipboard?.write && window.ClipboardItem) {
@@ -175,26 +182,8 @@ async function copyImage() {
       await navigator.clipboard.writeText(displayUrl.value)
       toastSuccess('已复制图片链接')
     } catch {
-      toastError('复制失败，请尝试下载')
+      toastError('复制失败')
     }
   }
-}
-
-function downloadImage() {
-  const a = document.createElement('a')
-  a.href = displayUrl.value
-  a.download = `ai-image-${Date.now()}.png`
-  a.rel = 'noopener'
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-}
-
-function resetToForm() {
-  phase.value = 'form'
-  error.value = ''
-  originalUrl.value = ''
-  displayUrl.value = ''
-  lastCrop.value = null
 }
 </script>

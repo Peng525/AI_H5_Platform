@@ -32,7 +32,7 @@ const routes = [
   },
   { path: '/create', redirect: '/create/generate' },
   { path: '/create/generate', name: 'ai-generate-start', component: () => import('../views/create/AiGenerateStart.vue'), meta: { title: '生成', requiresAuth: true } },
-  { path: '/create/generate/prompt', name: 'ai-generate-prompt', component: () => import('../views/create/AiGeneratePrompt.vue'), meta: { title: '输入提示词', requiresAuth: true } },
+  { path: '/create/generate/prompt', redirect: '/create/generate' },
   { path: '/create/generate/review', name: 'ai-generate-review', component: () => import('../views/create/AiGenerateReview.vue'), meta: { title: '提示编辑器', requiresAuth: true } },
   { path: '/create/generate/image', name: 'ai-generate-image', component: () => import('../views/create/AiGenerateImage.vue'), meta: { title: '生成图片', requiresAuth: true } },
   { path: '/create/blank', redirect: '/create/generate' },

@@ -30,7 +30,7 @@ docker compose -f docker-compose.yml -f docker-compose.cn.yml up -d --build
 ## 功能概览
 
 - 项目管理、页面编辑、全屏 H5 预览与分享链接 `/s/{slug}`
-- **AI 生成向导**（登录默认）：选演示文稿/图片 → 输入提示词 → 提示编辑器 → 全量生成并进入编辑器
+- **AI 生成向导**（登录默认）：Gamma 风格单页选类型与提示词 → 演示文稿进提示编辑器全量生成；图片类型进两栏生图页（左编辑 / 右结果）
 - **我的工作台**：双栏侧栏显示用户名；**首页**为项目列表、**模板库**可选模板；顶栏 **新建演示** 与 **导入 PPT**
 - **模板库**：按类型与终端筛选；封面渲染第一页缩略图
 - **简约模板体系**：商务 + 叙事双主题，多种版式与 JSON 模板
@@ -94,10 +94,10 @@ RELAY_DASHBOARD_RECHARGE_URL=https://once-cf.novai.su/wallet
 
 | 路由 | 说明 |
 |------|------|
-| `/create/generate` | **登录默认** — AI 生成向导（演示文稿 / 图片） |
-| `/create/generate/prompt` | 输入提示词 |
+| `/create/generate` | **登录默认** — AI 生成单页（类型 Tab、配置、提示词、示例） |
+| `/create/generate/prompt` | 已合并至 generate（重定向） |
 | `/create/generate/review` | 提示编辑器 → 全量生成 |
-| `/create/generate/image` | 独立 AI 生图（裁切/复制/下载） |
+| `/create/generate/image` | 独立 AI 生图（两栏：左编辑 / 右结果；点击裁切、复制） |
 | `/dashboard` | 工作台 · 首页（项目列表） |
 | `/templates` | 工作台 · 模板库 |
 | `/editor/:id` | 三栏编辑器 |

@@ -1,78 +1,58 @@
 <template>
   <div>
-    <div class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-10 w-full min-w-0">
-      <div class="flex items-center gap-2 mb-6">
-        <span class="material-symbols-outlined text-[28px] text-on-surface-variant">dashboard_customize</span>
-        <div>
-          <h1 class="text-xl font-bold text-on-surface">模板库</h1>
-          <p class="text-sm text-on-surface-variant mt-0.5">探索模板，快速创建 H5 演示</p>
-        </div>
-      </div>
-
-      <div class="flex items-center gap-2 w-full max-w-md mb-5">
-        <input
-          v-model="search"
-          type="search"
-          enterkeyhint="search"
-          class="flex-1 min-w-0 border border-outline-variant rounded-lg px-3 py-2.5 text-sm bg-white"
-          placeholder="搜索模板名称或关键词…"
-          @keyup.enter="load"
-        />
-        <button
-          type="button"
-          class="shrink-0 px-5 py-2.5 bg-primary text-on-primary rounded-lg text-sm font-medium"
-          @click="load"
-        >
-          搜索
-        </button>
-      </div>
-
-      <div class="mb-4">
-        <p class="text-xs font-medium text-on-surface-variant mb-2">终端类型</p>
-        <div class="flex flex-wrap gap-1.5">
-          <button
-            v-for="d in devices"
-            :key="d.id"
-            type="button"
-            class="whitespace-nowrap"
-            :class="device === d.id ? filterChipActive : filterChipDefault"
-            @click="device = d.id; load()"
-          >
-            {{ d.label }}
-          </button>
-        </div>
-      </div>
-
-      <div class="mb-6">
-        <p class="text-xs font-medium text-on-surface-variant mb-2">模板类型</p>
-        <div class="flex flex-wrap gap-1.5">
-          <button
-            v-for="c in categories"
-            :key="c"
-            type="button"
-            class="whitespace-nowrap"
-            :class="category === c ? filterChipActive : filterChipDefault"
-            @click="category = c; load()"
-          >
-            {{ c }}
-          </button>
-        </div>
-      </div>
-
-      <div v-if="loading" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="模板加载中">
-        <article
-          v-for="i in 6"
-          :key="i"
-          class="bg-white rounded-xl border border-outline-variant overflow-hidden animate-pulse"
-        >
-          <div class="h-36 bg-surface-container-high" />
-          <div class="p-4 space-y-2">
-            <div class="h-4 bg-surface-container-high rounded w-2/3" />
-            <div class="h-3 bg-surface-container-high rounded w-1/3" />
-            <div class="h-3 bg-surface-container-high rounded w-full" />
+    <div class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-10 w-full">
+      <div class="space-y-6 mb-8">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="material-symbols-outlined text-[22px] text-on-surface-variant">dashboard_customize</span>
+            <h1 class="text-xl font-bold text-on-surface">模板库</h1>
           </div>
-        </article>
+          <p class="text-sm text-on-surface-variant">
+            探索模板，快速创建 H5 演示
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2.5 w-full max-w-md">
+          <div class="relative flex-1 min-w-0">
+            <span
+              class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-on-surface-variant pointer-events-none"
+              aria-hidden="true"
+            >
+              search
+            </span>
+            <input
+              v-model="search"
+              type="search"
+              enterkeyhint="search"
+              class="w-full pl-10 pr-3 py-2 text-sm border border-outline-variant rounded-lg bg-white"
+              placeholder="搜索模板名称或关键词…"
+              @keyup.enter="load"
+            />
+          </div>
+          <button
+            type="button"
+            class="shrink-0 px-5 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:bg-primary/90 transition"
+            @click="load"
+          >
+            搜索
+          </button>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-for="opt in filterOptions"
+            :key="`${opt.type}-${opt.id}`"
+            type="button"
+            class="whitespace-nowrap"
+            :class="isFilterActive(opt) ? filterChipActive : filterChipDefault"
+            @click="selectFilter(opt)"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
       </div>
+
+      <PageLoading v-if="loading" />
 
       <EmptyState
         v-else-if="loadError"
@@ -83,110 +63,140 @@
         @action="initPage"
       />
 
-      <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div
+        v-else-if="templates.length === 0"
+        class="text-center py-20 bg-surface-container-low rounded-xl border border-dashed border-outline-variant"
+      >
+        <span class="material-symbols-outlined text-5xl text-on-surface-variant/40">dashboard_customize</span>
+        <p class="text-sm text-on-surface-variant mt-4 mb-4">未找到匹配的模板，请调整筛选或关键词</p>
+        <router-link to="/create/generate" class="text-sm text-primary font-medium hover:underline">
+          新建演示 →
+        </router-link>
+      </div>
+
+      <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         <article
           v-for="t in templates"
           :key="t.id"
-          class="bg-white rounded-xl border border-outline-variant overflow-hidden shadow-card hover:shadow-lg transition group"
+          class="bg-white rounded-xl border border-outline-variant overflow-hidden shadow-card hover:shadow-lg transition group relative cursor-pointer"
+          @click="askUseTemplate(t)"
         >
           <TemplateCoverThumb :template="t" />
+
           <div class="p-4">
-            <div class="flex items-start justify-between gap-2">
-              <h3 class="font-semibold group-hover:text-primary transition-colors">{{ t.title }}</h3>
-              <span v-if="t.premium" class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full shrink-0">高级</span>
-            </div>
-            <p class="text-xs text-on-surface-variant mt-1">{{ t.category }}</p>
-            <p class="text-sm text-on-surface-variant mt-2 line-clamp-2">{{ t.description }}</p>
-            <p class="text-xs text-on-surface-variant mt-2">{{ t.pages }} 页</p>
-            <div class="mt-3 flex gap-2">
-              <button
-                type="button"
-                class="flex-1 py-2 border border-outline-variant rounded-lg text-sm font-medium hover:bg-surface-container-low"
-                @click="openPreview(t)"
+            <div class="flex items-start gap-2 flex-1 min-w-0">
+              <h2 class="font-semibold truncate group-hover:text-primary transition-colors flex-1 min-w-0">
+                {{ t.title }}
+              </h2>
+              <span
+                v-if="t.premium"
+                class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full shrink-0"
               >
-                预览
-              </button>
-              <button
-                type="button"
-                class="flex-1 py-2 bg-primary text-on-primary rounded-lg text-sm font-medium"
-                @click="useTemplate(t)"
-              >
-                使用
-              </button>
+                高级
+              </span>
             </div>
+            <p class="text-sm text-on-surface-variant mt-1">{{ t.category }} · {{ t.pages }} 页</p>
           </div>
-        </article>
-
-        <article
-          v-if="templates.length === 0"
-          class="sm:col-span-2 lg:col-span-3 bg-surface-container-low rounded-xl border border-dashed border-outline-variant p-10 text-center"
-        >
-          <p class="text-3xl text-on-surface-variant/30 font-light">暂无</p>
-          <p class="text-on-surface-variant mt-3">未找到匹配的模板，请调整筛选或关键词</p>
-        </article>
-
-        <article class="bg-surface-container-low rounded-xl border border-dashed border-outline-variant p-6 flex flex-col items-center justify-center text-center min-h-[280px]">
-          <p class="text-3xl text-primary font-light mb-2">＋</p>
-          <h3 class="font-semibold">没有找到合适的？</h3>
-          <p class="text-sm text-on-surface-variant mt-2 mb-4">使用 AI 向导创建演示或生成图片</p>
-          <router-link to="/create/generate" class="px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-medium">
-            新建演示
-          </router-link>
         </article>
       </div>
     </div>
 
-    <TemplatePreviewModal
-      v-if="previewMounted"
-      :open="previewOpen"
-      :template="previewTemplate"
-      @close="previewOpen = false"
-      @use="useTemplate(previewTemplate)"
+    <ConfirmDialog
+      :open="createDialog.open"
+      title="使用此模板？"
+      :message="createDialogMessage"
+      confirm-text="创建"
+      cancel-text="取消"
+      :loading="createDialog.loading"
+      @cancel="closeCreateDialog"
+      @confirm="confirmUseTemplate"
     />
   </div>
 </template>
 
 <script setup>
-import { defineAsyncComponent, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api/client'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 import EmptyState from '../components/EmptyState.vue'
+import PageLoading from '../components/PageLoading.vue'
 import TemplateCoverThumb from '../components/TemplateCoverThumb.vue'
-
-const TemplatePreviewModal = defineAsyncComponent(() => import('../components/TemplatePreviewModal.vue'))
 
 const SETTINGS_PREFIX = 'ai_h5_project_settings_'
 const CANVAS_PREFIX = 'ai_h5_canvas_'
 
 const router = useRouter()
 const categories = ref(['全部'])
-const devices = ref([
-  { id: '全部', label: '全部终端' },
-  { id: 'mobile', label: '移动端' },
-  { id: 'web', label: '网页版' },
-])
 const category = ref('全部')
 const device = ref('全部')
 const search = ref('')
 const templates = ref([])
 const loading = ref(true)
 const loadError = ref('')
-const previewOpen = ref(false)
-const previewTemplate = ref(null)
-const previewMounted = ref(false)
+
+const createDialog = reactive({
+  open: false,
+  loading: false,
+  template: null,
+})
 
 const filterChipDefault =
-  'text-xs px-3 py-1 rounded-full bg-blue-50 text-blue-800 border border-blue-100 hover:bg-blue-100'
+  'text-xs px-3 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant hover:bg-surface-container-high/80 transition'
 const filterChipActive =
-  'text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-900 border border-blue-200 font-medium'
+  'text-xs px-3 py-1.5 rounded-full bg-blue-100 text-blue-800 font-medium transition'
+
+const filterOptions = computed(() => {
+  const opts = [
+    { type: 'all', id: '全部', label: '全部' },
+    { type: 'device', id: 'mobile', label: '移动端' },
+    { type: 'device', id: 'web', label: '网页版' },
+  ]
+  for (const c of categories.value) {
+    if (c !== '全部') opts.push({ type: 'category', id: c, label: c })
+  }
+  return opts
+})
+
+const createDialogMessage = computed(() => {
+  const title = createDialog.template?.title || '该模板'
+  return `将基于「${title}」创建新项目并进入编辑器。`
+})
 
 onMounted(() => {
   void initPage()
 })
 
-watch(previewOpen, (open) => {
-  if (open) previewMounted.value = true
-})
+function isFilterActive(opt) {
+  if (opt.type === 'all') return category.value === '全部' && device.value === '全部'
+  if (opt.type === 'device') return device.value === opt.id && category.value === '全部'
+  return category.value === opt.id && device.value === '全部'
+}
+
+function selectFilter(opt) {
+  if (opt.type === 'all') {
+    category.value = '全部'
+    device.value = '全部'
+  } else if (opt.type === 'device') {
+    category.value = '全部'
+    device.value = opt.id
+  } else {
+    category.value = opt.id
+    device.value = '全部'
+  }
+  void load()
+}
+
+function askUseTemplate(t) {
+  createDialog.template = t
+  createDialog.open = true
+}
+
+function closeCreateDialog() {
+  if (createDialog.loading) return
+  createDialog.open = false
+  createDialog.template = null
+}
 
 async function initPage() {
   loading.value = true
@@ -197,7 +207,6 @@ async function initPage() {
       api.listTemplates(category.value, search.value, device.value),
     ])
     categories.value = cats.items
-    if (cats.devices?.length) devices.value = cats.devices
     templates.value = res.items
   } catch (e) {
     loadError.value = e.message || '加载失败'
@@ -219,14 +228,24 @@ async function load() {
   }
 }
 
-function openPreview(t) {
-  previewTemplate.value = t
-  previewOpen.value = true
+async function confirmUseTemplate() {
+  if (!createDialog.template || createDialog.loading) return
+  createDialog.loading = true
+  try {
+    await useTemplate(createDialog.template)
+    createDialog.open = false
+    createDialog.template = null
+  } catch (e) {
+    loadError.value = e.message || '创建失败'
+    createDialog.open = false
+    createDialog.template = null
+  } finally {
+    createDialog.loading = false
+  }
 }
 
 async function useTemplate(t) {
   if (!t) return
-  previewOpen.value = false
   const p = await api.createProject({
     title: t.title,
     theme: t.id,

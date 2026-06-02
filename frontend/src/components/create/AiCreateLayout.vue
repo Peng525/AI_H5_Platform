@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-sky-50 via-blue-50/80 to-indigo-50 flex flex-col">
+  <div class="min-h-screen bg-gradient-to-b from-sky-100/50 via-white to-sky-50/80 flex flex-col">
     <AiCreateHeader
       :variant="headerVariant"
       :show-back="showBack"
@@ -17,7 +17,7 @@
         <slot />
       </div>
     </main>
-    <footer v-if="$slots.footer" class="shrink-0 border-t border-white/60 bg-white/70 backdrop-blur px-4 sm:px-8 py-4">
+    <footer v-if="$slots.footer" class="shrink-0 border-t border-outline-variant bg-white px-4 sm:px-8 py-4">
       <div class="max-w-5xl mx-auto w-full">
         <slot name="footer" />
       </div>

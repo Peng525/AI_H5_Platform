@@ -18,6 +18,9 @@
     <span class="absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-full bg-black/40 text-white z-10">
       {{ deviceLabel }}
     </span>
+    <span class="absolute bottom-2 left-2 text-[10px] px-2 py-0.5 rounded-full bg-black/40 text-white z-10">
+      {{ template.pages }} 页
+    </span>
     <span
       v-if="template.featured"
       class="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-white z-10"

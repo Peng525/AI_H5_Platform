@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-surface-container-low flex flex-col">
     <header class="h-14 border-b border-outline-variant bg-white flex items-center justify-between px-4 sm:px-6 shrink-0">
-      <button type="button" class="text-sm text-on-surface-variant hover:text-primary inline-flex items-center gap-1" @click="router.push('/create/generate/prompt')">
+      <button type="button" class="text-sm text-on-surface-variant hover:text-primary inline-flex items-center gap-1" @click="router.push('/create/generate')">
         <span class="material-symbols-outlined text-[18px]">arrow_back</span>
         上一步
       </button>
@@ -309,7 +309,7 @@ onMounted(async () => {
   const d = requireDeckDraft(router)
   if (!d) return
   if (!d.topic?.trim()) {
-    router.replace('/create/generate/prompt')
+    router.replace('/create/generate')
     return
   }
   draft.value = d

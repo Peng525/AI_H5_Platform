@@ -1,34 +1,36 @@
 <template>
   <div class="flex items-center gap-2 shrink-0">
-    <span
-      class="hidden sm:block text-xs text-on-surface-variant whitespace-nowrap"
-      :title="quotaFailed ? '配额加载失败' : undefined"
-    >
-      {{ tierLabel }} · 配额 {{ quotaText }}
-    </span>
     <div ref="menuRef" class="relative">
       <button
         type="button"
-        class="flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-lg hover:bg-white/80 text-sm min-w-0"
+        class="flex items-center gap-2 pl-1 pr-2 py-1 rounded-lg hover:bg-white/80 text-sm min-w-0"
         :title="displayName"
         @click="menuOpen = !menuOpen"
       >
         <span class="w-8 h-8 shrink-0 rounded-full bg-primary text-on-primary flex items-center justify-center text-xs font-bold">
           {{ avatarLetter }}
         </span>
-        <span class="truncate text-xs sm:text-sm text-on-surface font-medium max-w-[6rem] sm:max-w-[8rem] hidden min-[420px]:inline">
-          {{ displayName }}
+        <span class="hidden min-[420px]:flex flex-col items-start min-w-0 max-w-[8rem] sm:max-w-[10rem]">
+          <span class="truncate text-xs sm:text-sm text-on-surface font-medium w-full text-left">
+            {{ displayName }}
+          </span>
+          <span
+            class="truncate text-xs text-on-surface-variant w-full text-left"
+            :title="quotaFailed ? '配额加载失败' : undefined"
+          >
+            {{ tierLabel }} · 配额 {{ quotaText }}
+          </span>
         </span>
-        <span class="material-symbols-outlined text-[16px] text-on-surface-variant">expand_more</span>
+        <span class="material-symbols-outlined text-[16px] text-on-surface-variant shrink-0">expand_more</span>
       </button>
       <div
         v-if="menuOpen"
         class="absolute right-0 top-full mt-1 w-44 bg-white border border-outline-variant rounded-lg shadow-lg py-1 z-50"
       >
-        <p class="px-3 py-2 text-xs text-on-surface-variant border-b border-outline-variant truncate sm:hidden">
+        <p class="px-3 py-2 text-xs text-on-surface-variant border-b border-outline-variant truncate min-[420px]:hidden">
           {{ displayName }}
         </p>
-        <p class="px-3 py-2 text-xs text-on-surface-variant border-b border-outline-variant sm:hidden">
+        <p class="px-3 py-2 text-xs text-on-surface-variant border-b border-outline-variant min-[420px]:hidden">
           {{ tierLabel }} · 配额 {{ quotaText }}
         </p>
         <router-link

@@ -1,5 +1,5 @@
 <template>
-  <header class="h-14 border-b border-white/60 bg-white/70 backdrop-blur flex items-center justify-between px-4 sm:px-8 shrink-0 gap-3">
+  <header class="h-14 border-b border-outline-variant/60 bg-white/80 backdrop-blur flex items-center justify-between px-4 sm:px-8 shrink-0 gap-3">
     <!-- entry: 左上导航 -->
     <div v-if="variant === 'entry'" class="flex items-center shrink-0 min-w-0">
       <nav class="flex flex-wrap items-center gap-1 text-sm">
