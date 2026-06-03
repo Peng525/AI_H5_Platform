@@ -55,6 +55,14 @@
             <option value="English">English</option>
           </select>
         </label>
+        <div>
+          <p class="text-xs font-medium text-on-surface-variant mb-2">页数</p>
+          <div class="flex items-center gap-2">
+            <button type="button" class="w-9 h-9 rounded-lg border border-outline-variant hover:bg-surface-container-low text-lg leading-none" @click="decreasePageCount">−</button>
+            <span class="text-sm tabular-nums flex-1 text-center">{{ pageCount }} 张卡片</span>
+            <button type="button" class="w-9 h-9 rounded-lg border border-outline-variant hover:bg-surface-container-low text-lg leading-none" @click="increasePageCount">+</button>
+          </div>
+        </div>
       </aside>
 
       <section class="flex flex-col min-h-0 bg-surface-container-low" :class="mobileTab !== 'content' && 'hidden lg:flex'">
@@ -92,28 +100,17 @@
           :placeholder="draft.topic"
         />
 
-        <div v-else class="flex-1 min-h-0 flex flex-col mx-4 mb-4 mt-2 gap-2">
-          <div class="shrink-0 flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
-            <button
-              v-for="(_, i) in pageContents"
-              :key="i"
-              type="button"
-              class="shrink-0 px-3 py-1.5 rounded-lg border text-xs font-medium transition whitespace-nowrap"
-              :class="activePageIndex === i
-                ? 'border-primary bg-primary/10 text-primary'
-                : pageContents[i]?.trim()
-                  ? 'border-outline-variant bg-white text-on-surface hover:border-primary/40'
-                  : 'border-outline-variant/60 bg-white text-on-surface-variant hover:border-primary/40'"
-              @click="activePageIndex = i"
-            >
-              页面 {{ i + 1 }}
-            </button>
-          </div>
-          <div class="flex-1 min-h-0 rounded-xl border border-outline-variant bg-white flex flex-col">
+        <div v-else class="flex-1 min-h-0 overflow-y-auto mx-4 mb-4 mt-2 space-y-3">
+          <div
+            v-for="(_, i) in pageContents"
+            :key="i"
+            class="rounded-xl border border-outline-variant bg-white p-3 shrink-0"
+          >
+            <p class="text-xs font-medium text-on-surface mb-2">页面 {{ i + 1 }}</p>
             <textarea
-              v-model="pageContents[activePageIndex]"
-              class="flex-1 min-h-0 w-full p-4 text-sm resize-none border-0 rounded-xl focus:ring-0 focus:outline-none leading-relaxed"
-              :placeholder="`第 ${activePageIndex + 1} 页内容…`"
+              v-model="pageContents[i]"
+              class="w-full min-h-[5rem] p-3 text-sm resize-y border border-outline-variant/60 rounded-lg focus:ring-1 focus:ring-primary/30 focus:border-primary/40 focus:outline-none leading-relaxed"
+              :placeholder="`第 ${i + 1} 页内容…`"
             />
           </div>
         </div>
@@ -131,13 +128,8 @@
       </aside>
     </div>
 
-    <footer class="shrink-0 border-t border-outline-variant bg-white px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-2">
-        <button type="button" class="w-9 h-9 rounded-lg border border-outline-variant hover:bg-surface-container-low" @click="decreasePageCount">−</button>
-        <span class="text-sm tabular-nums min-w-[72px] text-center">{{ pageCount }} 张卡片</span>
-        <button type="button" class="w-9 h-9 rounded-lg border border-outline-variant hover:bg-surface-container-low" @click="increasePageCount">+</button>
-      </div>
-      <p v-if="error" class="text-sm text-red-600 flex-1">{{ error }}</p>
+    <footer class="shrink-0 border-t border-outline-variant bg-white px-4 sm:px-6 py-4 flex flex-wrap items-center justify-end gap-3">
+      <p v-if="error" class="text-sm text-red-600 flex-1 min-w-0">{{ error }}</p>
       <button
         type="button"
         class="px-8 py-2.5 rounded-xl bg-primary text-on-primary font-medium inline-flex items-center gap-2 disabled:opacity-50"
@@ -151,6 +143,7 @@
 
     <CardSplitModeDialog
       :open="splitDialogOpen"
+      :page-count="pageCount"
       @auto="onSplitAuto"
       @manual="onSplitManual"
       @cancel="onSplitCancel"
@@ -207,7 +200,6 @@ const extraInstructions = ref('')
 const contentMode = ref('free')
 const cardSplitMode = ref(null)
 const pageContents = ref([])
-const activePageIndex = ref(0)
 const splitDialogOpen = ref(false)
 const truncateDialogOpen = ref(false)
 const pendingPageCount = ref(null)
@@ -216,12 +208,6 @@ const error = ref('')
 
 function sourceTextForSplit() {
   return (extraContent.value || draft.value.topic || '').trim()
-}
-
-function clampActivePage() {
-  if (activePageIndex.value >= pageContents.value.length) {
-    activePageIndex.value = Math.max(0, pageContents.value.length - 1)
-  }
 }
 
 function switchToFree() {
@@ -248,8 +234,7 @@ function onSplitAuto() {
   pageContents.value = splitContentIntoPages(source, pageCount.value)
   contentMode.value = 'per_page'
   cardSplitMode.value = 'auto'
-  activePageIndex.value = 0
-  toastSuccess(`已按标题/序号分为 ${pageCount.value} 页，可在各页中微调`)
+  toastSuccess(`已按 ${pageCount.value} 页拆分，可在各页中微调`)
 }
 
 function onSplitManual() {
@@ -257,7 +242,6 @@ function onSplitManual() {
   pageContents.value = syncPageContents([], pageCount.value)
   contentMode.value = 'per_page'
   cardSplitMode.value = 'manual'
-  activePageIndex.value = 0
 }
 
 function onSplitCancel() {
@@ -275,7 +259,6 @@ function decreasePageCount() {
       return
     }
     pageContents.value = syncPageContents(pageContents.value, next)
-    clampActivePage()
   }
   pageCount.value = next
 }
@@ -285,7 +268,6 @@ function confirmDecreasePageCount() {
   if (pendingPageCount.value != null) {
     pageCount.value = pendingPageCount.value
     pageContents.value = syncPageContents(pageContents.value, pageCount.value)
-    clampActivePage()
     pendingPageCount.value = null
   }
 }
@@ -301,7 +283,6 @@ function increasePageCount() {
 watch(pageCount, (n) => {
   if (contentMode.value === 'per_page') {
     pageContents.value = syncPageContents(pageContents.value, n)
-    clampActivePage()
   }
 })
 
@@ -357,7 +338,7 @@ async function generate() {
       text_density: textDensity.value,
       language: language.value,
       viewport_mode: draft.value.viewportMode || 'auto',
-      background_preset: draft.value.background || 'classic_white',
+      background_preset: draft.value.background ?? '',
       extra_instructions: extraInstructions.value,
       content_mode: contentMode.value,
     }

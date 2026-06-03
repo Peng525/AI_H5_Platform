@@ -104,6 +104,10 @@ async def _migrate_sqlite_columns(conn) -> None:
                 order_names.add(col)
         if "plan_quota" not in order_names:
             sync_conn.execute(text("ALTER TABLE orders ADD COLUMN plan_quota INTEGER"))
+        img_tpl_cols = sync_conn.execute(text("PRAGMA table_info(image_prompt_templates)")).fetchall()
+        img_tpl_names = {row[1] for row in img_tpl_cols}
+        if img_tpl_names and "preview_url" not in img_tpl_names:
+            sync_conn.execute(text("ALTER TABLE image_prompt_templates ADD COLUMN preview_url VARCHAR(512) DEFAULT ''"))
         sync_conn.execute(
             text(
                 "CREATE TABLE IF NOT EXISTS sms_codes ("

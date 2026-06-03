@@ -3,9 +3,9 @@ const STORAGE_KEY = 'ai_create_draft'
 export const DEFAULT_DRAFT = {
   type: 'deck',
   pageCount: 10,
-  background: 'classic_white',
+  background: '',
   viewportMode: 'auto',
-  imageColor: 'classic_white',
+  imageColor: '',
   imageAspectRatio: '9:16',
   imageStyle: '',
   language: '简体中文',
@@ -73,22 +73,3 @@ export function applyProjectSettingsLocal(projectId, settings) {
     })
   )
 }
-
-export const EXAMPLE_PROMPT_GROUPS = [
-  [
-    '面向本科生的珊瑚礁生态保护科普演示',
-    '如何冲泡一杯完美的特浓咖啡：从选豆到拉花',
-    '自由职业者服务的定价策略与案例分享',
-    '2025 企业数字化转型季度复盘报告',
-    '决策心理学：认知偏差与团队决策研讨会',
-    '营销绩效指标看板与增长实验方法论',
-  ],
-  [
-    '新产品路演：智能 H5 演示平台功能介绍',
-    '校园社团招新宣传与活动规划方案',
-    '健康饮食一周计划与营养搭配指南',
-    'AI 在教育培训行业的落地应用场景',
-    '跨境电商品牌出海首年运营总结',
-    '团队 OKR 制定与季度复盘工作坊',
-  ],
-]

@@ -73,6 +73,22 @@ cd "E:\cursor projects\类ppt 小程序\develop"
 
 ---
 
+## 方案 F：Windows 8080 绑定被拒绝（forbidden by access permissions）
+
+错误特征：`listen tcp 0.0.0.0:8080: bind: ... forbidden by its access permissions`  
+原因：Hyper-V/WSL 保留了 **8019–8118**，8080 落在该段内，**不是**普通进程占用。
+
+**以管理员运行**（可双击 `scripts\setup-host-port-8080.cmd`，或在管理员 PowerShell 中）：
+
+```powershell
+cd develop
+.\scripts\setup-host-port-8080.ps1
+```
+
+脚本顺序：停止 WinNAT → `docker compose up` → 再启动 WinNAT。
+
+---
+
 ## 方案 E：使用代理
 
 若本机有 HTTP/HTTPS 代理，在 Docker Desktop → Resources → Proxies 中填写后重启，再执行 `docker compose up -d --build`。

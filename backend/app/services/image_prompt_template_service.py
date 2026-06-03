@@ -80,6 +80,7 @@ def _to_dict(row: ImagePromptTemplate) -> dict[str, Any]:
         "title": row.title,
         "description": row.description or "",
         "fields": _parse_fields(row.fields_json),
+        "preview_url": getattr(row, "preview_url", None) or "",
         "sort_order": row.sort_order,
         "enabled": bool(row.enabled),
         "source": row.source or "admin",
@@ -92,6 +93,7 @@ def _public_item(data: dict[str, Any]) -> dict[str, Any]:
         "title": data["title"],
         "description": data.get("description", ""),
         "fields": data["fields"],
+        "preview_url": data.get("preview_url", ""),
     }
 
 
@@ -132,6 +134,7 @@ async def create_template(db: AsyncSession, data: dict[str, Any]) -> dict:
         title=title,
         description=(data.get("description") or "").strip(),
         fields_json=json.dumps(fields, ensure_ascii=False),
+        preview_url=(data.get("preview_url") or "").strip(),
         sort_order=int(data.get("sort_order") or 100),
         enabled=1 if data.get("enabled", True) else 0,
         source="admin",
@@ -155,6 +158,8 @@ async def update_template(db: AsyncSession, template_id: str, data: dict[str, An
     if data.get("fields") is not None:
         fields = _parse_fields(json.dumps(data["fields"], ensure_ascii=False))
         row.fields_json = json.dumps(fields, ensure_ascii=False)
+    if data.get("preview_url") is not None:
+        row.preview_url = str(data["preview_url"]).strip()
     if data.get("sort_order") is not None:
         row.sort_order = int(data["sort_order"])
     if data.get("enabled") is not None:

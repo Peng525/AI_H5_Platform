@@ -32,34 +32,6 @@
         </p>
       </div>
 
-      <section class="shrink-0 pt-1">
-        <div class="flex items-center justify-between mb-2" :class="!hasTopic && 'mb-3'">
-          <h2 class="font-semibold text-on-surface-variant" :class="hasTopic ? 'text-xs' : 'text-sm'">示例提示</h2>
-          <button
-            type="button"
-            class="text-primary hover:underline inline-flex items-center gap-1"
-            :class="hasTopic ? 'text-xs' : 'text-sm'"
-            @click="rotateExamples"
-          >
-            <span class="material-symbols-outlined" :class="hasTopic ? 'text-[14px]' : 'text-[16px]'">refresh</span>
-            换一组
-          </button>
-        </div>
-        <div class="grid sm:grid-cols-2" :class="hasTopic ? 'gap-2' : 'gap-3'">
-          <button
-            v-for="(ex, i) in currentExamples"
-            :key="i"
-            type="button"
-            class="text-left bg-white/90 border border-outline-variant/50 hover:border-primary/40 hover:bg-primary/5 transition line-clamp-2"
-            :class="hasTopic
-              ? 'rounded-lg px-3 py-2 text-xs'
-              : 'rounded-xl px-4 py-3 text-sm'"
-            @click="applyExample(ex)"
-          >
-            {{ ex }}
-          </button>
-        </div>
-      </section>
     </div>
 
     <template #footer>
@@ -81,13 +53,13 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AiCreateLayout from '../../components/create/AiCreateLayout.vue'
-import { EXAMPLE_PROMPT_GROUPS, loadDraft, requireDeckDraft, saveDraft } from '../../composables/useAiCreateDraft.js'
+import { loadDraft, requireDeckDraft, saveDraft } from '../../composables/useAiCreateDraft.js'
+import { getImageColorLabel, getImageRatioOption } from '../../constants/imageGenerateOptions.js'
 
 const router = useRouter()
 const draft = ref(loadDraft())
 const topic = ref('')
 const topicEl = ref(null)
-const exampleGroup = ref(0)
 
 const charCount = computed(() => topic.value.length)
 const hasTopic = computed(() => !!topic.value.trim())
@@ -105,17 +77,17 @@ function onPaste() {
   })
 }
 
-function applyExample(ex) {
-  topic.value = ex
-  nextTick(scrollInputToTop)
-}
-
-const backgroundLabel = computed(() => (draft.value.background === 'light_gray' ? '浅灰' : '经典白粉'))
-const viewportLabel = computed(() => {
-  const m = { auto: '默认动态', web: '传统网页', mobile: '移动端' }
-  return m[draft.value.viewportMode] || '默认动态'
+const backgroundLabel = computed(() => {
+  const bg = draft.value.background
+  if (!bg) return '无'
+  return getImageColorLabel(bg)
 })
-const currentExamples = computed(() => EXAMPLE_PROMPT_GROUPS[exampleGroup.value % EXAMPLE_PROMPT_GROUPS.length])
+const viewportLabel = computed(() => {
+  const ratio = draft.value.imageAspectRatio
+  if (ratio) return getImageRatioOption(ratio).label
+  const m = { auto: '默认动态', web: '传统网页', mobile: '移动端' }
+  return m[draft.value.viewportMode] || '9:16'
+})
 
 onMounted(async () => {
   const d = requireDeckDraft(router)
@@ -126,10 +98,6 @@ onMounted(async () => {
   topicEl.value?.focus({ preventScroll: true })
   scrollInputToTop()
 })
-
-function rotateExamples() {
-  exampleGroup.value = (exampleGroup.value + 1) % EXAMPLE_PROMPT_GROUPS.length
-}
 
 function goNext() {
   if (!topic.value.trim()) return

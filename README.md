@@ -13,9 +13,17 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-2. 浏览器打开 **http://localhost:8080**
+2. 浏览器打开 **http://localhost:8080**（若 Windows 提示 8080 端口无法绑定，见下方「本机端口冲突」）
 
 3. 使用**邮箱注册/登录**；管理员可在用户管理页授予，或 `.env` 的 `ADMIN_USERNAMES` 配置邮箱（兜底）
+
+**Windows 若 8080 无法绑定（Hyper-V 保留端口，无进程可 kill）：** 以管理员打开 PowerShell，在 `develop` 目录执行：
+
+```powershell
+.\scripts\setup-host-port-8080.ps1
+```
+
+成功后访问 **http://localhost:8080**
 
 **国内 Docker Hub 较慢时：**
 

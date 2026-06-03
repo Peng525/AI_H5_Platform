@@ -18,6 +18,9 @@ from app.schemas import (
     ImagePromptTemplateCreate,
     ImagePromptTemplateOut,
     ImagePromptTemplateUpdate,
+    DeckPromptTemplateCreate,
+    DeckPromptTemplateOut,
+    DeckPromptTemplateUpdate,
     LayoutBlockCreate,
     LayoutBlockOut,
     LayoutBlockUpdate,
@@ -57,6 +60,14 @@ from app.services.image_prompt_template_service import (
     delete_template as delete_image_prompt_template,
     get_template as get_image_prompt_template,
     update_template as update_image_prompt_template,
+)
+from app.services.deck_prompt_template_service import (
+    DeckPromptTemplateError,
+    admin_list as admin_list_deck_prompts,
+    create_template as create_deck_prompt_template,
+    delete_template as delete_deck_prompt_template,
+    get_template as get_deck_prompt_template,
+    update_template as update_deck_prompt_template,
 )
 from app.services.pptx_template_parser import PptxParseError, parse_pptx_bytes
 from app.services.template_draft_service import (
@@ -703,6 +714,70 @@ async def admin_delete_image_prompt_template(
         await delete_image_prompt_template(db, template_id)
         await db.commit()
     except ImagePromptTemplateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"message": "已删除"}
+
+
+@router.get("/演示提示词", response_model=list[DeckPromptTemplateOut], summary="演示提示词模板列表（管理）")
+async def admin_list_deck_prompt_templates(
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    rows = await admin_list_deck_prompts(db)
+    return [DeckPromptTemplateOut(**{**r, "enabled": bool(r.get("enabled"))}) for r in rows]
+
+
+@router.get("/演示提示词/{template_id}", response_model=DeckPromptTemplateOut, summary="演示提示词模板详情")
+async def admin_get_deck_prompt_template(
+    template_id: str,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    row = await get_deck_prompt_template(db, template_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="模板不存在")
+    return DeckPromptTemplateOut(**{**row, "enabled": bool(row.get("enabled"))})
+
+
+@router.post("/演示提示词", response_model=DeckPromptTemplateOut, summary="创建演示提示词模板")
+async def admin_create_deck_prompt_template(
+    body: DeckPromptTemplateCreate,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        row = await create_deck_prompt_template(db, body.model_dump())
+        await db.commit()
+    except DeckPromptTemplateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return DeckPromptTemplateOut(**{**row, "enabled": bool(row.get("enabled"))})
+
+
+@router.put("/演示提示词/{template_id}", response_model=DeckPromptTemplateOut, summary="更新演示提示词模板")
+async def admin_update_deck_prompt_template(
+    template_id: str,
+    body: DeckPromptTemplateUpdate,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        row = await update_deck_prompt_template(db, template_id, body.model_dump(exclude_unset=True))
+        await db.commit()
+    except DeckPromptTemplateError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return DeckPromptTemplateOut(**{**row, "enabled": bool(row.get("enabled"))})
+
+
+@router.delete("/演示提示词/{template_id}", summary="删除演示提示词模板")
+async def admin_delete_deck_prompt_template(
+    template_id: str,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        await delete_deck_prompt_template(db, template_id)
+        await db.commit()
+    except DeckPromptTemplateError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"message": "已删除"}
 

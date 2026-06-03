@@ -27,10 +27,14 @@ if (-not (Test-Path node_modules)) {
 }
 npm run build
 
-Write-Host "[2/2] 启动后端 http://localhost:8080 ..."
+$port = 8080
+if ($env:APP_HOST_PORT) { $port = [int]$env:APP_HOST_PORT }
+elseif ($env:APP_PORT) { $port = [int]$env:APP_PORT }
+
+Write-Host "[2/2] 启动后端 http://localhost:$port ..."
 Set-Location "$Root\backend"
 $env:PYTHONPATH = (Get-Location).Path
 if (-not (Test-Path data)) { New-Item -ItemType Directory -Path data | Out-Null }
 
 pip install -q -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8080
+python -m uvicorn app.main:app --host 0.0.0.0 --port $port

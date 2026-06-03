@@ -110,7 +110,7 @@ const { success: toastSuccess, error: toastError } = useToast()
 
 const prompt = ref('')
 const imageAspectRatio = ref('9:16')
-const imageColor = ref('classic_white')
+const imageColor = ref('')
 const imageStyle = ref('')
 const generating = ref(false)
 const error = ref('')
@@ -125,7 +125,7 @@ onMounted(() => {
   if (draft.topic) prompt.value = draft.topic
   imageAspectRatio.value = draft.imageAspectRatio
     || viewportModeToAspectRatio(draft.viewportMode)
-  if (draft.imageColor) imageColor.value = draft.imageColor
+  if (draft.imageColor != null) imageColor.value = draft.imageColor
   imageStyle.value = draft.imageStyle ?? ''
 })
 

@@ -113,6 +113,7 @@ const navItems = [
   { label: 'H5 模板', to: '/admin/templates', match: '/admin/templates', icon: 'dashboard_customize' },
   { label: '版式管理', to: '/admin/layouts', match: '/admin/layouts', icon: 'view_quilt' },
   { label: '文稿提示词', to: '/admin/prompts', match: '/admin/prompts', icon: 'description' },
+  { label: '演示提示词', to: '/admin/deck-prompts', match: '/admin/deck-prompts', icon: 'stacked_bar_chart' },
   { label: '生图提示词', to: '/admin/image-prompts', match: '/admin/image-prompts', icon: 'psychology' },
   { label: '系统设置', to: '/settings', match: '/settings', icon: 'settings' },
 ]

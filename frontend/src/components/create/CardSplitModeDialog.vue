@@ -18,9 +18,12 @@
                 <span class="material-symbols-outlined">view_carousel</span>
               </div>
               <div class="min-w-0">
-                <h2 id="card-split-title" class="font-semibold text-on-surface">逐张卡片分页</h2>
+                <h2 id="card-split-title" class="font-semibold text-on-surface">按页数分页</h2>
+                <p class="text-sm text-on-surface mt-2 leading-relaxed">
+                  是否按当前的 <strong>{{ pageCount }}</strong> 张卡片进行分页？
+                </p>
                 <p class="text-sm text-on-surface-variant mt-2 leading-relaxed">
-                  请选择如何分页：自动分页将根据标题、序号或段落拆分内容；自行分页将提供空白页供您粘贴。
+                  选择「自动分页」将把内容拆成 {{ pageCount }} 段；选择「自行分页」将提供 {{ pageCount }} 个空白页供您填写。
                 </p>
               </div>
             </div>
@@ -57,6 +60,7 @@
 <script setup>
 defineProps({
   open: { type: Boolean, default: false },
+  pageCount: { type: Number, default: 10 },
 })
 
 defineEmits(['auto', 'manual', 'cancel'])

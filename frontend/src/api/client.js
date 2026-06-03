@@ -211,6 +211,7 @@ export const api = {
       body: JSON.stringify(body),
     }),
   listImagePromptTemplates: () => request('/api/v1/生图提示词'),
+  listDeckPromptTemplates: () => request('/api/v1/演示提示词'),
   listAdminImagePrompts: () => request('/api/v1/管理/生图提示词'),
   getAdminImagePrompt: (id) => request(`/api/v1/管理/生图提示词/${encodeURIComponent(id)}`),
   createAdminImagePrompt: (body) =>
@@ -219,6 +220,14 @@ export const api = {
     request(`/api/v1/管理/生图提示词/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) }),
   deleteAdminImagePrompt: (id) =>
     request(`/api/v1/管理/生图提示词/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  listAdminDeckPrompts: () => request('/api/v1/管理/演示提示词'),
+  getAdminDeckPrompt: (id) => request(`/api/v1/管理/演示提示词/${encodeURIComponent(id)}`),
+  createAdminDeckPrompt: (body) =>
+    request('/api/v1/管理/演示提示词', { method: 'POST', body: JSON.stringify(body) }),
+  updateAdminDeckPrompt: (id, body) =>
+    request(`/api/v1/管理/演示提示词/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteAdminDeckPrompt: (id) =>
+    request(`/api/v1/管理/演示提示词/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   testLlm: (channel, tier = 'free') => {
     const q = new URLSearchParams()
     if (channel) q.set('channel', channel)

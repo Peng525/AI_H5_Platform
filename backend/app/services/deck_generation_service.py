@@ -121,7 +121,11 @@ async def generate_deck_from_ai(
     except Exception as exc:
         raise LlmError(f"生成失败：{exc}") from exc
 
-    bg = BACKGROUND_COLORS.get(body.background_preset, BACKGROUND_COLORS["classic_white"])
+    preset = (body.background_preset or "").strip()
+    if preset and preset in BACKGROUND_COLORS:
+        bg = BACKGROUND_COLORS[preset]
+    else:
+        bg = ""
     viewport_id = VIEWPORT_MAP.get(body.viewport_mode, VIEWPORT_MAP["auto"])
     template_settings = {
         "viewportId": viewport_id,
@@ -146,12 +150,13 @@ async def generate_deck_from_ai(
     await db.flush()
     await seed_project_slides(db, project, slides_seed, template_settings)
 
-    # 统一背景到所有页
-    sorted_slides = sorted(project.slides, key=lambda x: x.sort_order)
-    bg_map = {str(s.id): bg for s in sorted_slides}
-    if bg_map:
-        merged = {**template_settings, "slideBackgrounds": bg_map}
-        project.settings_json = json.dumps(merged, ensure_ascii=False)
+    # 统一背景到所有页（仅当用户选择了色调预设）
+    if bg:
+        sorted_slides = sorted(project.slides, key=lambda x: x.sort_order)
+        bg_map = {str(s.id): bg for s in sorted_slides}
+        if bg_map:
+            merged = {**template_settings, "slideBackgrounds": bg_map}
+            project.settings_json = json.dumps(merged, ensure_ascii=False)
 
     db.add(
         GenerationLog(

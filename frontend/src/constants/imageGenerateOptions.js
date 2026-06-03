@@ -10,6 +10,7 @@ export const IMAGE_RATIO_OPTIONS = [
 ]
 
 export const IMAGE_COLOR_OPTIONS = [
+  { value: '', label: '无' },
   { value: 'classic_white', label: '经典白粉' },
   { value: 'light_gray', label: '浅灰' },
   { value: 'dark', label: '深色' },

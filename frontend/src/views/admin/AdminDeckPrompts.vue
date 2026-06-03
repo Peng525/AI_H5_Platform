@@ -1,8 +1,8 @@
 <template>
-  <AdminShell title="生图提示词">
+  <AdminShell title="演示提示词">
     <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
       <p class="text-sm text-on-surface-variant">
-        管理编辑器 AI 面板「提示词模板」Tab 中的生图场景模板。保存后用户在编辑器右侧即可选用；内置模板可编辑但不可删除。
+        管理生成页「演示文稿」Tab 中的提示词模板。保存后用户在生成页空态即可选用；内置模板可编辑但不可删除。
       </p>
       <button
         type="button"
@@ -71,7 +71,7 @@
     >
       <div class="bg-white rounded-xl border border-outline-variant w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-elevated">
         <div class="px-5 py-4 border-b border-outline-variant flex items-center justify-between">
-          <h2 class="font-semibold">{{ editor.mode === 'create' ? '新建生图提示词' : '编辑生图提示词' }}</h2>
+          <h2 class="font-semibold">{{ editor.mode === 'create' ? '新建演示提示词' : '编辑演示提示词' }}</h2>
           <button type="button" class="text-on-surface-variant hover:text-on-surface material-symbols-outlined" @click="editor.open = false">close</button>
         </div>
         <form class="p-5 space-y-4" @submit.prevent="save">
@@ -82,7 +82,7 @@
               required
               pattern="[a-z0-9][a-z0-9-]{1,62}"
               class="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2 font-mono text-sm"
-              placeholder="例如 sunset-city"
+              placeholder="例如 coral-reef-edu"
             />
             <span class="text-xs text-on-surface-variant mt-1 block">小写字母、数字与连字符</span>
           </label>
@@ -132,7 +132,7 @@
 
     <ConfirmDialog
       :open="!!deleteConfirm"
-      title="删除生图提示词"
+      title="删除演示提示词"
       :message="deleteConfirm?.message || ''"
       confirm-text="删除"
       cancel-text="取消"
@@ -148,12 +148,12 @@ import { onMounted, reactive, ref } from 'vue'
 import { api } from '../../api/client'
 import AdminShell from '../../components/AdminShell.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
-import { IMAGE_PROMPT_FIELD_LABELS } from '../../constants/imagePromptTemplates'
+import { DECK_PROMPT_FIELD_LABELS } from '../../constants/deckPromptTemplates'
 import { useToast } from '../../composables/useToast.js'
 
 const { success: toastSuccess, error: toastError } = useToast()
 
-const fieldLabels = IMAGE_PROMPT_FIELD_LABELS
+const fieldLabels = DECK_PROMPT_FIELD_LABELS
 const templates = ref([])
 const loading = ref(true)
 const error = ref('')
@@ -197,7 +197,7 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    templates.value = await api.listAdminImagePrompts()
+    templates.value = await api.listAdminDeckPrompts()
   } catch (e) {
     error.value = e.message || '加载失败'
   } finally {
@@ -215,7 +215,7 @@ function openCreate() {
 
 async function openEdit(item) {
   try {
-    const detail = await api.getAdminImagePrompt(item.id)
+    const detail = await api.getAdminDeckPrompt(item.id)
     editor.mode = 'edit'
     editor.open = true
     saveError.value = ''
@@ -251,10 +251,10 @@ async function save() {
       enabled: form.enabled,
     }
     if (editor.mode === 'create') {
-      await api.createAdminImagePrompt({ id: form.id.trim(), ...body })
+      await api.createAdminDeckPrompt({ id: form.id.trim(), ...body })
       toastSuccess('模板已创建')
     } else {
-      await api.updateAdminImagePrompt(form.id, body)
+      await api.updateAdminDeckPrompt(form.id, body)
       toastSuccess('模板已保存')
     }
     editor.open = false
@@ -275,7 +275,7 @@ async function onDeleteConfirm() {
   deleteConfirm.value = null
   if (!item) return
   try {
-    await api.deleteAdminImagePrompt(item.id)
+    await api.deleteAdminDeckPrompt(item.id)
     toastSuccess('模板已删除')
     await load()
   } catch (e) {

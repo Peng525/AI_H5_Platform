@@ -134,7 +134,7 @@ class AiDeckGenerateRequest(BaseModel):
     text_density: str = Field("精炼", description="简约|精炼|详细|繁琐")
     language: str = Field("简体中文", description="简体中文|English")
     viewport_mode: str = Field("auto", description="auto|web|mobile")
-    background_preset: str = Field("classic_white", description="classic_white|light_gray")
+    background_preset: str = Field("", description="classic_white|light_gray|空表示不预设")
     extra_content: str = Field("", max_length=12000, description="扩写内容")
     extra_instructions: str = Field("", max_length=2000, description="附加说明")
     content_mode: str = Field("free", description="free|per_page")
@@ -322,6 +322,7 @@ class ImagePromptTemplateOut(BaseModel):
     title: str
     description: str = ""
     fields: list[ImagePromptField] = Field(default_factory=list)
+    preview_url: str = ""
     sort_order: int = 100
     enabled: bool = True
     source: str = "admin"
@@ -332,6 +333,7 @@ class ImagePromptTemplatePublicOut(BaseModel):
     title: str
     description: str = ""
     fields: list[ImagePromptField] = Field(default_factory=list)
+    preview_url: str = ""
 
 
 class ImagePromptTemplateCreate(BaseModel):
@@ -339,6 +341,7 @@ class ImagePromptTemplateCreate(BaseModel):
     title: str
     description: str = ""
     fields: list[ImagePromptField] = Field(default_factory=list)
+    preview_url: str = ""
     sort_order: int = 100
     enabled: bool = True
 
@@ -347,6 +350,45 @@ class ImagePromptTemplateUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     fields: list[ImagePromptField] | None = None
+    preview_url: str | None = None
+    sort_order: int | None = None
+    enabled: bool | None = None
+
+
+class DeckPromptTemplateOut(BaseModel):
+    id: str
+    title: str
+    description: str = ""
+    fields: list[ImagePromptField] = Field(default_factory=list)
+    preview_url: str = ""
+    sort_order: int = 100
+    enabled: bool = True
+    source: str = "admin"
+
+
+class DeckPromptTemplatePublicOut(BaseModel):
+    id: str
+    title: str
+    description: str = ""
+    fields: list[ImagePromptField] = Field(default_factory=list)
+    preview_url: str = ""
+
+
+class DeckPromptTemplateCreate(BaseModel):
+    id: str = Field(..., min_length=2, max_length=64)
+    title: str
+    description: str = ""
+    fields: list[ImagePromptField] = Field(default_factory=list)
+    preview_url: str = ""
+    sort_order: int = 100
+    enabled: bool = True
+
+
+class DeckPromptTemplateUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    fields: list[ImagePromptField] | None = None
+    preview_url: str | None = None
     sort_order: int | None = None
     enabled: bool | None = None
 
