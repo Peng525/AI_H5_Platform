@@ -79,7 +79,7 @@
           :key="p.id"
           class="bg-white rounded-xl border overflow-hidden shadow-card transition group relative"
           :class="[
-            selectMode && selectedIds.has(p.id)
+            selectMode && selectedIds.has(p.public_id)
               ? 'border-primary ring-2 ring-primary/30'
               : 'border-outline-variant hover:shadow-lg',
           ]"
@@ -93,8 +93,8 @@
             <input
               type="checkbox"
               class="w-5 h-5 rounded border-outline-variant accent-primary cursor-pointer"
-              :checked="selectedIds.has(p.id)"
-              @change="toggleSelect(p.id)"
+              :checked="selectedIds.has(p.public_id)"
+              @change="toggleSelect(p.public_id)"
             />
           </label>
 
@@ -116,10 +116,10 @@
                   v-if="openMenuId === p.id"
                   class="absolute right-0 top-full mt-1 w-32 bg-white border border-outline-variant rounded-lg shadow-lg py-1 z-30"
                 >
-                  <button type="button" class="w-full text-left px-3 py-2 text-sm hover:bg-surface-container-low" @click="goEdit(p.id)">
+                  <button type="button" class="w-full text-left px-3 py-2 text-sm hover:bg-surface-container-low" @click="goEdit(p.public_id)">
                     编辑
                   </button>
-                  <button type="button" class="w-full text-left px-3 py-2 text-sm hover:bg-surface-container-low" @click="goPreview(p.id)">
+                  <button type="button" class="w-full text-left px-3 py-2 text-sm hover:bg-surface-container-low" @click="goPreview(p.public_id)">
                     预览
                   </button>
                   <button type="button" class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50" @click="askRemove(p)">
@@ -265,21 +265,21 @@ function toggleSelectAll() {
     selectedIds.value = new Set()
     return
   }
-  selectedIds.value = new Set(projects.value.map((p) => p.id))
+  selectedIds.value = new Set(projects.value.map((p) => p.public_id))
 }
 
 function onCardClick(project) {
   if (selectMode.value) {
-    toggleSelect(project.id)
+    toggleSelect(project.public_id)
     return
   }
-  router.push(`/editor/${project.id}`)
+  router.push(`/editor/${project.public_id}`)
 }
 
 function askRemove(project) {
   closeMenus()
   deleteDialog.mode = 'single'
-  deleteDialog.id = project.id
+  deleteDialog.id = project.public_id
   deleteDialog.ids = []
   deleteDialog.title = '删除演示项目'
   deleteDialog.message = `确定要删除「${project.title}」吗？删除后无法恢复，请谨慎操作。`
@@ -326,7 +326,7 @@ async function confirmRemove() {
       const failed = results.filter((r) => r.status === 'rejected')
       const succeeded = ids.filter((_, i) => results[i].status === 'fulfilled')
       succeeded.forEach((id) => cleanupLocalProjectData(id))
-      projects.value = projects.value.filter((p) => !succeeded.includes(p.id))
+      projects.value = projects.value.filter((p) => !succeeded.includes(p.public_id))
       if (failed.length) {
         error.value = `${failed.length} 个项目删除失败，请重试`
       }
@@ -334,7 +334,7 @@ async function confirmRemove() {
     } else if (deleteDialog.id) {
       await api.deleteProject(deleteDialog.id)
       cleanupLocalProjectData(deleteDialog.id)
-      projects.value = projects.value.filter((p) => p.id !== deleteDialog.id)
+      projects.value = projects.value.filter((p) => p.public_id !== deleteDialog.id)
     }
     deleteDialog.open = false
     deleteDialog.id = null

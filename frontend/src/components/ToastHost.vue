@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <div
-      class="fixed bottom-4 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-2 w-[min(24rem,calc(100vw-2rem))] pointer-events-none"
+      class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[200] flex flex-col items-center gap-2 w-[min(28rem,calc(100vw-2rem))] pointer-events-none"
       aria-live="polite"
       aria-atomic="true"
     >
@@ -9,7 +9,7 @@
         <div
           v-for="t in toasts"
           :key="t.id"
-          class="pointer-events-auto px-4 py-2.5 rounded-lg shadow-elevated border text-sm font-medium flex items-start gap-2"
+          class="pointer-events-auto px-5 py-3 rounded-xl shadow-elevated border text-sm font-medium flex items-center gap-2 justify-center text-center"
           :class="toastClass(t.type)"
           role="status"
         >
@@ -50,6 +50,6 @@ function icon(type) {
 .toast-enter-from,
 .toast-leave-to {
   opacity: 0;
-  transform: translateY(8px);
+  transform: scale(0.96);
 }
 </style>

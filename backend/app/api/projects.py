@@ -1,5 +1,6 @@
 """项目与页面 API。"""
 import json
+import logging
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
@@ -8,12 +9,13 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.deps.auth import get_current_user
-from app.deps.projects import get_owned_project, get_owned_slide
+from app.deps.projects import get_owned_project, get_owned_slide, resolve_owned_project_ref
 from app.models import Project, Slide, User
 from app.schemas import (
     AiDeckGenerateRequest,
     GenerateImageRequest,
     GenerateImageResponse,
+    GenerationMetaOut,
     ProjectCreate,
     ProjectOut,
     ProjectSettingsUpdate,
@@ -26,7 +28,7 @@ from app.schemas import (
     project_settings_out,
 )
 from app.services.deck_generation_service import generate_deck_from_ai
-from app.services.deck_generator import new_share_slug
+from app.services.deck_generator import new_public_id
 from app.services.h5_template_service import get_template as get_h5_template
 from app.services.image_generator import generate_slide_image
 from app.services.llm.provider import LlmError
@@ -35,6 +37,23 @@ from app.services.prompt_template_service import list_templates
 from app.services.pptx_template_parser import PptxParseError, parse_pptx_bytes
 
 router = APIRouter(prefix="/api/v1", tags=["项目"])
+logger = logging.getLogger(__name__)
+
+
+def _generation_meta_from_project(project: Project) -> GenerationMetaOut | None:
+    try:
+        data = json.loads(project.settings_json or "{}")
+    except json.JSONDecodeError:
+        return None
+    meta = data.get("generationMeta")
+    if not isinstance(meta, dict):
+        return None
+    return GenerationMetaOut(
+        model=str(meta.get("model") or ""),
+        channel=str(meta.get("channel") or ""),
+        duration_ms=meta.get("duration_ms"),
+        background_preset=str(meta.get("background_preset") or ""),
+    )
 
 
 def _project_out(project: Project) -> ProjectOut:
@@ -43,6 +62,7 @@ def _project_out(project: Project) -> ProjectOut:
     bg_map = settings.slideBackgrounds or {}
     return ProjectOut(
         id=project.id,
+        public_id=project.public_id,
         title=project.title,
         theme=project.theme,
         share_slug=project.share_slug,
@@ -52,6 +72,7 @@ def _project_out(project: Project) -> ProjectOut:
             for s in slides
         ],
         updated_at=project.updated_at,
+        generation_meta=_generation_meta_from_project(project),
     )
 
 
@@ -112,10 +133,12 @@ async def create_project(
         slides_seed = tpl.get("slides_json") or []
         template_settings = tpl.get("settings_json") or {}
 
+    pid = new_public_id()
     project = Project(
         title=body.title,
         theme=theme,
-        share_slug=new_share_slug(),
+        public_id=pid,
+        share_slug=pid,
         user_id=user.id,
         settings_json=json.dumps(template_settings, ensure_ascii=False),
     )
@@ -150,10 +173,12 @@ async def import_project_pptx(
 
     slides_seed = parsed.get("slides_json") or []
     template_settings = parsed.get("settings_json") or {}
+    pid = new_public_id()
     project = Project(
         title=parsed.get("title") or inferred_title,
         theme="imported",
-        share_slug=new_share_slug(),
+        public_id=pid,
+        share_slug=pid,
         user_id=user.id,
         settings_json=json.dumps(template_settings, ensure_ascii=False),
     )
@@ -174,18 +199,33 @@ async def ai_generate_project(
     try:
         project = await generate_deck_from_ai(db, user, body)
     except LlmError as exc:
+        await db.rollback()
         msg = str(exc)
         status = 402 if "配额" in msg else 502
         raise HTTPException(status_code=status, detail=msg) from exc
+    except Exception as exc:
+        await db.rollback()
+        logger.exception("ai_generate_project failed user_id=%s page_count=%s", user.id, body.page_count)
+        raise HTTPException(status_code=500, detail=f"生成落库失败：{exc}") from exc
     return _project_out(project)
 
 
-@router.get("/项目/{project_id}", response_model=ProjectOut, summary="获取项目")
+@router.get("/项目/resolve/{ref}", summary="解析项目引用（数字 id 或 public_id）")
+async def resolve_project_ref(
+    ref: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    project = await resolve_owned_project_ref(ref, user, db)
+    return {"public_id": project.public_id}
+
+
+@router.get("/项目/{public_id}", response_model=ProjectOut, summary="获取项目")
 async def get_project(project: Project = Depends(get_owned_project)):
     return _project_out(project)
 
 
-@router.put("/项目/{project_id}", response_model=ProjectOut, summary="更新项目")
+@router.put("/项目/{public_id}", response_model=ProjectOut, summary="更新项目")
 async def update_project(
     body: ProjectUpdate,
     project: Project = Depends(get_owned_project),
@@ -200,7 +240,7 @@ async def update_project(
     return _project_out(project)
 
 
-@router.put("/项目/{project_id}/设置", response_model=ProjectOut, summary="保存项目播放设置")
+@router.put("/项目/{public_id}/设置", response_model=ProjectOut, summary="保存项目播放设置")
 async def update_project_settings(
     body: ProjectSettingsUpdate,
     project: Project = Depends(get_owned_project),
@@ -213,7 +253,7 @@ async def update_project_settings(
     return _project_out(project)
 
 
-@router.delete("/项目/{project_id}", summary="删除项目")
+@router.delete("/项目/{public_id}", summary="删除项目")
 async def delete_project(
     project: Project = Depends(get_owned_project),
     db: AsyncSession = Depends(get_db),
@@ -223,7 +263,7 @@ async def delete_project(
     return {"message": "已删除"}
 
 
-@router.post("/项目/{project_id}/页面", response_model=SlideOut, summary="新增页面")
+@router.post("/项目/{public_id}/页面", response_model=SlideOut, summary="新增页面")
 async def add_slide(
     body: SlideCreate,
     project: Project = Depends(get_owned_project),
@@ -246,7 +286,7 @@ async def add_slide(
     return SlideOut.from_orm_slide(slide)
 
 
-@router.put("/项目/{project_id}/页面/{slide_id}", response_model=SlideOut, summary="更新页面")
+@router.put("/项目/{public_id}/页面/{slide_id}", response_model=SlideOut, summary="更新页面")
 async def update_slide(body: SlideUpdate, slide: Slide = Depends(get_owned_slide), db: AsyncSession = Depends(get_db)):
     if body.layout is not None:
         slide.layout = body.layout
@@ -269,7 +309,7 @@ async def update_slide(body: SlideUpdate, slide: Slide = Depends(get_owned_slide
     return SlideOut.from_orm_slide(slide)
 
 
-@router.put("/项目/{project_id}/页面/{slide_id}/画布", response_model=SlideOut, summary="保存页面画布元素")
+@router.put("/项目/{public_id}/页面/{slide_id}/画布", response_model=SlideOut, summary="保存页面画布元素")
 async def update_slide_canvas(
     body: SlideCanvasUpdate,
     slide: Slide = Depends(get_owned_slide),
@@ -281,7 +321,7 @@ async def update_slide_canvas(
     return SlideOut.from_orm_slide(slide)
 
 
-@router.delete("/项目/{project_id}/页面/{slide_id}", summary="删除页面")
+@router.delete("/项目/{public_id}/页面/{slide_id}", summary="删除页面")
 async def delete_slide(slide: Slide = Depends(get_owned_slide), db: AsyncSession = Depends(get_db)):
     await db.delete(slide)
     await db.commit()
@@ -289,7 +329,7 @@ async def delete_slide(slide: Slide = Depends(get_owned_slide), db: AsyncSession
 
 
 @router.post(
-    "/项目/{project_id}/生成/配图",
+    "/项目/{public_id}/生成/配图",
     response_model=GenerateImageResponse,
     summary="AI 生图",
 )
@@ -306,12 +346,21 @@ async def api_generate_image(
     return GenerateImageResponse(**result)
 
 
-@router.get("/分享/{share_slug}", response_model=ProjectOut, summary="通过分享链接预览")
-async def share_preview(share_slug: str, db: AsyncSession = Depends(get_db)):
+@router.get("/分享/{public_id}", response_model=ProjectOut, summary="通过分享链接预览")
+async def share_preview(public_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(Project).where(Project.share_slug == share_slug).options(selectinload(Project.slides))
+        select(Project)
+        .where(Project.public_id == public_id)
+        .options(selectinload(Project.slides))
     )
     project = result.scalar_one_or_none()
+    if not project:
+        result = await db.execute(
+            select(Project)
+            .where(Project.share_slug == public_id)
+            .options(selectinload(Project.slides))
+        )
+        project = result.scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="分享链接无效")
     return _project_out(project)

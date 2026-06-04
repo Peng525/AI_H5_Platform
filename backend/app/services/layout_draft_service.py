@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models import Project, User
 from app.schemas import project_settings_out
-from app.services.deck_generator import new_share_slug
+from app.services.deck_generator import new_public_id
 from app.services.layout_block_service import LayoutBlockError, create_block, get_block, update_block
 from app.services.template_draft_service import _seed_project_slides
 
@@ -83,10 +83,12 @@ async def get_or_create_layout_draft(
         "defaultChatTapToContinue": True,
         "bgm": {"enabled": False, "trackId": "", "url": "", "loop": True, "volume": 0.35},
     }
+    pid = new_public_id()
     project = Project(
         title=meta.get("label") or block_id,
         theme=f"layout-{block_id}",
-        share_slug=new_share_slug(),
+        public_id=pid,
+        share_slug=pid,
         user_id=admin.id,
         template_source_id=source_id,
         settings_json=json.dumps(default_settings, ensure_ascii=False),
@@ -164,14 +166,14 @@ async def quick_create_layout_draft(
 async def get_owned_layout_draft(
     db: AsyncSession,
     block_id: str,
-    project_id: int,
+    project_public_id: str,
     admin: User,
 ) -> Project:
     source_id = layout_source_id(block_id)
     result = await db.execute(
         select(Project)
         .where(
-            Project.id == project_id,
+            Project.public_id == project_public_id,
             Project.user_id == admin.id,
             Project.template_source_id == source_id,
         )
@@ -186,11 +188,11 @@ async def get_owned_layout_draft(
 async def save_layout_from_project(
     db: AsyncSession,
     block_id: str,
-    project_id: int,
+    project_public_id: str,
     admin: User,
     meta: dict[str, Any] | None = None,
 ) -> dict:
-    project = await get_owned_layout_draft(db, block_id, project_id, admin)
+    project = await get_owned_layout_draft(db, block_id, project_public_id, admin)
     slides = sorted(project.slides, key=lambda s: s.sort_order)
     if not slides:
         raise LayoutDraftError("草稿中没有页面")

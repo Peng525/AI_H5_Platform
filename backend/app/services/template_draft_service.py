@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models import Project, Slide, User
 from app.schemas import parse_project_settings, project_settings_out
-from app.services.deck_generator import new_share_slug
+from app.services.deck_generator import new_public_id
 from app.services.h5_template_service import H5TemplateError, get_template, update_template
 
 
@@ -189,10 +189,12 @@ async def get_or_create_template_draft(
 
     slides_seed = tpl.get("slides_json") or []
     template_settings = tpl.get("settings_json") or {}
+    pid = new_public_id()
     project = Project(
         title=tpl.get("title") or template_id,
         theme=template_id,
-        share_slug=new_share_slug(),
+        public_id=pid,
+        share_slug=pid,
         user_id=admin.id,
         template_source_id=template_id,
         settings_json=json.dumps(template_settings, ensure_ascii=False),
@@ -211,13 +213,13 @@ async def get_or_create_template_draft(
 async def get_owned_template_draft(
     db: AsyncSession,
     template_id: str,
-    project_id: int,
+    project_public_id: str,
     admin: User,
 ) -> Project:
     result = await db.execute(
         select(Project)
         .where(
-            Project.id == project_id,
+            Project.public_id == project_public_id,
             Project.user_id == admin.id,
             Project.template_source_id == template_id,
         )
@@ -232,11 +234,11 @@ async def get_owned_template_draft(
 async def save_template_preset(
     db: AsyncSession,
     template_id: str,
-    project_id: int,
+    project_public_id: str,
     admin: User,
     meta: dict[str, Any] | None = None,
 ) -> dict:
-    project = await get_owned_template_draft(db, template_id, project_id, admin)
+    project = await get_owned_template_draft(db, template_id, project_public_id, admin)
     slides_json, settings_json = project_to_template_payload(project)
     patch: dict[str, Any] = {
         "slides_json": slides_json,
@@ -266,11 +268,11 @@ async def save_template_preset(
 async def apply_parsed_template_to_draft(
     db: AsyncSession,
     template_id: str,
-    project_id: int,
+    project_public_id: str,
     admin: User,
     parsed: dict[str, Any],
 ) -> Project:
-    project = await get_owned_template_draft(db, template_id, project_id, admin)
+    project = await get_owned_template_draft(db, template_id, project_public_id, admin)
     slides_seed = parsed.get("slides_json") or []
     template_settings = parsed.get("settings_json") or parse_project_settings(project.settings_json)
     if parsed.get("default_viewport"):
@@ -279,4 +281,4 @@ async def apply_parsed_template_to_draft(
     if parsed.get("title"):
         project.title = parsed["title"]
     await db.flush()
-    return await get_owned_template_draft(db, template_id, project_id, admin)
+    return await get_owned_template_draft(db, template_id, project_public_id, admin)

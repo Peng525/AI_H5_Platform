@@ -1,0 +1,65 @@
+# PPT Master 多模型横评 — 切换模型只改 active_profile，再按 benchmark-runbook.md 同步 Cursor Settings
+active_profile: deepseek-v4-pro
+benchmark_phase: 1          # 1=Web 搜图 only  2=+ gpt-image-2
+
+fixed:
+  page_count: 8
+  canvas: "16:9"
+  image_phase1: web          # Strategist 选 Web-sourced / Pexels
+  image_phase2_backend: openai
+  image_phase2_model: gpt-image-2
+
+# 相对本文件：develop/docs/ppt-master-benchmark/ → develop/.env
+env_file: ../../.env
+
+# Phase 1 建议横评顺序
+benchmark_order:
+  - deepseek-v4-pro
+  - gemini-3-pro
+  - gpt-5-5
+  - claude-opus-4-7
+  - claude-opus-4-8
+  - gpt-image-2
+
+profiles:
+  gemini-3-pro:
+    label: Gemini 3 Pro
+    base_url_env: LLM_RELAY_BASE_URL
+    api_key_env: LLM_RELAY_API_KEY
+    model_id: gemini-3.1-pro-preview
+    notes: profile 键名 gemini-3-pro 不变；中转 Cursor Model 用 gemini-3.1-pro-preview
+
+  claude-opus-4-8:
+    label: Claude Opus 4.8
+    base_url_env: LLM_RELAY_BASE_URL
+    api_key_env: LLM_RELAY_API_KEY
+    model_id: claude-opus-4-8
+
+  claude-opus-4-7:
+    label: Claude Opus 4.7
+    base_url_env: LLM_RELAY_BASE_URL
+    api_key_env: LLM_RELAY_API_KEY
+    model_id: claude-opus-4-7
+
+  gpt-5-5:
+    label: GPT 5.5+
+    base_url_env: LLM_RELAY_BASE_URL
+    api_key_env: LLM_RELAY_API_KEY
+    model_id: gpt-5.5
+    notes: 若中转仅提供 gpt-5.5-chat 等别名，改 model_id 不改 profile 键名
+
+  deepseek-v4-pro:
+    label: DeepSeek V4 Pro
+    base_url_env: base_url
+    api_key_env: api_key
+    model_id_env: model
+    model_id: deepseek-v4-pro
+    notes: Agent 可能需要 deepseek-cursor-proxy
+
+  gpt-image-2:
+    label: GPT Image 2
+    base_url_env: LLM_RELAY_BASE_URL
+    api_key_env: LLM_RELAY_API_KEY
+    model_id: gpt-image-2
+    phase1_skip: true
+    notes: 生图模型，不支持 chat/SVG 横评；Phase 1 自动 run 跳过，Phase 2 用于配图

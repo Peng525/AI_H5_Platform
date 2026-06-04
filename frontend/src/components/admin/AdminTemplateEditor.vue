@@ -109,7 +109,7 @@ async function onPptxSelected(e) {
     fd.append('enabled', form.enabled ? 'true' : 'false')
     const created = await api.importAdminPptxTemplate(fd)
     const draft = await api.startTemplateDraft(created.id)
-    emit('open-editor', { templateId: created.id, projectId: draft.project_id })
+    emit('open-editor', { templateId: created.id, projectId: draft.project_public_id })
     emit('close')
   } catch (err) {
     importMessage.value = err.message || '导入失败'

@@ -68,6 +68,8 @@ async def _migrate_sqlite_columns(conn) -> None:
             sync_conn.execute(text("ALTER TABLE slides ADD COLUMN canvas_json TEXT DEFAULT '[]'"))
         if "chat_script_json" not in slide_names:
             sync_conn.execute(text("ALTER TABLE slides ADD COLUMN chat_script_json TEXT DEFAULT '{}'"))
+        if "structured_json" not in slide_names:
+            sync_conn.execute(text("ALTER TABLE slides ADD COLUMN structured_json TEXT DEFAULT '{}'"))
         proj_cols = sync_conn.execute(text("PRAGMA table_info(projects)")).fetchall()
         proj_names = {row[1] for row in proj_cols}
         if "settings_json" not in proj_names:
@@ -75,6 +77,59 @@ async def _migrate_sqlite_columns(conn) -> None:
         if "template_source_id" not in proj_names:
             sync_conn.execute(text("ALTER TABLE projects ADD COLUMN template_source_id VARCHAR(64)"))
             sync_conn.execute(text("CREATE INDEX IF NOT EXISTS ix_projects_template_source_id ON projects (template_source_id)"))
+        if "public_id" not in proj_names:
+            sync_conn.execute(text("ALTER TABLE projects ADD COLUMN public_id VARCHAR(32)"))
+            sync_conn.execute(text("CREATE INDEX IF NOT EXISTS ix_projects_public_id ON projects (public_id)"))
+            from app.services.deck_generator import new_public_id
+
+            existing_ids = {
+                row[0]
+                for row in sync_conn.execute(
+                    text("SELECT public_id FROM projects WHERE public_id IS NOT NULL AND public_id != ''")
+                ).fetchall()
+            }
+            rows = sync_conn.execute(text("SELECT id, share_slug FROM projects")).fetchall()
+            for row_id, share_slug in rows:
+                pid = (share_slug or "").strip()
+                if not pid:
+                    while True:
+                        pid = new_public_id()
+                        if pid not in existing_ids:
+                            break
+                elif pid in existing_ids:
+                    while True:
+                        pid = new_public_id()
+                        if pid not in existing_ids:
+                            break
+                existing_ids.add(pid)
+                sync_conn.execute(
+                    text("UPDATE projects SET public_id = :pid, share_slug = :pid WHERE id = :id"),
+                    {"pid": pid, "id": row_id},
+                )
+        elif proj_names:
+            from app.services.deck_generator import new_public_id
+
+            existing_ids = {
+                row[0]
+                for row in sync_conn.execute(
+                    text("SELECT public_id FROM projects WHERE public_id IS NOT NULL AND public_id != ''")
+                ).fetchall()
+            }
+            rows = sync_conn.execute(
+                text("SELECT id, share_slug FROM projects WHERE public_id IS NULL OR public_id = ''")
+            ).fetchall()
+            for row_id, share_slug in rows:
+                pid = (share_slug or "").strip()
+                if not pid or pid in existing_ids:
+                    while True:
+                        pid = new_public_id()
+                        if pid not in existing_ids:
+                            break
+                existing_ids.add(pid)
+                sync_conn.execute(
+                    text("UPDATE projects SET public_id = :pid, share_slug = COALESCE(NULLIF(share_slug, ''), :pid) WHERE id = :id"),
+                    {"pid": pid, "id": row_id},
+                )
         tpl_cols = sync_conn.execute(text("PRAGMA table_info(h5_templates)")).fetchall()
         tpl_names = {row[1] for row in tpl_cols}
         if tpl_names and "settings_json" not in tpl_names:
@@ -122,6 +177,12 @@ async def _migrate_sqlite_columns(conn) -> None:
             )
         )
         sync_conn.execute(text("CREATE INDEX IF NOT EXISTS ix_sms_codes_phone ON sms_codes (phone)"))
+        gen_cols = sync_conn.execute(text("PRAGMA table_info(generation_logs)")).fetchall()
+        gen_names = {row[1] for row in gen_cols}
+        if gen_names and "model" not in gen_names:
+            sync_conn.execute(text("ALTER TABLE generation_logs ADD COLUMN model VARCHAR(64) DEFAULT ''"))
+        if gen_names and "duration_ms" not in gen_names:
+            sync_conn.execute(text("ALTER TABLE generation_logs ADD COLUMN duration_ms INTEGER"))
         orphan = sync_conn.execute(text("SELECT id FROM projects WHERE user_id IS NULL")).fetchall()
         if orphan:
             from app.config import settings

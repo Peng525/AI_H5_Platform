@@ -58,10 +58,22 @@ export function requireDeckDraft(router) {
   return draft
 }
 
-export function applyProjectSettingsLocal(projectId, settings) {
+/** 仅当 Review 页生成成功并写入 lastGeneratedPublicId 后，才允许进入结果页 */
+export function canAccessGenerateResult(publicId) {
+  const draft = loadDraft()
+  const allowed = draft.lastGeneratedPublicId ?? draft.lastGeneratedProjectId
+  if (allowed == null || allowed === '') return false
+  return String(allowed) === String(publicId)
+}
+
+export function grantGenerateResultAccess(publicId) {
+  saveDraft({ lastGeneratedPublicId: String(publicId) })
+}
+
+export function applyProjectSettingsLocal(publicId, settings) {
   const prefix = 'ai_h5_project_settings_'
   localStorage.setItem(
-    prefix + projectId,
+    prefix + String(publicId),
     JSON.stringify({
       viewportId: settings.viewportId || 'mobile-375',
       scrollEffect: settings.scrollEffect || 'vertical',

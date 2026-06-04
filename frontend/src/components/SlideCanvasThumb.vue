@@ -1,5 +1,5 @@
 <template>
-  <div class="slide-canvas-thumb-shell">
+  <div class="slide-canvas-thumb-shell" :class="size === 'compact' ? 'slide-canvas-thumb-shell--compact' : 'slide-canvas-thumb-shell--default'">
     <div
       class="slide-canvas-thumb-box"
       :style="{
@@ -22,6 +22,7 @@
           :slide="slide"
           :slide-index="slideIndex"
           :slide-total="1"
+          :show-chrome="false"
         />
       </div>
     </div>
@@ -31,11 +32,12 @@
 <script setup>
 import { computed } from 'vue'
 import PreviewSlideFrame from './PreviewSlideFrame.vue'
-import { resolveSlideBackground } from '../composables/usePresentationPlayback'
-import { resolvePreviewElements } from '../composables/useSlideCanvas'
+import { resolveSlideCanvasBackground } from '../utils/slideBackground.js'
 
-const THUMB_MAX_W = 208
-const THUMB_MAX_H = 128
+const THUMB_SIZES = {
+  default: { maxW: 208, maxH: 128, shellH: 132, pad: 4 },
+  compact: { maxW: 112, maxH: 63, shellH: 72, pad: 2 },
+}
 
 const props = defineProps({
   slide: { type: Object, required: true },
@@ -45,10 +47,13 @@ const props = defineProps({
   projectSettings: { type: Object, default: null },
   liveSlideId: { type: Number, default: null },
   liveElements: { type: Array, default: null },
+  size: { type: String, default: 'default', validator: (v) => ['default', 'compact'].includes(v) },
 })
 
+const thumbSize = computed(() => THUMB_SIZES[props.size] || THUMB_SIZES.default)
+
 const scale = computed(() =>
-  Math.min(THUMB_MAX_W / props.viewport.width, THUMB_MAX_H / props.viewport.height)
+  Math.min(thumbSize.value.maxW / props.viewport.width, thumbSize.value.maxH / props.viewport.height)
 )
 
 const scaledW = computed(() => Math.round(props.viewport.width * scale.value))
@@ -58,24 +63,30 @@ const resolvedElements = computed(() => {
   if (props.liveSlideId != null && props.slide?.id === props.liveSlideId && props.liveElements) {
     return props.liveElements
   }
-  return resolvePreviewElements(props.projectId, props.slide)
+  if (props.slide?.canvas_elements?.length) return props.slide.canvas_elements
+  return []
 })
 
-const background = computed(() => {
-  if (props.slide?.canvas_background) return props.slide.canvas_background
-  return resolveSlideBackground(props.projectId, props.slide?.id, props.projectSettings)
-})
+const background = computed(() =>
+  resolveSlideCanvasBackground(props.projectId, props.slide, props.projectSettings)
+)
 </script>
 
 <style scoped>
 .slide-canvas-thumb-shell {
   width: 100%;
-  height: 132px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #eef0f4;
+}
+.slide-canvas-thumb-shell--default {
+  height: 132px;
   padding: 4px;
+}
+.slide-canvas-thumb-shell--compact {
+  height: 72px;
+  padding: 2px;
 }
 .slide-canvas-thumb-box {
   overflow: hidden;

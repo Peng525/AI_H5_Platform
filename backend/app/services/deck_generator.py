@@ -1,6 +1,10 @@
 """项目辅助函数。"""
-import uuid
+from nanoid import generate
+
+
+def new_public_id() -> str:
+    return generate(size=21)
 
 
 def new_share_slug() -> str:
-    return uuid.uuid4().hex[:12]
+    return new_public_id()

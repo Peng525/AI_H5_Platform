@@ -253,7 +253,7 @@ async function useTemplate(t) {
   })
   const settings = p.settings || {}
   localStorage.setItem(
-    `${SETTINGS_PREFIX}${p.id}`,
+    `${SETTINGS_PREFIX}${p.public_id}`,
     JSON.stringify({
       viewportId: settings.viewportId || t.default_viewport || (t.device === 'web' ? 'web-1280' : 'mobile-375'),
       scrollEffect: settings.scrollEffect || 'vertical',
@@ -266,9 +266,9 @@ async function useTemplate(t) {
   )
   for (const slide of p.slides || []) {
     if (slide.canvas_elements?.length) {
-      localStorage.setItem(`${CANVAS_PREFIX}${p.id}_${slide.id}`, JSON.stringify(slide.canvas_elements))
+      localStorage.setItem(`${CANVAS_PREFIX}${p.public_id}_${slide.id}`, JSON.stringify(slide.canvas_elements))
     }
   }
-  router.push(`/editor/${p.id}`)
+  router.push(`/editor/${p.public_id}`)
 }
 </script>

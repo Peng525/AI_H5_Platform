@@ -19,6 +19,7 @@ class SlideOut(BaseModel):
     canvas_elements: list[dict[str, Any]] = Field(default_factory=list)
     chat_script: dict[str, Any] | None = None
     canvas_background: str | None = None
+    structured: dict[str, Any] | None = None
 
     @classmethod
     def from_orm_slide(cls, slide: Any, canvas_background: str | None = None) -> "SlideOut":
@@ -29,6 +30,13 @@ class SlideOut(BaseModel):
                 canvas_elements = []
         except json.JSONDecodeError:
             canvas_elements = []
+        structured = None
+        try:
+            parsed_struct = json.loads(getattr(slide, "structured_json", None) or "{}")
+            if isinstance(parsed_struct, dict) and parsed_struct.get("template"):
+                structured = parsed_struct
+        except json.JSONDecodeError:
+            structured = None
         chat_script = None
         try:
             parsed = json.loads(getattr(slide, "chat_script_json", None) or "{}")
@@ -48,6 +56,7 @@ class SlideOut(BaseModel):
             canvas_elements=canvas_elements,
             chat_script=chat_script,
             canvas_background=canvas_background,
+            structured=structured,
         )
 
 
@@ -109,14 +118,23 @@ def project_settings_out(project: Any) -> ProjectSettingsOut:
     )
 
 
+class GenerationMetaOut(BaseModel):
+    model: str = ""
+    channel: str = ""
+    duration_ms: int | None = None
+    background_preset: str = ""
+
+
 class ProjectOut(BaseModel):
     id: int
+    public_id: str
     title: str
     theme: str
     share_slug: str | None
     settings: ProjectSettingsOut = Field(default_factory=ProjectSettingsOut)
     slides: list[SlideOut] = []
     updated_at: datetime | None = None
+    generation_meta: GenerationMetaOut | None = None
 
 
 class ProjectCreate(BaseModel):
@@ -141,6 +159,7 @@ class AiDeckGenerateRequest(BaseModel):
     page_contents: list[str] = Field(default_factory=list, description="逐张卡片模式每页内容")
     channel: str | None = Field(None, description="LLM 通道")
     tier: str | None = Field(None, description="free|pro")
+    model: str | None = Field(None, max_length=64, description="覆盖默认文稿模型，如 gpt-5.5")
 
     @field_validator("content_mode")
     @classmethod
@@ -227,12 +246,12 @@ class H5TemplateUpdate(BaseModel):
 
 
 class TemplateDraftOut(BaseModel):
-    project_id: int
+    project_public_id: str
     template_id: str
 
 
 class LayoutDraftOut(BaseModel):
-    project_id: int
+    project_public_id: str
     layout_id: str
 
 
@@ -249,7 +268,7 @@ class LayoutDraftStartBody(BaseModel):
 
 
 class LayoutSaveFromProjectRequest(BaseModel):
-    project_id: int
+    project_public_id: str
     label: str | None = None
     icon: str | None = None
     group: str | None = None
@@ -260,7 +279,7 @@ class LayoutSaveFromProjectRequest(BaseModel):
 
 
 class TemplatePresetSaveRequest(BaseModel):
-    project_id: int
+    project_public_id: str
     title: str | None = None
     description: str | None = None
     category: str | None = None

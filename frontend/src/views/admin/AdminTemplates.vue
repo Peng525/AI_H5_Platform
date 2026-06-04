@@ -156,7 +156,7 @@ async function quickCreate() {
   openingAction.value = 'create'
   try {
     const draft = await api.quickCreateAdminTemplate()
-    goEditor({ templateId: draft.template_id, projectId: draft.project_id })
+    goEditor({ templateId: draft.template_id, projectId: draft.project_public_id })
   } catch (e) {
     toastError(simplifyError(e.message))
     startCooldown()
@@ -175,7 +175,7 @@ async function openVisualEdit(t) {
   openingAction.value = t.id
   try {
     const draft = await api.startTemplateDraft(t.id)
-    goEditor({ templateId: t.id, projectId: draft.project_id })
+    goEditor({ templateId: t.id, projectId: draft.project_public_id })
   } catch (e) {
     toastError(simplifyError(e.message))
     startCooldown()

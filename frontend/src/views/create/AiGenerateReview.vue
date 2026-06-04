@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-surface-container-low flex flex-col">
+  <div class="h-dvh overflow-hidden bg-surface-container-low flex flex-col">
     <header class="h-14 border-b border-outline-variant bg-white flex items-center justify-between px-4 sm:px-6 shrink-0">
       <button type="button" class="text-sm text-on-surface-variant hover:text-primary inline-flex items-center gap-1" @click="router.push('/create/generate')">
         <span class="material-symbols-outlined text-[18px]">arrow_back</span>
@@ -23,7 +23,7 @@
     </div>
 
     <div class="flex-1 grid lg:grid-cols-[260px_1fr_240px] gap-0 min-h-0 overflow-hidden">
-      <aside class="bg-white border-r border-outline-variant p-4 overflow-y-auto space-y-4" :class="mobileTab !== 'settings' && 'hidden lg:block'">
+      <aside class="min-h-0 overflow-hidden bg-white border-r border-outline-variant p-4 overflow-y-auto space-y-4" :class="mobileTab !== 'settings' && 'hidden lg:block'">
         <h2 class="text-sm font-semibold">设置</h2>
         <div>
           <p class="text-xs font-medium text-on-surface-variant mb-2">文本量</p>
@@ -42,11 +42,16 @@
         </div>
         <label class="block text-sm">
           <span class="text-xs font-medium text-on-surface-variant">写给…</span>
-          <input v-model="audience" class="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2 text-sm" placeholder="例如：企业管理层" />
+          <textarea
+            v-model="audience"
+            rows="3"
+            class="sidebar-field mt-1 w-full"
+            placeholder="例如：企业管理层"
+          />
         </label>
         <label class="block text-sm">
           <span class="text-xs font-medium text-on-surface-variant">语气</span>
-          <input v-model="tone" class="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2 text-sm" />
+          <textarea v-model="tone" rows="3" class="sidebar-field mt-1 w-full" />
         </label>
         <label class="block text-sm">
           <span class="text-xs font-medium text-on-surface-variant">语言</span>
@@ -65,7 +70,7 @@
         </div>
       </aside>
 
-      <section class="flex flex-col min-h-0 bg-surface-container-low" :class="mobileTab !== 'content' && 'hidden lg:flex'">
+      <section class="flex flex-col min-h-0 overflow-hidden bg-surface-container-low" :class="mobileTab !== 'content' && 'hidden lg:flex'">
         <div class="p-4 border-b border-outline-variant bg-white shrink-0 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 class="text-sm font-semibold">内容</h2>
@@ -100,45 +105,67 @@
           :placeholder="draft.topic"
         />
 
-        <div v-else class="flex-1 min-h-0 overflow-y-auto mx-4 mb-4 mt-2 space-y-3">
-          <div
+        <div v-else class="flex-1 min-h-0 overflow-y-auto mx-4 mb-4 mt-2 space-y-4">
+          <article
             v-for="(_, i) in pageContents"
             :key="i"
-            class="rounded-xl border border-outline-variant bg-white p-3 shrink-0"
+            class="rounded-xl border border-outline-variant bg-white overflow-hidden shrink-0"
           >
-            <p class="text-xs font-medium text-on-surface mb-2">页面 {{ i + 1 }}</p>
+            <header class="px-4 py-2.5 border-b border-outline-variant bg-surface-container-low/60">
+              <h3 class="text-xs font-semibold text-on-surface">页面 {{ i + 1 }}</h3>
+            </header>
             <textarea
               v-model="pageContents[i]"
-              class="w-full min-h-[5rem] p-3 text-sm resize-y border border-outline-variant/60 rounded-lg focus:ring-1 focus:ring-primary/30 focus:border-primary/40 focus:outline-none leading-relaxed"
+              class="review-page-textarea w-full min-h-[7.5rem] px-4 py-3 text-sm resize-y border-0 bg-white leading-relaxed block"
               :placeholder="`第 ${i + 1} 页内容…`"
+              rows="6"
             />
-          </div>
+          </article>
         </div>
       </section>
 
-      <aside class="bg-white border-l border-outline-variant p-4 overflow-y-auto space-y-4" :class="mobileTab !== 'tips' && 'hidden lg:block'">
+      <aside class="min-h-0 overflow-hidden bg-white border-l border-outline-variant p-4 overflow-y-auto space-y-4" :class="mobileTab !== 'tips' && 'hidden lg:block'">
         <h2 class="text-sm font-semibold">说明</h2>
         <label class="block text-sm">
           <span class="text-xs font-medium text-on-surface-variant">附加说明</span>
           <textarea v-model="extraInstructions" rows="4" class="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2 text-sm resize-none" placeholder="可选" />
         </label>
         <p class="text-xs text-on-surface-variant leading-relaxed">
-          点击「生成」后，AI 将根据您的提示词与设置创建完整演示结构，并进入编辑器继续排版与配图。
+          点击「生成」后，AI 将根据您的提示词与设置创建完整演示结构，并进入生成结果页继续微调与保存评估包。
         </p>
       </aside>
     </div>
 
-    <footer class="shrink-0 border-t border-outline-variant bg-white px-4 sm:px-6 py-4 flex flex-wrap items-center justify-end gap-3">
-      <p v-if="error" class="text-sm text-red-600 flex-1 min-w-0">{{ error }}</p>
-      <button
-        type="button"
-        class="px-8 py-2.5 rounded-xl bg-primary text-on-primary font-medium inline-flex items-center gap-2 disabled:opacity-50"
-        :disabled="generating"
-        @click="generate"
-      >
-        <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
-        {{ generating ? '生成中…' : '生成' }}
-      </button>
+    <footer class="shrink-0 border-t border-outline-variant bg-white py-3">
+      <div class="relative flex items-center justify-between px-4 sm:px-6 min-h-[2.75rem]">
+        <p class="text-sm text-on-surface-variant tabular-nums shrink-0 z-10">
+          配额 {{ quotaText }}
+        </p>
+        <div class="absolute inset-x-0 flex items-center justify-center pointer-events-none px-4">
+          <div class="relative pointer-events-auto">
+            <p class="absolute right-full top-1/2 -translate-y-1/2 mr-3 whitespace-nowrap text-sm text-on-surface-variant tabular-nums">
+              共 {{ pageCount }} 张卡片
+            </p>
+            <button
+              type="button"
+              class="min-w-[11rem] px-12 sm:px-14 py-2.5 rounded-full bg-primary text-on-primary font-medium inline-flex items-center justify-center gap-2 disabled:opacity-50 whitespace-nowrap shrink-0"
+              :disabled="generating"
+              @click="generate"
+            >
+              <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+              {{ generating ? '生成中…' : '生成' }}
+            </button>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="px-5 py-2.5 rounded-lg border border-outline-variant bg-white text-sm font-medium hover:bg-surface-container-low transition whitespace-nowrap shrink-0 z-10"
+          @click="save"
+        >
+          保存
+        </button>
+      </div>
+      <p v-if="error" class="text-sm text-red-600 mt-2 text-center px-4">{{ error }}</p>
     </footer>
 
     <CardSplitModeDialog
@@ -158,20 +185,27 @@
       @cancel="truncateDialogOpen = false"
       @confirm="confirmDecreasePageCount"
     />
+
+    <DeckGenerateOverlay
+      :open="overlayOpen"
+      :estimated-seconds="estimatedSeconds"
+    />
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../../api/client'
 import CardSplitModeDialog from '../../components/create/CardSplitModeDialog.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
+import DeckGenerateOverlay from '../../components/create/DeckGenerateOverlay.vue'
 import UserMenu from '../../components/create/UserMenu.vue'
 import { useToast } from '../../composables/useToast.js'
+import { useQuota } from '../../composables/useQuota.js'
 import {
   applyProjectSettingsLocal,
-  clearDraft,
+  grantGenerateResultAccess,
   loadDraft,
   requireDeckDraft,
   saveDraft,
@@ -181,6 +215,7 @@ import { splitContentIntoPages } from '../../utils/splitContentIntoPages.js'
 
 const router = useRouter()
 const { success: toastSuccess } = useToast()
+const { quotaText, refreshQuota } = useQuota()
 const draft = ref(loadDraft())
 const mobileTab = ref('content')
 const mobileTabs = [
@@ -204,7 +239,10 @@ const splitDialogOpen = ref(false)
 const truncateDialogOpen = ref(false)
 const pendingPageCount = ref(null)
 const generating = ref(false)
+const overlayOpen = ref(false)
 const error = ref('')
+
+const estimatedSeconds = computed(() => 8 + pageCount.value * 4)
 
 function sourceTextForSplit() {
   return (extraContent.value || draft.value.topic || '').trim()
@@ -306,18 +344,8 @@ onMounted(async () => {
   pageContents.value = syncPageContents(d.pageContents || [], pageCount.value)
 })
 
-async function generate() {
-  if (contentMode.value === 'per_page') {
-    const hasAny = pageContents.value.some((p) => p.trim())
-    if (!hasAny) {
-      error.value = '请至少填写一页内容'
-      return
-    }
-  }
-
-  generating.value = true
-  error.value = ''
-  saveDraft({
+function buildDraftPatch() {
+  return {
     pageCount: pageCount.value,
     textDensity: textDensity.value,
     audience: audience.value,
@@ -328,7 +356,28 @@ async function generate() {
     contentMode: contentMode.value,
     cardSplitMode: cardSplitMode.value,
     pageContents: pageContents.value,
-  })
+  }
+}
+
+function save() {
+  saveDraft(buildDraftPatch())
+  error.value = ''
+  toastSuccess('草稿已保存')
+}
+
+async function generate() {
+  if (contentMode.value === 'per_page') {
+    const hasAny = pageContents.value.some((p) => p.trim())
+    if (!hasAny) {
+      error.value = '请至少填写一页内容'
+      return
+    }
+  }
+
+  generating.value = true
+  overlayOpen.value = true
+  error.value = ''
+  saveDraft(buildDraftPatch())
   try {
     const body = {
       topic: draft.value.topic,
@@ -341,6 +390,7 @@ async function generate() {
       background_preset: draft.value.background ?? '',
       extra_instructions: extraInstructions.value,
       content_mode: contentMode.value,
+      model: 'gpt-5.5',
     }
     if (contentMode.value === 'per_page') {
       body.page_contents = syncPageContents(pageContents.value, pageCount.value)
@@ -350,12 +400,27 @@ async function generate() {
       body.page_contents = []
     }
     const project = await api.generateAiDeck(body)
-    applyProjectSettingsLocal(project.id, project.settings || {})
-    clearDraft()
-    router.push(`/editor/${project.id}`)
+    applyProjectSettingsLocal(project.public_id, project.settings || {})
+    grantGenerateResultAccess(project.public_id)
+    await refreshQuota()
+    overlayOpen.value = false
+    generating.value = false
+    router.push(`/create/generate/result/${project.public_id}`)
   } catch (e) {
     error.value = e.message || '生成失败'
+    overlayOpen.value = false
     generating.value = false
   }
 }
 </script>
+
+<style scoped>
+.sidebar-field {
+  @apply border border-outline-variant rounded-lg px-3 py-2 text-sm leading-relaxed resize-none overflow-y-auto;
+  @apply focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40;
+}
+
+.review-page-textarea {
+  @apply focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary/20;
+}
+</style>

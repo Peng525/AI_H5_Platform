@@ -1,0 +1,26 @@
+/** 语义化样式 token → Tailwind class（LLM 不直接输出 class） */
+export const slideTokens = {
+  page: 'w-full h-full flex flex-col bg-white text-gray-900 overflow-hidden',
+  headerBar: 'shrink-0 px-8 py-4 bg-surface-container-low border-b border-outline-variant/60',
+  pageTitle: 'text-2xl font-bold text-on-surface',
+  pageSubtitle: 'text-sm text-on-surface-variant mt-1',
+  headline: 'text-3xl font-extrabold text-primary leading-tight',
+  body: 'text-base text-on-surface-variant leading-relaxed',
+  card: 'rounded-xl border border-outline-variant bg-white shadow-sm p-4 flex flex-col gap-2',
+  cardMuted: 'rounded-xl border border-outline-variant/80 bg-surface-container-low p-4 flex flex-col gap-2',
+  cardTitle: 'text-base font-semibold text-on-surface',
+  cardBody: 'text-sm text-on-surface-variant leading-relaxed',
+  icon: 'material-symbols-outlined text-[28px] text-primary',
+  grid2: 'grid grid-cols-2 gap-4 flex-1 px-8 py-4 min-h-0',
+  splitRow: 'grid grid-cols-2 gap-8 flex-1 px-8 py-4 min-h-0',
+  cardsRow: 'grid grid-cols-3 gap-4 flex-1 px-8 py-4 min-h-0',
+  chartPlaceholder:
+    'rounded-xl border-2 border-dashed border-outline-variant bg-surface-container-low flex flex-col items-center justify-center gap-2 pointer-events-none aria-hidden',
+  statNumber: 'text-5xl font-bold text-primary tabular-nums',
+  statDesc: 'text-lg text-on-surface-variant mt-2',
+  quote: 'text-2xl font-medium text-on-surface text-center leading-relaxed px-12',
+  quoteAuthor: 'text-sm text-on-surface-variant text-center mt-4',
+  coverTitle: 'text-4xl font-bold text-center text-on-surface',
+  coverSubtitle: 'text-lg text-center text-on-surface-variant mt-3',
+  stepCircle: 'w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg mx-auto',
+}

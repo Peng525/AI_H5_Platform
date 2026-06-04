@@ -43,7 +43,7 @@
         </div>
 
         <div class="flex flex-wrap justify-between gap-4 mt-8 pt-6 border-t border-outline-variant text-sm">
-          <router-link :to="`/editor/${$route.params.id}`" class="text-primary flex items-center gap-1 hover:underline">
+          <router-link :to="`/editor/${$route.params.publicId}`" class="text-primary flex items-center gap-1 hover:underline">
             <span class="material-symbols-outlined text-lg">arrow_back</span>
             返回编辑器
           </router-link>
@@ -80,8 +80,8 @@ async function loadPublishInfo() {
   loading.value = true
   loadError.value = ''
   try {
-    const p = await api.getProject(Number(route.params.id))
-    slug.value = p.share_slug || ''
+    const p = await api.getProject(String(route.params.publicId))
+    slug.value = p.public_id || p.share_slug || ''
     if (!slug.value) loadError.value = '项目尚未生成分享链接，请稍后在编辑器中重试发布'
   } catch (e) {
     loadError.value = e.message || '加载失败'

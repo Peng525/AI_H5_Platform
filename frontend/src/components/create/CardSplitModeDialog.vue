@@ -22,30 +22,29 @@
                 <p class="text-sm text-on-surface mt-2 leading-relaxed">
                   是否按当前的 <strong>{{ pageCount }}</strong> 张卡片进行分页？
                 </p>
-                <p class="text-sm text-on-surface-variant mt-2 leading-relaxed">
-                  选择「自动分页」将把内容拆成 {{ pageCount }} 段；选择「自行分页」将提供 {{ pageCount }} 个空白页供您填写。
-                </p>
               </div>
             </div>
           </div>
-          <div class="flex flex-row items-center gap-2 px-6 py-4 bg-surface-container-low border-t border-outline-variant">
+          <div class="flex items-center justify-between gap-6 px-6 py-4 bg-surface-container-low border-t border-outline-variant">
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="px-4 py-2.5 rounded-lg bg-primary text-on-primary text-sm font-medium hover:bg-primary-container transition whitespace-nowrap"
+                @click="$emit('auto')"
+              >
+                自动分页
+              </button>
+              <button
+                type="button"
+                class="px-4 py-2.5 rounded-lg border border-outline-variant bg-white text-sm font-medium hover:bg-white transition whitespace-nowrap"
+                @click="$emit('manual')"
+              >
+                自行分页
+              </button>
+            </div>
             <button
               type="button"
-              class="flex-1 py-2.5 rounded-lg bg-primary text-on-primary text-sm font-medium hover:bg-primary-container transition whitespace-nowrap"
-              @click="$emit('auto')"
-            >
-              自动分页
-            </button>
-            <button
-              type="button"
-              class="flex-1 py-2.5 rounded-lg border border-outline-variant bg-white text-sm font-medium hover:bg-white transition whitespace-nowrap"
-              @click="$emit('manual')"
-            >
-              自行分页
-            </button>
-            <button
-              type="button"
-              class="shrink-0 px-4 py-2.5 rounded-lg text-sm text-on-surface-variant hover:text-primary hover:bg-white transition whitespace-nowrap"
+              class="shrink-0 px-4 py-2.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition whitespace-nowrap"
               @click="$emit('cancel')"
             >
               取消

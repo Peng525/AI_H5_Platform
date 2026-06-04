@@ -57,7 +57,7 @@ export function useProjectEditorSettings(projectIdRef) {
     clearTimeout(saveTimer)
     saveTimer = setTimeout(async () => {
       try {
-        await api.updateProjectSettings(Number(id), {
+        await api.updateProjectSettings(String(id), {
           viewportId: settings.value.viewportId,
           scrollEffect: settings.value.scrollEffect,
           themeId: settings.value.themeId,

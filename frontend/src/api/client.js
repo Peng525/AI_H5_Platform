@@ -2,6 +2,10 @@ import { useAuth } from '../composables/useAuth'
 
 const BASE = ''
 
+function projectApiPath(publicId) {
+  return `/api/v1/项目/${encodeURIComponent(publicId)}`
+}
+
 let authRedirectPending = false
 
 function redirectToLogin() {
@@ -92,25 +96,26 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  getProject: (id) => request(`/api/v1/项目/${id}`),
-  updateProjectSettings: (id, body) =>
-    request(`/api/v1/项目/${id}/设置`, { method: 'PUT', body: JSON.stringify(body) }),
-  updateProject: (id, body) =>
-    request(`/api/v1/项目/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
-  updateSlide: (projectId, slideId, body) =>
-    request(`/api/v1/项目/${projectId}/页面/${slideId}`, {
+  resolveProjectRef: (ref) => request(`/api/v1/项目/resolve/${encodeURIComponent(ref)}`),
+  getProject: (publicId) => request(projectApiPath(publicId)),
+  updateProjectSettings: (publicId, body) =>
+    request(`${projectApiPath(publicId)}/设置`, { method: 'PUT', body: JSON.stringify(body) }),
+  updateProject: (publicId, body) =>
+    request(projectApiPath(publicId), { method: 'PUT', body: JSON.stringify(body) }),
+  updateSlide: (publicId, slideId, body) =>
+    request(`${projectApiPath(publicId)}/页面/${slideId}`, {
       method: 'PUT',
       body: JSON.stringify(body),
     }),
-  saveSlideCanvas: (projectId, slideId, elements) =>
-    request(`/api/v1/项目/${projectId}/页面/${slideId}/画布`, {
+  saveSlideCanvas: (publicId, slideId, elements) =>
+    request(`${projectApiPath(publicId)}/页面/${slideId}/画布`, {
       method: 'PUT',
       body: JSON.stringify({ elements }),
     }),
-  deleteProject: (id) => request(`/api/v1/项目/${id}`, { method: 'DELETE' }),
+  deleteProject: (publicId) => request(projectApiPath(publicId), { method: 'DELETE' }),
   importProjectPptx: (formData) => uploadForm('/api/v1/项目/导入-pptx', formData),
-  generateImage: (projectId, body) =>
-    request(`/api/v1/项目/${projectId}/生成/配图`, {
+  generateImage: (publicId, body) =>
+    request(`${projectApiPath(publicId)}/生成/配图`, {
       method: 'POST',
       body: JSON.stringify(body),
     }),
@@ -119,10 +124,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  addSlide: (projectId, body) =>
-    request(`/api/v1/项目/${projectId}/页面`, { method: 'POST', body: JSON.stringify(body) }),
-  deleteSlide: (projectId, slideId) =>
-    request(`/api/v1/项目/${projectId}/页面/${slideId}`, { method: 'DELETE' }),
+  addSlide: (publicId, body) =>
+    request(`${projectApiPath(publicId)}/页面`, { method: 'POST', body: JSON.stringify(body) }),
+  deleteSlide: (publicId, slideId) =>
+    request(`${projectApiPath(publicId)}/页面/${slideId}`, { method: 'DELETE' }),
   getPromptTemplates: () => request('/api/v1/设置/模板列表'),
   getPromptTemplate: (id) => request(`/api/v1/设置/提示词模板/${encodeURIComponent(id)}`),
   createPromptTemplate: (body) =>

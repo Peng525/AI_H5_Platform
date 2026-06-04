@@ -232,7 +232,7 @@ async function quickCreate() {
   openingAction.value = 'create'
   try {
     const draft = await api.quickCreateLayoutDraft({ label: '新版式' })
-    goEditor({ layoutId: draft.layout_id, projectId: draft.project_id })
+    goEditor({ layoutId: draft.layout_id, projectId: draft.project_public_id })
   } catch (e) {
     toastError(simplifyError(e.message))
     startCooldown()
@@ -258,7 +258,7 @@ async function openVisualEdit(item) {
       }
     }
     const draft = await api.startLayoutDraft(item.id, seed)
-    goEditor({ layoutId: item.id, projectId: draft.project_id })
+    goEditor({ layoutId: item.id, projectId: draft.project_public_id })
   } catch (e) {
     toastError(simplifyError(e.message))
     startCooldown()

@@ -1,0 +1,12 @@
+# DeepSeek-only token pricing for PPT benchmark cost estimates (USD per 1M tokens).
+# Other profiles (relay) are not cost-tracked here — check your relay billing separately.
+#
+# Compare computed totals with your account at https://platform.deepseek.com/usage
+# Official rates: https://api-docs.deepseek.com/quick_start/pricing
+
+deepseek-v4-pro:
+  source: official
+  input_per_1m_cache_miss: 0.435
+  input_per_1m_cache_hit: 0.003625
+  output_per_1m: 0.87
+  notes: "DeepSeek V4-Pro; cache hit/miss split when API reports prompt_cache_* fields"

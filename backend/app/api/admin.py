@@ -446,7 +446,7 @@ async def admin_template_quick_create(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"创建编辑草稿失败：{exc}") from exc
-    return TemplateDraftOut(project_id=project.id, template_id=template_id)
+    return TemplateDraftOut(project_public_id=project.public_id, template_id=template_id)
 
 
 @router.post("/模板/{template_id}/编辑草稿", response_model=TemplateDraftOut, summary="获取或创建模板可视化编辑草稿")
@@ -462,7 +462,7 @@ async def admin_template_edit_draft(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"打开编辑草稿失败：{exc}") from exc
-    return TemplateDraftOut(project_id=project.id, template_id=template_id)
+    return TemplateDraftOut(project_public_id=project.public_id, template_id=template_id)
 
 
 @router.post("/模板/{template_id}/保存预设", response_model=H5TemplateOut, summary="将草稿项目保存为 H5 模板预设")
@@ -472,9 +472,9 @@ async def admin_template_save_preset(
     admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    meta = body.model_dump(exclude={"project_id"}, exclude_unset=True)
+    meta = body.model_dump(exclude={"project_public_id"}, exclude_unset=True)
     try:
-        row = await save_template_preset(db, template_id, body.project_id, admin, meta or None)
+        row = await save_template_preset(db, template_id, body.project_public_id, admin, meta or None)
         await db.commit()
     except TemplateDraftError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -484,7 +484,7 @@ async def admin_template_save_preset(
 @router.post("/模板/{template_id}/导入-pptx", response_model=TemplateDraftOut, summary="PPTX 导入到模板编辑草稿")
 async def admin_template_import_pptx_to_draft(
     template_id: str,
-    project_id: int = Form(...),
+    project_public_id: str = Form(...),
     file: UploadFile = File(...),
     device: str = Form("mobile"),
     title: str = Form(""),
@@ -502,13 +502,13 @@ async def admin_template_import_pptx_to_draft(
             title=inferred_title,
             category="简约商务",
         )
-        await apply_parsed_template_to_draft(db, template_id, project_id, admin, parsed)
+        await apply_parsed_template_to_draft(db, template_id, project_public_id, admin, parsed)
         await db.commit()
     except PptxParseError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except TemplateDraftError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return TemplateDraftOut(project_id=project_id, template_id=template_id)
+    return TemplateDraftOut(project_public_id=project_public_id, template_id=template_id)
 
 
 @router.delete("/模板/{template_id}", summary="删除 H5 模板")
@@ -553,7 +553,7 @@ async def admin_layout_quick_create(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"创建版式草稿失败：{exc}") from exc
-    return LayoutDraftOut(project_id=project.id, layout_id=layout_id)
+    return LayoutDraftOut(project_public_id=project.public_id, layout_id=layout_id)
 
 
 @router.post("/版式/{block_id}/编辑草稿", response_model=LayoutDraftOut, summary="获取或创建版式可视化编辑草稿")
@@ -571,7 +571,7 @@ async def admin_layout_edit_draft(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"打开版式编辑草稿失败：{exc}") from exc
-    return LayoutDraftOut(project_id=project.id, layout_id=block_id)
+    return LayoutDraftOut(project_public_id=project.public_id, layout_id=block_id)
 
 
 @router.post("/版式/{block_id}/保存", response_model=LayoutBlockOut, summary="将草稿项目保存为版式块")
@@ -581,9 +581,9 @@ async def admin_layout_save_from_project(
     admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    meta = body.model_dump(exclude={"project_id"}, exclude_unset=True)
+    meta = body.model_dump(exclude={"project_public_id"}, exclude_unset=True)
     try:
-        row = await save_layout_from_project(db, block_id, body.project_id, admin, meta or None)
+        row = await save_layout_from_project(db, block_id, body.project_public_id, admin, meta or None)
         await db.commit()
     except LayoutDraftError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

@@ -114,7 +114,7 @@ async function save() {
   try {
     await flushCanvas()
     const result = await api.saveLayoutFromProject(props.layoutId, {
-      project_id: Number(props.projectId),
+      project_public_id: String(props.projectId),
       ...form,
     })
     emit('saved', result)

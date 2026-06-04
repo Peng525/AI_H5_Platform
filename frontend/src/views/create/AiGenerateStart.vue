@@ -24,7 +24,7 @@
         <AspectRatioSelect v-model="imageAspectRatio" @update:model-value="onAspectRatioChange" />
         <label class="relative inline-flex items-center">
           <select v-model="background" class="pill-select">
-            <option v-for="opt in colorOptions" :key="opt.value || 'none'" :value="opt.value">{{ opt.label }}</option>
+            <option v-for="opt in deckBackgroundOptions" :key="opt.value || 'none'" :value="opt.value">{{ opt.label }}</option>
           </select>
           <span class="material-symbols-outlined pill-chevron">expand_more</span>
         </label>
@@ -159,6 +159,7 @@ import { useImagePromptTemplates } from '../../composables/useImagePromptTemplat
 import { formatDeckPromptTemplate } from '../../constants/deckPromptTemplates.js'
 import { formatImagePromptTemplate } from '../../constants/imagePromptTemplates.js'
 import {
+  DECK_BACKGROUND_OPTIONS,
   IMAGE_COLOR_OPTIONS,
   IMAGE_STYLE_OPTIONS,
   aspectRatioToViewportMode,
@@ -206,6 +207,7 @@ const typeTabs = [
 ]
 
 const colorOptions = IMAGE_COLOR_OPTIONS
+const deckBackgroundOptions = DECK_BACKGROUND_OPTIONS
 const imageStyleOptions = IMAGE_STYLE_OPTIONS
 
 const charCount = computed(() => topic.value.length)

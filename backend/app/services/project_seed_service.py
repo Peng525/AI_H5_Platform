@@ -30,6 +30,7 @@ async def seed_project_slides(
     for idx, s in enumerate(slides_seed):
         canvas_elements = s.get("canvas_elements") or []
         chat_script = s.get("chat_script") or {}
+        structured = s.get("structured") or {}
         db.add(
             Slide(
                 project_id=project.id,
@@ -42,11 +43,15 @@ async def seed_project_slides(
                 animation=s.get("animation", "fade"),
                 canvas_json=json.dumps(canvas_elements, ensure_ascii=False),
                 chat_script_json=json.dumps(chat_script, ensure_ascii=False),
+                structured_json=json.dumps(structured, ensure_ascii=False),
             )
         )
     await db.flush()
     backgrounds: dict[str, str] = {}
-    sorted_slides = sorted(project.slides, key=lambda x: x.sort_order)
+    slide_rows = await db.execute(
+        select(Slide).where(Slide.project_id == project.id).order_by(Slide.sort_order)
+    )
+    sorted_slides = list(slide_rows.scalars().all())
     for slide, seed in zip(sorted_slides, slides_seed):
         bg = seed.get("canvas_background")
         if bg:

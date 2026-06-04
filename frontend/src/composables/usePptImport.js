@@ -27,7 +27,7 @@ export function usePptImport() {
       const fd = new FormData()
       fd.append('file', file)
       const project = await api.importProjectPptx(fd)
-      router.push(`/editor/${project.id}`)
+      router.push(`/editor/${project.public_id}`)
     } catch (err) {
       importError.value = err.message || '导入失败'
     } finally {

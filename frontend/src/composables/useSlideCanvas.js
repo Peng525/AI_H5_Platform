@@ -2,6 +2,8 @@ import { computed, ref, watch } from 'vue'
 import { api } from '../api/client'
 import { DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
 import { getCanvasContentSize } from '../constants/editorPresets.js'
+import { textColorForSlideBackground } from '../utils/slideBackground.js'
+import { compileSlideIfNeeded, resolveSlideStructured } from '../utils/compileStructuredSlide.js'
 
 const STORAGE_PREFIX = 'ai_h5_canvas_'
 const SETTINGS_PREFIX = 'ai_h5_project_settings_'
@@ -13,57 +15,71 @@ export const CANVAS_Z = {
 }
 
 function storageKey(projectId, slideId) {
-  return `${STORAGE_PREFIX}${Number(projectId)}_${slideId}`
+  return `${STORAGE_PREFIX}${String(projectId)}_${slideId}`
 }
 
-export function buildElementsFromSlide(slide) {
+export function buildElementsFromSlide(slide, viewportId = 'mobile-375') {
   if (!slide) return []
+  const textColor = textColorForSlideBackground(slide.canvas_background)
+  const isWeb = String(viewportId).startsWith('web')
+  const marginX = isWeb ? 80 : 20
+  const contentW = isWeb ? 1120 : 320
+  const titleSize = isWeb ? 40 : 22
+  const subtitleSize = isWeb ? 20 : 14
+  const bodySize = isWeb ? 18 : 14
+  const titleY = isWeb ? 120 : 80
+  const subtitleY = isWeb ? 190 : 130
+  const bulletsStartY = isWeb ? 240 : 170
+  const bulletLineH = isWeb ? 36 : 28
+
   const items = []
   if (slide.title) {
     items.push(
       defaultElement('text', {
-        x: 20,
-        y: 80,
-        width: 320,
-        height: 48,
+        x: marginX,
+        y: titleY,
+        width: contentW,
+        height: isWeb ? 56 : 48,
         content: slide.title,
-        style: { fontSize: 22, color: '#ffffff', fontWeight: 'bold', background: 'transparent' },
+        style: { fontSize: titleSize, color: textColor, fontWeight: 'bold', background: 'transparent' },
       })
     )
   }
   if (slide.subtitle) {
     items.push(
       defaultElement('text', {
-        x: 20,
-        y: 130,
-        width: 320,
-        height: 32,
+        x: marginX,
+        y: subtitleY,
+        width: contentW,
+        height: isWeb ? 40 : 32,
         content: slide.subtitle,
-        style: { fontSize: 14, color: '#ffffff', background: 'transparent' },
+        style: { fontSize: subtitleSize, color: textColor, background: 'transparent' },
       })
     )
   }
   ;(slide.bullets || []).forEach((b, i) => {
     items.push(
       defaultElement('text', {
-        x: 24,
-        y: 170 + i * 28,
-        width: 300,
-        height: 24,
+        x: marginX + (isWeb ? 8 : 4),
+        y: bulletsStartY + i * bulletLineH,
+        width: contentW - (isWeb ? 16 : 8),
+        height: bulletLineH - 4,
         content: `• ${b}`,
-        style: { fontSize: 14, color: '#ffffff', background: 'transparent' },
+        style: { fontSize: bodySize, color: textColor, background: 'transparent' },
       })
     )
   })
   if (slide.layout === 'image-text') {
     const label = encodeURIComponent((slide.title || 'AI生图').slice(0, 16))
+    const imgW = isWeb ? 960 : 335
+    const imgH = isWeb ? 360 : 200
     items.push(
       defaultElement('image', {
-        x: 20,
-        y: 280,
-        width: 335,
-        height: 200,
-        content: `https://placehold.co/335x200/005daa/ffffff?text=${label}`,
+        x: marginX,
+        y: bulletsStartY + (slide.bullets?.length || 0) * bulletLineH + (isWeb ? 32 : 16),
+        width: imgW,
+        height: imgH,
+        content: `https://placehold.co/${imgW}x${imgH}/005daa/ffffff?text=${label}`,
       })
     )
   }
@@ -129,13 +145,17 @@ export function computeImageFitLayout(fit, viewport, meta = {}) {
   }
 }
 
-/** 预览用：localStorage → 服务端 canvas → 由 slide 字段生成 */
-export function resolvePreviewElements(projectId, slide) {
+/** 预览用：localStorage → 服务端 canvas → structured 编译 → 由 slide 字段生成 */
+export function resolvePreviewElements(projectId, slide, viewportId = 'web-1280', themeId = 'zjy-minimal') {
   if (!slide?.id) return []
   const stored = loadCanvasElements(projectId, slide.id)
   if (stored.length) return stored
   if (slide.canvas_elements?.length) return slide.canvas_elements
-  return buildElementsFromSlide(slide)
+  if (resolveSlideStructured(slide)) {
+    const compiled = compileSlideIfNeeded(slide, viewportId, themeId)
+    if (compiled.length) return compiled
+  }
+  return buildElementsFromSlide(slide, viewportId)
 }
 
 export function loadCanvasElements(projectId, slideId) {
@@ -267,7 +287,7 @@ function remapElementsForCanvas(newEls, existingElements) {
   })
 }
 
-export function useSlideCanvas(projectIdRef, slideIdRef) {
+export function useSlideCanvas(projectIdRef, slideIdRef, viewportIdRef = null) {
   const elements = ref([])
   const selectedIds = ref([])
   const selectedId = computed(() => selectedIds.value[selectedIds.value.length - 1] || null)
@@ -420,7 +440,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     if (!pid || !sid) return
     clearTimeout(saveTimer)
     saveTimer = setTimeout(() => {
-      api.saveSlideCanvas(Number(pid), sid, elements.value).catch((e) => {
+      api.saveSlideCanvas(String(pid), sid, elements.value).catch((e) => {
         console.warn('画布同步服务器失败', e)
       })
     }, 400)
@@ -456,7 +476,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
     persistLocal()
     clearTimeout(saveTimer)
     try {
-      await api.saveSlideCanvas(Number(pid), sid, elements.value)
+      await api.saveSlideCanvas(String(pid), sid, elements.value)
     } catch (e) {
       console.warn('画布同步服务器失败', e)
     }
@@ -649,7 +669,8 @@ export function useSlideCanvas(projectIdRef, slideIdRef) {
 
   function syncFromSlide(slide) {
     if (!slide || elements.value.length > 0) return
-    const items = buildElementsFromSlide(slide)
+    const viewportId = viewportIdRef?.value ?? 'mobile-375'
+    const items = buildElementsFromSlide(slide, viewportId)
     if (items.length) {
       elements.value = items
       saveElements()

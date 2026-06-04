@@ -1,5 +1,5 @@
 /**
- * 页面版式块：商务 8 + 叙事 6
+ * 页面版式块：商务 8 + 叙事 6 + 结构化路演 3
  * buildBlock(blockId, viewportId, themeId) -> canvas_elements[]
  */
 import {
@@ -8,6 +8,7 @@ import {
   getThemeTypeScale,
   isWebViewport,
 } from './designThemes.js'
+import { compileStructuredSlide } from '../utils/compileStructuredSlide.js'
 
 let _uid = 0
 function uid(prefix = 'el') {
@@ -52,6 +53,9 @@ export const BUSINESS_LAYOUT_BLOCKS = [
   { id: 'quote-center', label: '引用', icon: 'format_quote' },
   { id: 'steps-horizontal', label: '三步流程', icon: 'linear_scale' },
   { id: 'closing-minimal', label: '致谢', icon: 'favorite' },
+  { id: 'grid-2x2', label: '四宫格', icon: 'grid_view' },
+  { id: 'split-lr-chart', label: '左文右图', icon: 'view_column' },
+  { id: 'cards-row', label: '卡片横排', icon: 'view_carousel' },
 ]
 
 export const STORY_LAYOUT_BLOCKS = [
@@ -292,6 +296,31 @@ const BLOCK_BUILDERS = {
 }
 
 export function buildBlock(blockId, viewportId = 'mobile-375', themeId = 'zjy-minimal', copy = {}) {
+  const structuredAliases = {
+    'grid-2x2': 'grid_2x2',
+    'split-lr-chart': 'split_lr',
+    'cards-row': 'cards_row',
+  }
+  if (structuredAliases[blockId]) {
+    const modules =
+      copy.modules ||
+      (copy.items || []).map((item, i) =>
+        typeof item === 'string'
+          ? { icon: ['target', 'lightbulb', 'analytics', 'groups'][i % 4], title: `要点 ${i + 1}`, body: item }
+          : item
+      )
+    return compileStructuredSlide(
+      {
+        template: structuredAliases[blockId],
+        title: copy.title || '',
+        subtitle: copy.subtitle || '',
+        headline: copy.headline || '',
+        modules,
+      },
+      viewportId,
+      themeId
+    )
+  }
   const builder = BLOCK_BUILDERS[blockId]
   if (!builder) return []
   const c = ctx(themeId, viewportId)

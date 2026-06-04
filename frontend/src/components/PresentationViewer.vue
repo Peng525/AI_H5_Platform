@@ -387,7 +387,7 @@ function backgroundForSlide(slide) {
   if (!slide?.id) return slide?.canvas_background || DEFAULT_CANVAS_BG
   const fromApi = slide.canvas_background
   if (fromApi) return fromApi
-  return resolveSlideBackground(props.projectId, slide.id, projectSettings.value)
+  return resolveSlideBackground(props.projectId, slide.id, projectSettings.value, slide)
 }
 
 function applySettingsFromProject(p) {

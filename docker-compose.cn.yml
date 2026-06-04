@@ -8,4 +8,5 @@ services:
         NODE_IMAGE: docker.1ms.run/library/node:20-alpine
         PYTHON_IMAGE: docker.1ms.run/library/python:3.12-slim
         NPM_REGISTRY: https://registry.npmmirror.com
-        PIP_INDEX: https://pypi.tuna.tsinghua.edu.cn/simple
+        # 清华偶发超时；Dockerfile 会依次尝试 阿里 → 清华 → 官方 PyPI
+        PIP_INDEX: https://mirrors.aliyun.com/pypi/simple/

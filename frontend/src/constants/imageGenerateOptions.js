@@ -17,6 +17,13 @@ export const IMAGE_COLOR_OPTIONS = [
   { value: 'colorful', label: '多彩' },
 ]
 
+/** 演示文稿生成页背景（与后端 BACKGROUND_COLORS 一致） */
+export const DECK_BACKGROUND_OPTIONS = [
+  { value: '', label: '无' },
+  { value: 'classic_white', label: '经典白粉' },
+  { value: 'light_gray', label: '浅灰' },
+]
+
 export const IMAGE_STYLE_OPTIONS = [
   { value: '', label: '无' },
   { value: '扁平插画', label: '扁平插画' },

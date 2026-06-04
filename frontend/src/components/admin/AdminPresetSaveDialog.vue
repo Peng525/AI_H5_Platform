@@ -119,7 +119,7 @@ async function save() {
   error.value = ''
   try {
     const result = await api.saveTemplatePreset(props.templateId, {
-      project_id: Number(props.projectId),
+      project_public_id: String(props.projectId),
       ...form,
     })
     emit('saved', result)

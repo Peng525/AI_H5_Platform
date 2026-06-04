@@ -1,5 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth, tryRememberLogin } from '../composables/useAuth'
+import { canAccessGenerateResult } from '../composables/useAiCreateDraft.js'
+import { api } from '../api/client.js'
+
+const PROJECT_PUBLIC_ID_ROUTE_NAMES = new Set(['editor', 'preview', 'publish', 'ai-generate-result'])
 
 const routes = [
   { path: '/login', name: 'login', component: () => import('../views/Login.vue'), meta: { title: '登录', public: true } },
@@ -34,13 +38,14 @@ const routes = [
   { path: '/create/generate', name: 'ai-generate-start', component: () => import('../views/create/AiGenerateStart.vue'), meta: { title: '生成', requiresAuth: true } },
   { path: '/create/generate/prompt', redirect: '/create/generate' },
   { path: '/create/generate/review', name: 'ai-generate-review', component: () => import('../views/create/AiGenerateReview.vue'), meta: { title: '提示编辑器', requiresAuth: true } },
+  { path: '/create/generate/result/:publicId', name: 'ai-generate-result', component: () => import('../views/create/AiGenerateResult.vue'), meta: { title: '生成结果', requiresAuth: true, requiresGenerateResult: true } },
   { path: '/create/generate/image', name: 'ai-generate-image', component: () => import('../views/create/AiGenerateImage.vue'), meta: { title: '生成图片', requiresAuth: true } },
   { path: '/create/blank', redirect: '/create/generate' },
-  { path: '/editor/:id', name: 'editor', component: () => import('../views/EditorStudio.vue'), meta: { title: '编辑器', requiresAuth: true } },
+  { path: '/editor/:publicId', name: 'editor', component: () => import('../views/EditorStudio.vue'), meta: { title: '编辑器', requiresAuth: true } },
   { path: '/upgrade', name: 'upgrade', component: () => import('../views/Upgrade.vue'), meta: { title: '套餐升级', requiresAuth: true } },
   { path: '/help', name: 'help', component: () => import('../views/Help.vue'), meta: { title: '使用帮助', requiresAuth: true } },
-  { path: '/publish/:id', name: 'publish', component: () => import('../views/PublishSuccess.vue'), meta: { title: '发布成功', requiresAuth: true } },
-  { path: '/preview/:id', name: 'preview', component: () => import('../views/Preview.vue'), meta: { title: '演示预览', requiresAuth: true } },
+  { path: '/publish/:publicId', name: 'publish', component: () => import('../views/PublishSuccess.vue'), meta: { title: '发布成功', requiresAuth: true } },
+  { path: '/preview/:publicId', name: 'preview', component: () => import('../views/Preview.vue'), meta: { title: '演示预览', requiresAuth: true } },
   { path: '/admin', name: 'admin', component: () => import('../views/admin/AdminDashboard.vue'), meta: { title: '管理仪表盘', requiresAuth: true, admin: true } },
   { path: '/admin/users', name: 'admin-users', component: () => import('../views/admin/AdminUsers.vue'), meta: { title: '用户管理', requiresAuth: true, admin: true } },
   { path: '/admin/templates', name: 'admin-templates', component: () => import('../views/admin/AdminTemplates.vue'), meta: { title: 'H5 模板管理', requiresAuth: true, admin: true } },
@@ -113,6 +118,27 @@ router.beforeEach(async (to) => {
 
   if (to.meta.admin && !user.value?.is_admin) {
     return { name: 'ai-generate-start' }
+  }
+
+  if (PROJECT_PUBLIC_ID_ROUTE_NAMES.has(to.name)) {
+    const ref = to.params.publicId
+    if (ref && /^\d+$/.test(String(ref))) {
+      try {
+        const { public_id: publicId } = await api.resolveProjectRef(ref)
+        if (publicId && publicId !== ref) {
+          return { name: to.name, params: { ...to.params, publicId }, query: to.query, hash: to.hash, replace: true }
+        }
+      } catch {
+        /* 无法解析则继续，由页面/API 报错 */
+      }
+    }
+  }
+
+  if (to.meta.requiresGenerateResult) {
+    const publicId = to.params.publicId
+    if (!publicId || !canAccessGenerateResult(publicId)) {
+      return { name: 'ai-generate-review' }
+    }
   }
 })
 

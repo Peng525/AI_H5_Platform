@@ -1,7 +1,6 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 
-import { slideBackgroundCSSValue } from '../utils/slideBackground'
-import { DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
+import { resolveSlideCanvasBackground } from '../utils/slideBackground'
 import { useBgmPlayer } from './useBgmPlayer.js'
 
 /** 演示播放：对话门控 + BGM */
@@ -142,19 +141,7 @@ export function mergeProjectSettings(projectId, serverSettings) {
   return merged
 }
 
-export function resolveSlideBackground(projectId, slideId, settings) {
-  const DEFAULT = DEFAULT_CANVAS_BG
-  if (!slideId) return slideBackgroundCSSValue(DEFAULT)
-  const key = String(slideId)
-  const fromSettings = settings?.slideBackgrounds?.[key]
-  if (fromSettings) return slideBackgroundCSSValue(fromSettings)
-  try {
-    const raw = localStorage.getItem(`ai_h5_project_settings_${projectId}`)
-    if (raw) {
-      const s = JSON.parse(raw)
-      const v = s.slideBackgrounds?.[key]
-      if (v) return slideBackgroundCSSValue(v)
-    }
-  } catch { /* ignore */ }
-  return slideBackgroundCSSValue(DEFAULT)
+export function resolveSlideBackground(projectId, slideId, settings, slide = null) {
+  if (slide) return resolveSlideCanvasBackground(projectId, slide, settings)
+  return resolveSlideCanvasBackground(projectId, { id: slideId }, settings)
 }

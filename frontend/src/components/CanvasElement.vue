@@ -50,6 +50,16 @@
     />
 
     <div
+      v-else-if="element.type === 'chartPlaceholder'"
+      class="w-full h-full pointer-events-none flex flex-col items-center justify-center gap-2 box-border"
+      :style="chartPlaceholderStyle"
+      aria-hidden="true"
+    >
+      <span class="material-symbols-outlined text-[40px] text-on-surface-variant/50 pointer-events-none">analytics</span>
+      <span class="text-xs text-on-surface-variant pointer-events-none">图表占位</span>
+    </div>
+
+    <div
       v-else-if="element.type === 'icon'"
       class="w-full h-full cursor-move flex items-center justify-center"
       :style="iconStyle"
@@ -231,6 +241,13 @@ const textStyle = computed(() => ({
 const shapeStyle = computed(() => ({
   background: props.element.style?.background || '#005daa',
   borderRadius: (props.element.style?.borderRadius || 8) + 'px',
+  border: props.element.style?.border || 'none',
+}))
+
+const chartPlaceholderStyle = computed(() => ({
+  background: props.element.style?.background || '#f0f2f5',
+  borderRadius: (props.element.style?.borderRadius || 12) + 'px',
+  border: props.element.style?.border || '2px dashed #636E72',
 }))
 
 const iconStyle = computed(() => ({
@@ -338,6 +355,7 @@ function barHeight(v) {
 
 function onRootMouseDown(e) {
   if (props.readonly) return
+  if (props.element.type === 'chartPlaceholder') return
   const skipDrag = props.element.type === 'chartStack' && e.target.closest('.chart-stack')
   onSelect(e, !skipDrag)
 }

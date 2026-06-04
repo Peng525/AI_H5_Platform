@@ -3,8 +3,9 @@
     class="flex-1 bg-surface-container-low overflow-hidden relative select-none"
     @wheel.prevent="onWheelZoom"
   >
-    <!-- 顶部：分辨率独立一行，工具栏在其下方，避免窄屏横向重叠 -->
+    <!-- 顶部：分辨率 + 工具栏（结果页编辑时由父级提供工具栏） -->
     <div
+      v-if="!hideChromeToolbar"
       class="absolute top-2 sm:top-4 left-2 right-2 sm:left-4 sm:right-4 z-20 flex flex-col gap-1.5 sm:gap-2 pointer-events-none"
       data-editor-chrome
     >
@@ -118,11 +119,11 @@
       :style="canvasTransformStyle"
     >
       <div
-        class="bg-white shadow-2xl overflow-hidden flex flex-col"
-        :class="frameClass"
+        class="overflow-hidden flex flex-col"
+        :class="frameShellClass"
         :style="{ width: safeViewport.width + 'px', height: safeViewport.height + 'px' }"
       >
-        <div v-if="safeViewport.device === 'mobile'" class="h-7 w-full flex justify-between items-center px-4 pt-1 shrink-0 bg-white">
+        <div v-if="!plainFrame && safeViewport.device === 'mobile'" class="h-7 w-full flex justify-between items-center px-4 pt-1 shrink-0 bg-white">
           <span class="text-[12px] font-medium">9:41</span>
           <div class="flex gap-1 items-center opacity-80">
             <span class="material-symbols-outlined text-[14px]">signal_cellular_alt</span>
@@ -130,7 +131,7 @@
             <span class="material-symbols-outlined text-[14px]">battery_full</span>
           </div>
         </div>
-        <div v-else class="h-8 shrink-0 bg-gray-100 border-b border-gray-200 flex items-center px-3 gap-1.5">
+        <div v-else-if="!plainFrame" class="h-8 shrink-0 bg-gray-100 border-b border-gray-200 flex items-center px-3 gap-1.5">
           <span class="w-2.5 h-2.5 rounded-full bg-red-400" />
           <span class="w-2.5 h-2.5 rounded-full bg-amber-400" />
           <span class="w-2.5 h-2.5 rounded-full bg-green-400" />
@@ -237,6 +238,8 @@ const props = defineProps({
   bgmSpinning: { type: Boolean, default: false },
   canUndo: { type: Boolean, default: false },
   canRedo: { type: Boolean, default: false },
+  plainFrame: { type: Boolean, default: false },
+  hideChromeToolbar: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
@@ -331,11 +334,12 @@ const safeViewport = computed(() => {
   return getViewportPreset(props.viewportId || 'mobile-375')
 })
 
-const frameClass = computed(() =>
-  safeViewport.value.device === 'mobile'
-    ? 'rounded-[2rem] border-[8px] border-gray-900'
-    : 'rounded-lg border border-gray-300'
-)
+const frameShellClass = computed(() => {
+  if (props.plainFrame) return 'rounded-lg border border-outline-variant/50 bg-white shadow-sm'
+  return safeViewport.value.device === 'mobile'
+    ? 'bg-white shadow-2xl rounded-[2rem] border-[8px] border-gray-900'
+    : 'bg-white shadow-2xl rounded-lg border border-gray-300'
+})
 
 /** 大分辨率自动缩小以适应编辑区 */
 const autoScale = computed(() => {

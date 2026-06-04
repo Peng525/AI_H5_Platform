@@ -7,7 +7,7 @@
       <SlideCanvasThumb
         :slide="coverSlide"
         :viewport="viewport"
-        :project-id="project.id"
+        :project-id="project.public_id"
         :project-settings="project.settings"
       />
     </div>
