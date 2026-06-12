@@ -1,70 +1,63 @@
 <template>
   <div
-    v-if="visible"
     data-slide-insert
-    class="flex justify-center py-2 -mt-1"
+    class="pointer-events-none"
+    :class="rootClass"
     @mousedown.stop
     @click.stop
   >
-    <div ref="menuRef" class="relative">
+    <div
+      class="pointer-events-auto inline-flex items-center rounded-full border border-white/15 bg-[#2a2a2e] shadow-lg overflow-hidden"
+      role="toolbar"
+      aria-label="插入页面"
+    >
       <button
         type="button"
-        class="w-9 h-9 rounded-full border-2 border-dashed border-outline-variant/80 bg-white shadow-sm flex items-center justify-center text-on-surface-variant hover:border-primary hover:text-primary hover:bg-primary/5 transition-colors"
-        title="添加页面"
-        @click.stop="menuOpen = !menuOpen"
+        class="group relative px-3 py-2 text-white/90 hover:bg-white/10 transition-colors"
+        title="添加空白页"
+        @click="$emit('add-blank')"
       >
-        <span class="material-symbols-outlined text-[20px]">add</span>
-      </button>
-      <div
-        v-show="menuOpen"
-        class="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-44 bg-white border border-outline-variant rounded-xl shadow-lg py-1 z-[60]"
-        @click.stop
-      >
-        <button
-          type="button"
-          class="w-full text-left px-3 py-2.5 text-sm hover:bg-surface-container-low flex items-center gap-2"
-          @click="pick('blank')"
+        <span class="material-symbols-outlined text-[18px] leading-none">add</span>
+        <span
+          class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 whitespace-nowrap rounded-md bg-[#1a1a1c] px-2 py-1 text-[11px] text-white opacity-0 group-hover:opacity-100 transition-opacity z-30"
         >
-          <span class="material-symbols-outlined text-[18px] text-primary">note_add</span>
           添加空白页
-        </button>
-        <button
-          type="button"
-          class="w-full text-left px-3 py-2.5 text-sm hover:bg-surface-container-low flex items-center gap-2"
-          @click="pick('ai')"
+        </span>
+      </button>
+      <span class="w-px h-5 bg-white/15 shrink-0" aria-hidden="true" />
+      <button
+        type="button"
+        class="group relative px-3 py-2 text-white/90 hover:bg-white/10 transition-colors"
+        title="AI 生成卡片"
+        @click="$emit('open-generate')"
+      >
+        <span class="material-symbols-outlined text-[18px] leading-none">auto_awesome</span>
+        <span
+          class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1.5 whitespace-nowrap rounded-md bg-[#1a1a1c] px-2 py-1 text-[11px] text-white opacity-0 group-hover:opacity-100 transition-opacity z-30"
         >
-          <span class="material-symbols-outlined text-[18px] text-primary">auto_awesome</span>
           AI 生成卡片
-        </button>
-      </div>
+        </span>
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed } from 'vue'
 
-defineProps({
-  visible: { type: Boolean, default: false },
+const props = defineProps({
+  placement: {
+    type: String,
+    default: 'gap',
+    validator: (v) => ['gap', 'below-card'].includes(v),
+  },
 })
 
-const emit = defineEmits(['add-blank', 'open-generate'])
+defineEmits(['add-blank', 'open-generate'])
 
-const menuOpen = ref(false)
-const menuRef = ref(null)
-
-function pick(action) {
-  menuOpen.value = false
-  if (action === 'blank') emit('add-blank')
-  else emit('open-generate')
-}
-
-function onDocPointerDown(e) {
-  if (!menuOpen.value) return
-  if (menuRef.value?.contains(e.target)) return
-  menuOpen.value = false
-}
-
-onMounted(() => document.addEventListener('mousedown', onDocPointerDown))
-onUnmounted(() => document.removeEventListener('mousedown', onDocPointerDown))
+const rootClass = computed(() =>
+  props.placement === 'below-card'
+    ? 'absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2'
+    : 'absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2',
+)
 </script>
