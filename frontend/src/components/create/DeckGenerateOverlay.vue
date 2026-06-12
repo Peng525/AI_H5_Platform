@@ -13,10 +13,10 @@
         </div>
         <div>
           <h2 id="deck-generate-overlay-title" class="text-lg font-semibold text-on-surface">
-            正在生成演示
+            {{ title }}
           </h2>
           <p class="text-sm text-on-surface-variant mt-2">
-            AI 正在根据您的提示词创建完整演示结构，请稍候…
+            {{ subtitle }}
           </p>
         </div>
         <div class="rounded-xl border border-outline-variant bg-white px-5 py-4 space-y-2 text-sm">
@@ -29,7 +29,7 @@
             <span class="font-medium text-primary">{{ elapsedLabel }}</span>
           </div>
         </div>
-        <p class="text-xs text-on-surface-variant">生成完成后将自动进入结果页</p>
+        <p class="text-xs text-on-surface-variant">{{ footerHint }}</p>
       </div>
     </div>
   </Teleport>
@@ -41,6 +41,12 @@ import { computed, onUnmounted, ref, watch } from 'vue'
 const props = defineProps({
   open: { type: Boolean, default: false },
   estimatedSeconds: { type: Number, default: 48 },
+  title: { type: String, default: '加载中…' },
+  subtitle: {
+    type: String,
+    default: 'AI 正在根据您的提示词创建演示，请稍候…',
+  },
+  footerHint: { type: String, default: '生成完成后将开始绘制页面' },
 })
 
 const elapsed = ref(0)

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth, tryRememberLogin } from '../composables/useAuth'
-import { canAccessGenerateResult } from '../composables/useAiCreateDraft.js'
+import { canAccessGenerateResult, loadGenerateJob, PENDING_RESULT_PUBLIC_ID } from '../composables/useAiCreateDraft.js'
 import { api } from '../api/client.js'
 
 const PROJECT_PUBLIC_ID_ROUTE_NAMES = new Set(['editor', 'preview', 'publish', 'ai-generate-result'])
@@ -48,6 +48,7 @@ const routes = [
   { path: '/preview/:publicId', name: 'preview', component: () => import('../views/Preview.vue'), meta: { title: '演示预览', requiresAuth: true } },
   { path: '/admin', name: 'admin', component: () => import('../views/admin/AdminDashboard.vue'), meta: { title: '管理仪表盘', requiresAuth: true, admin: true } },
   { path: '/admin/users', name: 'admin-users', component: () => import('../views/admin/AdminUsers.vue'), meta: { title: '用户管理', requiresAuth: true, admin: true } },
+  { path: '/admin/generation-logs', name: 'admin-generation-logs', component: () => import('../views/admin/AdminGenerationLogs.vue'), meta: { title: 'AI 生成记录', requiresAuth: true, admin: true } },
   { path: '/admin/templates', name: 'admin-templates', component: () => import('../views/admin/AdminTemplates.vue'), meta: { title: 'H5 模板管理', requiresAuth: true, admin: true } },
   { path: '/admin/layouts', name: 'admin-layouts', component: () => import('../views/admin/AdminLayouts.vue'), meta: { title: '版式管理', requiresAuth: true, admin: true } },
   { path: '/admin/prompts', name: 'admin-prompts', component: () => import('../views/admin/AdminPrompts.vue'), meta: { title: '文稿提示词', requiresAuth: true, admin: true } },
@@ -136,7 +137,13 @@ router.beforeEach(async (to) => {
 
   if (to.meta.requiresGenerateResult) {
     const publicId = to.params.publicId
-    if (!publicId || !canAccessGenerateResult(publicId)) {
+    if (!publicId) {
+      return { name: 'ai-generate-review' }
+    }
+    if (String(publicId) === PENDING_RESULT_PUBLIC_ID && !loadGenerateJob()) {
+      return { name: 'ai-generate-review' }
+    }
+    if (!canAccessGenerateResult(publicId)) {
       return { name: 'ai-generate-review' }
     }
   }

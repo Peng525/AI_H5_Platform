@@ -3,14 +3,17 @@ import { onBeforeRouteLeave } from 'vue-router'
 import { api } from '../api/client'
 import { useAuth } from './useAuth'
 import { registerCanvasFlush, unregisterCanvasFlush } from './useEditorCanvasSave'
-import { useSlideCanvas } from './useSlideCanvas'
+import { useSlideCanvas, defaultElement } from './useSlideCanvas'
 import { useProjectEditorSettings } from './useProjectEditorSettings'
 import { useBgmPlayer } from './useBgmPlayer'
 import { useToast } from './useToast.js'
 import { buildBlock, getDefaultBlockBackground, resetLayoutBlockIds, resolveStoredLayoutElements } from '../constants/layoutBlocks.js'
 import { useLayoutCatalog } from './useLayoutCatalog.js'
 import { normalizeChatScript, serializeChatScript } from '../utils/chatScript.js'
-import { compileSlideIfNeeded, shouldCompileSlide } from '../utils/compileStructuredSlide.js'
+import { applyProjectTheme } from '../utils/applyProjectTheme.js'
+import { compileSlideIfNeeded, shouldCompileSlide, ensureSlideCompiled, compileRemainingSlides, resolveSlideStructured } from '../utils/compileStructuredSlide.js'
+import { serializeSlideBackgroundForApi, serializeSlideBackgroundsForApi, resolveSlideCanvasBackground } from '../utils/slideBackground.js'
+import { DEFAULT_WEB_VIEWPORT_ID } from '../constants/editorPresets.js'
 
 const COACH_KEY = 'ai_h5_editor_coach_seen'
 
@@ -18,6 +21,7 @@ export function useDeckEditor(projectIdSource, options = {}) {
   const layoutMode = options.layoutMode || 'studio'
   const onProjectLoaded = options.onProjectLoaded
   const onProjectLoadError = options.onProjectLoadError
+  const initialProjectRef = options.initialProject
   const adminPresetId = computed(() => options.adminPresetId?.value ?? options.adminPresetId ?? '')
   const adminLayoutId = computed(() => options.adminLayoutId?.value ?? options.adminLayoutId ?? '')
   const isAdminEditorMode = computed(() => !!(adminPresetId.value || adminLayoutId.value))
@@ -110,7 +114,7 @@ const showEditorCoach = ref(false)
 const editingSlideId = ref(null)
 const aiImageOpen = ref(false)
 
-const { settings, viewport, setViewport, setScrollEffect, getSlideBackground, setSlideBackground, applyFromServer, setBgm } = useProjectEditorSettings(projectId)
+const { settings, viewport, setViewport, setScrollEffect, getSlideBackground, setSlideBackground, applyFromServer, setBgm, setThemeId, save: saveSettings } = useProjectEditorSettings(projectId)
 
 const layoutCatalog = useLayoutCatalog()
 const primaryLayoutItems = computed(() => layoutCatalog.getPrimaryLayoutItems())
@@ -125,7 +129,10 @@ const {
 
 const bgmSpinning = computed(() => bgmPlaying.value && !bgmMuted.value)
 
-const canvasBackground = computed(() => getSlideBackground(current.value?.id))
+const canvasBackground = computed(() => {
+  if (!current.value) return resolveSlideCanvasBackground(projectId.value, null, settings.value)
+  return resolveSlideCanvasBackground(projectId.value, current.value, settings.value)
+})
 
 const slideIdRef = computed(() => current.value?.id ?? null)
 const viewportIdRef = computed(() => settings.value.viewportId || 'mobile-375')
@@ -135,7 +142,7 @@ const {
   selectedId,
   saveElements,
   loadElements,
-  addElement,
+  addElement: addElementRaw,
   updateElement,
   removeElement,
   removeSelected,
@@ -167,6 +174,52 @@ const {
 
 const dragState = ref(null)
 const pendingDragElementId = ref(null)
+
+function getCanvasContentBounds() {
+  const vp = viewport.value
+  const chrome = vp.device === 'mobile' ? 28 : 32
+  return { width: vp.width, height: vp.height - chrome }
+}
+
+function addElement(type, overrides = {}) {
+  const hasPos =
+    Object.prototype.hasOwnProperty.call(overrides, 'x') ||
+    Object.prototype.hasOwnProperty.call(overrides, 'y')
+  if (!hasPos) {
+    const bounds = getCanvasContentBounds()
+    const temp = defaultElement(type, overrides)
+    overrides = {
+      ...overrides,
+      x: Math.max(0, Math.round((bounds.width - temp.width) / 2)),
+      y: Math.max(0, Math.round((bounds.height - temp.height) / 2)),
+    }
+  }
+  return addElementRaw(type, overrides)
+}
+
+function recompileSlidesForViewport(viewportId) {
+  if (!project.value?.slides?.length) return
+  const themeId = settings.value.themeId || 'zjy-minimal'
+  for (const s of project.value.slides) {
+    if (shouldCompileSlide(s, viewportId)) {
+      s.canvas_elements = compileSlideIfNeeded(s, viewportId, themeId)
+    }
+  }
+  if (current.value) {
+    const slide = project.value.slides.find((s) => s.id === current.value.id)
+    if (slide?.canvas_elements?.length) {
+      loadElements(slide.canvas_elements)
+      current.value = { ...current.value, canvas_elements: slide.canvas_elements }
+    }
+  }
+}
+
+function onViewportChange(viewportId) {
+  const prev = settings.value.viewportId
+  setViewport(viewportId)
+  if (prev === viewportId) return
+  recompileSlidesForViewport(viewportId)
+}
 
 const slideIndex = computed(() => {
   if (!project.value?.slides || !current.value) return 0
@@ -249,42 +302,58 @@ async function onAdminPptxImport(e) {
   }
 }
 
+async function applyProjectPayload(p) {
+  project.value = p
+  applyFromServer(p.settings)
+  if (p.generation_meta) {
+    settings.value = {
+      ...settings.value,
+      generationMeta: {
+        ...(settings.value.generationMeta || {}),
+        ...p.generation_meta,
+      },
+    }
+  }
+  current.value = p.slides?.[0] || null
+  showDialoguePreview.value = !!current.value?.chat_script?.enabled
+  const vp = settings.value.viewportId || DEFAULT_WEB_VIEWPORT_ID
+  const themeId = settings.value.themeId || 'zjy-minimal'
+  const slideList = p.slides || []
+  for (let i = 0; i < slideList.length; i++) {
+    const s = slideList[i]
+    const compileNow = layoutMode !== 'result' || i === 0
+    if (compileNow && shouldCompileSlide(s, vp)) {
+      s.canvas_elements = compileSlideIfNeeded(s, vp, themeId)
+    }
+  }
+  loadElements(current.value?.canvas_elements)
+  if (layoutMode !== 'result' && current.value && !elements.value.length) {
+    syncFromSlide(current.value)
+  }
+  const q = await api.getQuota()
+  quota.value = { remaining: q.quota_remaining, total: q.quota_total }
+  if (layoutMode === 'result') {
+    normalizeResultViewport()
+  }
+  onProjectLoaded?.(p)
+}
+
 async function load() {
   projectLoading.value = true
   loadError.value = ''
+  const pid = String(projectId.value || '')
   try {
-    project.value = await api.getProject(String(projectId.value))
-    applyFromServer(project.value.settings)
-    if (project.value.generation_meta) {
-      settings.value = {
-        ...settings.value,
-        generationMeta: {
-          ...(settings.value.generationMeta || {}),
-          ...project.value.generation_meta,
-        },
-      }
+    let payload = null
+    const cached = initialProjectRef?.value
+    if (cached && String(cached.public_id) === pid) {
+      payload = cached
+      initialProjectRef.value = null
+    } else {
+      payload = await api.getProject(pid)
     }
-    current.value = project.value.slides?.[0] || null
-    showDialoguePreview.value = !!current.value?.chat_script?.enabled
-    const vp = settings.value.viewportId || 'web-1280'
-    const themeId = settings.value.themeId || 'zjy-minimal'
-    for (const s of project.value.slides || []) {
-      if (shouldCompileSlide(s)) {
-        s.canvas_elements = compileSlideIfNeeded(s, vp, themeId)
-      }
-    }
-    loadElements(current.value?.canvas_elements)
-    // 结果页纵览用 PreviewSlideFrame fallback 展示文稿；勿在此 syncFromSlide（会生成白字元素并污染预览）
-    if (layoutMode !== 'result' && current.value && !elements.value.length) {
-      syncFromSlide(current.value)
-    }
-    const q = await api.getQuota()
-    quota.value = { remaining: q.quota_remaining, total: q.quota_total }
-    if (layoutMode === 'result') {
-      normalizeResultViewport()
-    }
-    onProjectLoaded?.(project.value)
+    await applyProjectPayload(payload)
   } catch (e) {
+    console.error('[useDeckEditor] load failed', pid, e)
     loadError.value = e.message || '加载失败'
     onProjectLoadError?.(loadError.value)
   } finally {
@@ -328,18 +397,38 @@ onBeforeRouteLeave(async () => {
 function normalizeResultViewport() {
   if (layoutMode !== 'result' || !project.value) return
   const vid = settings.value.viewportId || 'mobile-375'
-  if (String(vid).startsWith('web')) return
-  const hasCanvas = project.value.slides?.some((s) => (s.canvas_elements?.length || 0) > 0)
-  if (hasCanvas) return
-  setViewport('web-1280')
+  const targetVid = String(vid).startsWith('web') ? vid : DEFAULT_WEB_VIEWPORT_ID
+  if (targetVid !== vid) {
+    setViewport(targetVid)
+  }
+  recompileSlidesForViewport(targetVid)
+}
+
+function compileAllSlidesLazy(skipFirst = false) {
+  if (!project.value?.slides?.length) return
+  const vp = settings.value.viewportId || DEFAULT_WEB_VIEWPORT_ID
+  const themeId = settings.value.themeId || 'zjy-minimal'
+  compileRemainingSlides(project.value.slides, vp, themeId, skipFirst)
 }
 
 function selectSlideInternal(slide) {
-  saveElements()
-  current.value = slide
-  loadElements(slide.canvas_elements)
-  if (!elements.value.length) syncFromSlide(slide)
+  const sameSlide = current.value?.id === slide.id
+  if (!sameSlide) {
+    saveElements()
+    current.value = slide
+    loadElements(slide.canvas_elements)
+    if (!elements.value.length) syncFromSlide(slide)
+  }
   showDialoguePreview.value = !!slide?.chat_script?.enabled
+}
+
+function deselectCurrentSlide() {
+  if (!current.value) return
+  saveElements()
+  current.value = null
+  loadElements([])
+  clearSelection()
+  showDialoguePreview.value = false
 }
 
 async function exitSlideEdit() {
@@ -644,7 +733,7 @@ function onStyleChange(patch) {
   if (!selectedId.value) return
   const el = elements.value.find((e) => e.id === selectedId.value)
   if (!el) return
-  updateElement(selectedId.value, { style: { ...el.style, ...patch } })
+  updateElement(selectedId.value, { style: { ...(el.style || {}), ...patch } })
 }
 
 function onDuplicate() {
@@ -678,15 +767,13 @@ function onCenterElement(axis) {
   if (!selectedId.value) return
   const el = elements.value.find((e) => e.id === selectedId.value)
   if (!el) return
-  const vp = viewport.value
-  const chrome = vp.device === 'mobile' ? 28 : 32
-  const canvasH = vp.height - chrome
+  const bounds = getCanvasContentBounds()
   const patch = {}
   if (axis === 'h' || axis === 'both') {
-    patch.x = Math.max(0, Math.round((vp.width - el.width) / 2))
+    patch.x = Math.max(0, Math.min(Math.round((bounds.width - el.width) / 2), bounds.width - el.width))
   }
   if (axis === 'v' || axis === 'both') {
-    patch.y = Math.max(0, Math.round((canvasH - el.height) / 2))
+    patch.y = Math.max(0, Math.min(Math.round((bounds.height - el.height) / 2), bounds.height - el.height))
   }
   updateElement(selectedId.value, patch)
 }
@@ -734,12 +821,16 @@ function onMoveDelta({ dx, dy }) {
     }
   }
   const { ids, origins } = dragState.value
+  const bounds = getCanvasContentBounds()
   for (const sid of ids) {
     const origin = origins[sid]
     if (!origin) continue
+    const el = elements.value.find((e) => e.id === sid)
+    const w = el?.width ?? 0
+    const h = el?.height ?? 0
     updateElement(sid, {
-      x: Math.max(0, origin.x + dx),
-      y: Math.max(0, origin.y + dy),
+      x: Math.max(0, Math.min(origin.x + dx, bounds.width - w)),
+      y: Math.max(0, Math.min(origin.y + dy, bounds.height - h)),
     })
   }
 }
@@ -879,6 +970,63 @@ function onPreviewAnimation(anim) {
   previewAnimation.value = anim
   previewAnimationTick.value += 1
 }
+
+async function applyGlobalTheme(themeId) {
+  if (!project.value?.slides?.length) return
+  const vp = settings.value.viewportId || DEFAULT_WEB_VIEWPORT_ID
+  const result = applyProjectTheme({
+    slides: project.value.slides,
+    themeId,
+    viewportId: vp,
+  })
+  setThemeId(themeId)
+  settings.value = {
+    ...settings.value,
+    themeId,
+    slideBackgrounds: { ...settings.value.slideBackgrounds, ...result.slideBackgrounds },
+  }
+  saveSettings()
+  project.value.slides = result.slides
+  for (const s of result.slides) {
+    const idx = project.value.slides.findIndex((x) => x.id === s.id)
+    if (idx >= 0) project.value.slides[idx] = s
+  }
+  if (current.value) {
+    const updated = result.slides.find((s) => s.id === current.value.id)
+    if (updated) {
+      current.value = updated
+      loadElements(updated.canvas_elements || [])
+      saveElements()
+    }
+  }
+  try {
+    await api.updateProjectSettings(apiProjectRef(), {
+      viewportId: settings.value.viewportId,
+      scrollEffect: settings.value.scrollEffect,
+      themeId: settings.value.themeId,
+      showScrollHint: settings.value.showScrollHint,
+      slideBackgrounds: serializeSlideBackgroundsForApi(settings.value.slideBackgrounds),
+      bgm: settings.value.bgm,
+      defaultChatTapToContinue: settings.value.defaultChatTapToContinue,
+    })
+    for (const s of result.slides) {
+      const patch = {}
+      if (s.canvas_background) {
+        patch.canvas_background = serializeSlideBackgroundForApi(s.canvas_background)
+      }
+      if (Object.keys(patch).length) {
+        await api.updateSlide(apiProjectRef(), s.id, patch)
+      }
+      if (s.canvas_elements?.length) {
+        await api.saveSlideCanvas(apiProjectRef(), s.id, s.canvas_elements)
+      }
+    }
+  } catch (e) {
+    toastError(e.message || '主题保存失败')
+    return
+  }
+  toastSuccess('已应用主题')
+}
   return {
     layoutMode,
     projectId,
@@ -931,6 +1079,7 @@ function onPreviewAnimation(anim) {
     settings,
     viewport,
     setViewport,
+    onViewportChange,
     setScrollEffect,
     getSlideBackground,
     setSlideBackground,
@@ -983,6 +1132,7 @@ function onPreviewAnimation(anim) {
     dismissEditorCoach,
     onBgmChange,
     selectSlide,
+    deselectCurrentSlide,
     addSlide,
     finishNewSlide,
     applyLayoutBlock,
@@ -1029,5 +1179,7 @@ function onPreviewAnimation(anim) {
     onAdminPptxImport,
     loadTemplateMeta,
     loadLayoutMeta,
+    applyGlobalTheme,
+    compileAllSlidesLazy,
   }
 }

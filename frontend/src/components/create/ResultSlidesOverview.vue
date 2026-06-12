@@ -1,59 +1,63 @@
 <template>
-  <div ref="scrollRootRef" class="flex-1 min-w-0 min-h-0 overflow-y-auto bg-surface-container-low">
-    <div class="mx-auto max-w-[960px] px-3 sm:px-4 py-3 space-y-3">
+  <div
+    ref="scrollRootRef"
+    class="flex-1 min-w-0 min-h-0 overflow-y-auto bg-surface-container-low"
+    @click="onContainerClick"
+  >
+    <div
+      class="mx-auto w-full px-3 sm:px-4 py-3 flex flex-col"
+      :class="isWideViewport ? 'max-w-[1100px]' : 'max-w-[960px]'"
+      :style="slidesContainerStyle"
+    >
+      <template v-for="(slide, index) in slides" :key="slide.id">
       <section
-        v-for="(slide, index) in slides"
-        :key="slide.id"
+        v-if="shouldMountSlide(index)"
+        v-show="isSlideShown(index)"
         :id="`result-slide-${slide.id}`"
         :ref="(el) => setSlideRef(slide.id, el)"
-        class="rounded-xl border bg-white overflow-hidden transition-all duration-200 ease-out cursor-pointer"
-        :class="slideSectionClass(slide.id)"
+        class="rounded-xl border-2 overflow-hidden transition-all duration-300 cursor-pointer"
+        :style="{ background: slideCanvasBackground(slide) }"
+        :class="[
+          interactionLocked ? 'pointer-events-none' : '',
+          slide.id === currentId
+            ? 'border-primary'
+            : 'border-outline-variant/60',
+          revealActive && !isSlideShown(index) ? 'opacity-0 max-h-0 overflow-hidden border-0 p-0 m-0' : '',
+          revealActive && isSlideShown(index) ? 'animate-[fadeIn_0.3s_ease]' : '',
+        ]"
         :data-slide-id="slide.id"
-        @click="onCardClick(slide)"
+        @click.stop="onCardClick(slide)"
       >
-        <div class="px-3 py-1.5 border-b border-outline-variant/60 bg-surface-container-low/50 flex items-center gap-2">
-          <span class="text-xs font-semibold text-on-surface-variant shrink-0">第 {{ index + 1 }} 页</span>
-          <span v-if="slide.layout" class="text-[10px] text-on-surface-variant/70 truncate">{{ slide.layout }}</span>
-          <span
-            v-if="currentId === slide.id"
-            class="ml-auto text-[10px] text-primary font-medium shrink-0"
-          >
-            当前编辑
-          </span>
-        </div>
-
-        <div
-          class="flex justify-center bg-surface-container-low/25"
-          :style="{ padding: `${SECTION_PAD}px` }"
-          @click.stop="onCardClick(slide)"
-        >
-          <ResultSlideCardCanvas
-            :active="currentId === slide.id"
-            :scale="cardScale"
-            :viewport="displayViewport"
-            :preview-elements="previewElementsForSlide(slide)"
-            :elements="currentId === slide.id ? elements : []"
-            :selected-ids="currentId === slide.id ? selectedIds : []"
-            :canvas-background="slideCanvasBackground(slide)"
-            :theme-id="themeId"
-            :slide="slide"
-            :slide-index="index"
-            :slide-total="slides.length"
-            @select="$emit('select-element', $event)"
-            @deselect="$emit('deselect')"
-            @update-element="$emit('update-element', $event)"
-            @marquee-select="$emit('marquee-select', $event)"
-            @batch-start="$emit('batch-start', $event)"
-            @batch-end="$emit('batch-end')"
-            @move-delta="$emit('move-delta', $event)"
-            @edit-wordcloud="$emit('edit-wordcloud', $event)"
-            @edit-chart-stack="$emit('edit-chart-stack', $event)"
-          />
-        </div>
+        <ResultSlideCardCanvas
+          :ref="(el) => setCardRef(slide.id, el)"
+          fill-card
+          :active="!interactionLocked && currentId === slide.id"
+          :scale="cardScale"
+          :viewport="displayViewport"
+          :preview-elements="previewElementsForSlide(slide)"
+          :elements="elementsForSlide(slide)"
+          :selected-ids="currentId === slide.id ? selectedIds : []"
+          :canvas-background="slideCanvasBackground(slide)"
+          :theme-id="themeId"
+          :slide="slide"
+          :slide-index="index"
+          :slide-total="slides.length"
+          :reveal-stagger="false"
+          @select="$emit('select-element', $event)"
+          @deselect="$emit('deselect')"
+          @update-element="(id, patch) => $emit('update-element', id, patch)"
+          @marquee-select="$emit('marquee-select', $event)"
+          @batch-start="$emit('batch-start', $event)"
+          @batch-end="$emit('batch-end')"
+          @move-delta="$emit('move-delta', $event)"
+          @edit-wordcloud="$emit('edit-wordcloud', $event)"
+          @edit-chart-stack="$emit('edit-chart-stack', $event)"
+        />
       </section>
+      </template>
 
       <EmptyState
-        v-if="!slides.length"
+        v-if="!slides.length && !revealActive"
         class="py-16"
         icon="slideshow"
         title="暂无幻灯片"
@@ -64,19 +68,18 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import ResultSlideCardCanvas from './ResultSlideCardCanvas.vue'
 import EmptyState from '../EmptyState.vue'
+import { DEFAULT_WEB_VIEWPORT_ID, isWideWebViewport } from '../../constants/editorPresets.js'
 import { resolveSlideCanvasBackground } from '../../utils/slideBackground.js'
-import { compileSlideIfNeeded } from '../../utils/compileStructuredSlide.js'
+import { ensureSlideCompiled } from '../../utils/compileStructuredSlide.js'
 
-const TARGET_VISIBLE = 2.5
-const SECTION_HEADER = 32
-const SECTION_PAD = 12
-const GAP = 12
 const OUTER_PADDING_X = 32
-const MAX_SCALE = 0.48
+const MAX_SCALE = 0.72
 const MIN_SCALE = 0.24
+const CARD_HEIGHT_FACTOR = 2 / 3
+const CARD_GAP_RATIO = 0.2
 
 const props = defineProps({
   slides: { type: Array, default: () => [] },
@@ -84,15 +87,20 @@ const props = defineProps({
   projectId: { type: [Number, String], default: null },
   projectSettings: { type: Object, default: null },
   displayViewport: { type: Object, required: true },
-  viewportId: { type: String, default: 'web-1280' },
+  viewportId: { type: String, default: DEFAULT_WEB_VIEWPORT_ID },
   themeId: { type: String, default: 'zjy-minimal' },
   elements: { type: Array, default: () => [] },
   selectedIds: { type: Array, default: () => [] },
   canvasBackground: { type: String, default: '' },
+  revealActive: { type: Boolean, default: false },
+  interactionLocked: { type: Boolean, default: false },
+  visibleSlideCount: { type: Number, default: -1 },
+  visibleElementIdsBySlide: { type: Object, default: () => ({}) },
 })
 
 const emit = defineEmits([
   'select',
+  'deselect-slide',
   'select-element',
   'deselect',
   'marquee-select',
@@ -106,123 +114,111 @@ const emit = defineEmits([
 
 const scrollRootRef = ref(null)
 const slideRefs = ref({})
+const cardRefs = ref({})
 const containerWidth = ref(880)
-const containerHeight = ref(640)
-const scrollSyncLock = ref(false)
 let resizeObserver = null
-let intersectionObserver = null
 
 function setSlideRef(id, el) {
   if (el) slideRefs.value[id] = el
   else delete slideRefs.value[id]
 }
 
+function setCardRef(id, el) {
+  if (el) cardRefs.value[id] = el
+  else delete cardRefs.value[id]
+}
+
 const cardScale = computed(() => {
   const maxW = Math.max(240, containerWidth.value - OUTER_PADDING_X)
   const scaleByWidth = maxW / props.displayViewport.width
-
-  const gaps = GAP * (TARGET_VISIBLE - 1)
-  const cardContentH =
-    (Math.max(320, containerHeight.value) - gaps) / TARGET_VISIBLE - SECTION_HEADER - SECTION_PAD * 2
-  const scaleByHeight = cardContentH / props.displayViewport.height
-
-  const scale = Math.min(scaleByWidth, scaleByHeight, MAX_SCALE)
-  return Math.max(MIN_SCALE, scale)
+  if (isWideViewport.value) {
+    return Math.max(MIN_SCALE, scaleByWidth)
+  }
+  const base = Math.max(MIN_SCALE, Math.min(scaleByWidth, MAX_SCALE))
+  return base * CARD_HEIGHT_FACTOR
 })
 
-function previewElementsForSlide(slide) {
+const isWideViewport = computed(() => isWideWebViewport(props.viewportId))
+const cardDisplayHeight = computed(() =>
+  Math.round(props.displayViewport.height * cardScale.value)
+)
+
+const slidesContainerStyle = computed(() => ({
+  gap: `${Math.max(16, Math.round(cardDisplayHeight.value * CARD_GAP_RATIO))}px`,
+}))
+
+function isSlideShown(index) {
+  if (!props.revealActive) return true
+  if (props.visibleSlideCount < 0) return true
+  if (props.visibleSlideCount === 0) return index === 0
+  return index < props.visibleSlideCount
+}
+
+function shouldMountSlide(index) {
+  if (!props.revealActive) return true
+  if (props.visibleSlideCount < 0) return true
+  if (props.visibleSlideCount === 0) return index === 0
+  return index < props.visibleSlideCount + 1
+}
+
+function allElementsForSlide(slide) {
   if (slide.id === props.currentId && props.elements?.length) {
     return props.elements
   }
-  if (slide.canvas_elements?.length) return slide.canvas_elements
-  const compiled = compileSlideIfNeeded(slide, props.viewportId, props.themeId)
-  return compiled.length ? compiled : []
+  return ensureSlideCompiled(slide, props.viewportId, props.themeId)
+}
+
+function filterVisibleElements(slide, allEls) {
+  if (!props.revealActive) return allEls
+  const ids = new Set(props.visibleElementIdsBySlide[slide.id] || [])
+  if (!ids.size) return []
+  return allEls.filter((el) => ids.has(el.id))
+}
+
+function previewElementsForSlide(slide) {
+  return filterVisibleElements(slide, allElementsForSlide(slide))
+}
+
+function elementsForSlide(slide) {
+  if (slide.id !== props.currentId) return []
+  return filterVisibleElements(slide, props.elements || [])
 }
 
 function slideCanvasBackground(slide) {
-  if (slide.id === props.currentId && props.canvasBackground) {
-    return props.canvasBackground
-  }
   return resolveSlideCanvasBackground(props.projectId, slide, props.projectSettings)
 }
 
-function slideSectionClass(slideId) {
-  if (props.currentId === slideId) {
-    return 'border-primary/50 shadow-md ring-1 ring-primary/20'
+function scrollToSlide(id, smooth = true) {
+  const el = slideRefs.value[id]
+  if (el?.scrollIntoView) {
+    el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'nearest' })
   }
-  return 'border-outline-variant/60 hover:border-outline-variant hover:shadow-sm'
 }
 
 function onCardClick(slide) {
+  if (props.interactionLocked) return
+  if (slide.id === props.currentId) return
   emit('select', slide)
 }
 
-function scrollToSlide(id) {
-  const el = slideRefs.value[id]
-  if (el?.scrollIntoView) {
-    scrollSyncLock.value = true
-    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    window.setTimeout(() => {
-      scrollSyncLock.value = false
-    }, 400)
+function onContainerClick() {
+  if (props.interactionLocked) return
+  if (props.currentId != null) {
+    emit('deselect')
   }
 }
 
 function updateContainerSize() {
   if (scrollRootRef.value) {
     containerWidth.value = scrollRootRef.value.clientWidth
-    containerHeight.value = scrollRootRef.value.clientHeight
   }
 }
 
-function setupIntersectionObserver() {
-  intersectionObserver?.disconnect()
-  if (!scrollRootRef.value || !props.slides.length) return
-
-  const ratios = new Map()
-  intersectionObserver = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        const id = Number(entry.target.dataset.slideId)
-        if (id) ratios.set(id, entry.intersectionRatio)
-      }
-      if (scrollSyncLock.value) return
-      let bestId = null
-      let bestRatio = 0
-      for (const [id, ratio] of ratios) {
-        if (ratio > bestRatio) {
-          bestRatio = ratio
-          bestId = id
-        }
-      }
-      if (bestId != null && bestRatio > 0.35 && bestId !== props.currentId) {
-        const slide = props.slides.find((s) => s.id === bestId)
-        if (slide) emit('select', slide)
-      }
-    },
-    { root: scrollRootRef.value, threshold: [0, 0.25, 0.5, 0.75, 1] }
-  )
-
-  for (const slide of props.slides) {
-    const el = slideRefs.value[slide.id]
-    if (el) intersectionObserver.observe(el)
-  }
+function resolveElementEl(slideId, elementId) {
+  const section = slideRefs.value[slideId]
+  if (!section) return null
+  return section.querySelector(`[data-element-id="${elementId}"]`)
 }
-
-watch(
-  () => props.currentId,
-  (id) => {
-    if (id) scrollToSlide(id)
-  }
-)
-
-watch(
-  () => props.slides.map((s) => s.id).join(','),
-  async () => {
-    await nextTick()
-    setupIntersectionObserver()
-  }
-)
 
 onMounted(() => {
   updateContainerSize()
@@ -230,13 +226,24 @@ onMounted(() => {
     resizeObserver = new ResizeObserver(() => updateContainerSize())
     resizeObserver.observe(scrollRootRef.value)
   }
-  nextTick(() => setupIntersectionObserver())
 })
 
 onUnmounted(() => {
   resizeObserver?.disconnect()
-  intersectionObserver?.disconnect()
 })
 
-defineExpose({ scrollToSlide })
+defineExpose({ scrollToSlide, resolveElementEl })
 </script>
+
+<style scoped>
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>

@@ -18,6 +18,19 @@ function redirectToLogin() {
   window.location.replace(`/login?redirect=${redirect}`)
 }
 
+async function parseResponseBody(res) {
+  const text = await res.text()
+  if (!text) return {}
+  try {
+    return JSON.parse(text)
+  } catch {
+    if (!res.ok) {
+      throw new Error(text.slice(0, 300) || `请求失败 (${res.status})`)
+    }
+    return {}
+  }
+}
+
 async function request(path, options = {}) {
   const { authHeaders } = useAuth()
   const res = await fetch(`${BASE}${path}`, {
@@ -28,7 +41,7 @@ async function request(path, options = {}) {
     },
     ...options,
   })
-  const data = await res.json().catch(() => ({}))
+  const data = await parseResponseBody(res)
   if (res.status === 401 && !path.includes('/认证/')) {
     redirectToLogin()
     throw new Error('登录已过期，请重新登录')
@@ -50,7 +63,7 @@ async function uploadForm(path, formData) {
     headers: { ...authHeaders() },
     body: formData,
   })
-  const data = await res.json().catch(() => ({}))
+  const data = await parseResponseBody(res)
   if (res.status === 401) {
     redirectToLogin()
     throw new Error('登录已过期，请重新登录')
@@ -174,6 +187,14 @@ export const api = {
   },
   deleteExpiredAdminOrders: () => request('/api/v1/管理/订单/超时', { method: 'DELETE' }),
   listAdminUsers: (q = '') => request(`/api/v1/管理/用户?q=${encodeURIComponent(q)}`),
+  listAdminGenerationLogs: (params = {}) => {
+    const qs = new URLSearchParams()
+    if (params.page) qs.set('page', String(params.page))
+    if (params.page_size) qs.set('page_size', String(params.page_size))
+    if (params.username) qs.set('username', params.username)
+    const q = qs.toString()
+    return request(`/api/v1/管理/生成日志${q ? `?${q}` : ''}`)
+  },
   createAdminUser: (body) => request('/api/v1/管理/用户', { method: 'POST', body: JSON.stringify(body) }),
   updateAdminUser: (id, body) => request(`/api/v1/管理/用户/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   listAdminTemplates: () => request('/api/v1/管理/模板'),

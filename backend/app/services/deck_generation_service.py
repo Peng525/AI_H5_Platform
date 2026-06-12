@@ -22,9 +22,39 @@ BACKGROUND_COLORS = {
     "light_gray": "#f0f2f5",
 }
 
+VALID_THEME_IDS = frozenset({
+    "zjy-minimal",
+    "eqxiu-story",
+    "tech-blue",
+    "dark-pro",
+    "fresh-green",
+    "coral-vivid",
+    "lavender-soft",
+    "ocean-calm",
+    "sunset-warm",
+    "minimal-gray",
+    "elegant-gold",
+    "berry-bold",
+})
+
+THEME_DEFAULT_GRADIENTS = {
+    "zjy-minimal": "linear-gradient(180deg, #FFFFFF 0%, #E8E8E8 100%)",
+    "eqxiu-story": "linear-gradient(180deg, #FFF8F3 0%, #FFE8D6 100%)",
+    "tech-blue": "linear-gradient(180deg, #0A1628 0%, #152238 100%)",
+    "dark-pro": "linear-gradient(180deg, #1A1A1A 0%, #2D2D2D 100%)",
+    "fresh-green": "linear-gradient(180deg, #F7FBF8 0%, #E8F5EC 100%)",
+    "coral-vivid": "linear-gradient(180deg, #FFF5F2 0%, #FFE4DC 100%)",
+    "lavender-soft": "linear-gradient(180deg, #FAF5FF 0%, #EDE9FE 100%)",
+    "ocean-calm": "linear-gradient(180deg, #F0F9FF 0%, #E0F2FE 100%)",
+    "sunset-warm": "linear-gradient(180deg, #FFFBEB 0%, #FEF3C7 100%)",
+    "minimal-gray": "linear-gradient(180deg, #FAFAFA 0%, #F0F0F0 100%)",
+    "elegant-gold": "linear-gradient(180deg, #FBF8F3 0%, #F5EDE0 100%)",
+    "berry-bold": "linear-gradient(180deg, #FFF1F2 0%, #FFE4E6 100%)",
+}
+
 VIEWPORT_MAP = {
-    "auto": "web-1280",
-    "web": "web-1280",
+    "auto": "web-wide-1024",
+    "web": "web-wide-1024",
     "mobile": "mobile-375",
 }
 
@@ -248,15 +278,18 @@ async def generate_deck_from_ai(
 
     try:
         preset = (body.background_preset or "").strip()
+        theme_id = (body.theme_id or "zjy-minimal").strip()
+        if theme_id not in VALID_THEME_IDS:
+            theme_id = "zjy-minimal"
         if preset and preset in BACKGROUND_COLORS:
             bg = BACKGROUND_COLORS[preset]
         else:
-            bg = ""
+            bg = THEME_DEFAULT_GRADIENTS.get(theme_id, THEME_DEFAULT_GRADIENTS["zjy-minimal"])
         viewport_id = VIEWPORT_MAP.get(body.viewport_mode, VIEWPORT_MAP["auto"])
         template_settings = {
             "viewportId": viewport_id,
             "scrollEffect": "vertical",
-            "themeId": "zjy-minimal",
+            "themeId": theme_id,
             "showScrollHint": False,
             "slideBackgrounds": {},
             "bgm": {"enabled": False, "trackId": "", "url": "", "loop": True, "volume": 0.35},
@@ -295,15 +328,14 @@ async def generate_deck_from_ai(
             len(slides_seed),
         )
 
-        if bg:
-            slide_rows = await db.execute(
-                select(Slide).where(Slide.project_id == project.id).order_by(Slide.sort_order)
-            )
-            sorted_slides = list(slide_rows.scalars().all())
-            bg_map = {str(s.id): bg for s in sorted_slides}
-            if bg_map:
-                merged = {**template_settings, "slideBackgrounds": bg_map}
-                project.settings_json = json.dumps(merged, ensure_ascii=False)
+        slide_rows = await db.execute(
+            select(Slide).where(Slide.project_id == project.id).order_by(Slide.sort_order)
+        )
+        sorted_slides = list(slide_rows.scalars().all())
+        bg_map = {str(s.id): bg for s in sorted_slides}
+        if bg_map:
+            merged = {**template_settings, "slideBackgrounds": bg_map}
+            project.settings_json = json.dumps(merged, ensure_ascii=False)
 
         db.add(
             GenerationLog(

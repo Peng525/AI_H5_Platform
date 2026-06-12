@@ -1,13 +1,40 @@
-/** 设计主题：zjy 商务简约 + eqxiu 叙事公益 */
+/** 设计主题：12 套主流演示风格 */
+
+import { isWideWebViewport } from './editorPresets.js'
+
+const DEFAULT_FONTS = {
+  display: '"DengXian", "等线", "Microsoft YaHei", sans-serif',
+  body: '"DengXian", "等线 Light", "Microsoft YaHei", sans-serif',
+}
+
+const DEFAULT_TYPE_SCALE = {
+  mobile: { display: 36, h1: 28, h2: 22, body: 16, caption: 13 },
+  web: { display: 52, h1: 40, h2: 28, body: 20, caption: 15 },
+}
+
+const DEFAULT_MARGINS = {
+  mobile: { x: 32, contentWidth: 311 },
+  web: { x: 64, contentWidth: 1152 },
+}
+
+function theme(id, label, colors, gradient, palette, extra = {}) {
+  return {
+    id,
+    label,
+    fonts: extra.fonts || DEFAULT_FONTS,
+    colors,
+    typeScale: extra.typeScale || DEFAULT_TYPE_SCALE,
+    margins: extra.margins || DEFAULT_MARGINS,
+    gradients: extra.gradients || [{ id: `${id}-default`, label, value: gradient }],
+    palette,
+  }
+}
+
 export const DESIGN_THEMES = {
-  'zjy-minimal': {
-    id: 'zjy-minimal',
-    label: 'ZJY 商务简约',
-    fonts: {
-      display: '"DengXian", "等线", "Microsoft YaHei", sans-serif',
-      body: '"DengXian", "等线 Light", "Microsoft YaHei", sans-serif',
-    },
-    colors: {
+  'zjy-minimal': theme(
+    'zjy-minimal',
+    '商务简约',
+    {
       bg: '#FFFFFF',
       bgMuted: '#E8E8E8',
       text: '#0E2841',
@@ -16,30 +43,21 @@ export const DESIGN_THEMES = {
       accent2: '#5B9BD5',
       onAccent: '#FFFFFF',
     },
-    typeScale: {
-      mobile: { display: 36, h1: 28, h2: 22, body: 16, caption: 13 },
-      web: { display: 52, h1: 40, h2: 28, body: 20, caption: 15 },
-    },
-    margins: {
-      mobile: { x: 32, contentWidth: 311 },
-      web: { x: 80, contentWidth: 1120 },
-    },
-    gradients: [
-      { id: 'zjy-white', label: '纯白', value: 'linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 100%)' },
-      { id: 'zjy-soft', label: '浅灰渐变', value: 'linear-gradient(180deg, #FFFFFF 0%, #E8E8E8 100%)' },
-      { id: 'zjy-accent', label: '青蓝淡染', value: 'linear-gradient(135deg, #FFFFFF 0%, #E8F4F8 100%)' },
-      { id: 'zjy-muted', label: '灰白', value: 'linear-gradient(180deg, #F5F5F5 0%, #E8E8E8 100%)' },
-    ],
-    palette: ['#0E2841', '#156082', '#44546A', '#E8E8E8', '#FFFFFF', '#5B9BD5'],
-  },
-  'eqxiu-story': {
-    id: 'eqxiu-story',
-    label: '易企秀叙事',
-    fonts: {
-      display: '"Microsoft YaHei", "PingFang SC", sans-serif',
-      body: '"Microsoft YaHei", "PingFang SC", sans-serif',
-    },
-    colors: {
+    'linear-gradient(180deg, #FFFFFF 0%, #E8E8E8 100%)',
+    ['#0E2841', '#156082', '#44546A', '#E8E8E8', '#FFFFFF', '#5B9BD5'],
+    {
+      gradients: [
+        { id: 'zjy-white', label: '纯白', value: 'linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 100%)' },
+        { id: 'zjy-soft', label: '浅灰渐变', value: 'linear-gradient(180deg, #FFFFFF 0%, #E8E8E8 100%)' },
+        { id: 'zjy-accent', label: '青蓝淡染', value: 'linear-gradient(135deg, #FFFFFF 0%, #E8F4F8 100%)' },
+        { id: 'zjy-muted', label: '灰白', value: 'linear-gradient(180deg, #F5F5F5 0%, #E8E8E8 100%)' },
+      ],
+    }
+  ),
+  'eqxiu-story': theme(
+    'eqxiu-story',
+    '暖色叙事',
+    {
       bg: '#FFF8F3',
       bgMuted: '#FFE8D6',
       text: '#2D3436',
@@ -48,22 +66,167 @@ export const DESIGN_THEMES = {
       accent2: '#00B894',
       onAccent: '#FFFFFF',
     },
-    typeScale: {
-      mobile: { display: 34, h1: 26, h2: 20, body: 17, caption: 14 },
-      web: { display: 48, h1: 36, h2: 26, body: 22, caption: 16 },
+    'linear-gradient(180deg, #FFF8F3 0%, #FFE8D6 100%)',
+    ['#2D3436', '#E17055', '#00B894', '#636E72', '#FFF8F3', '#FFE8D6'],
+    {
+      gradients: [
+        { id: 'eq-warm', label: '暖白', value: 'linear-gradient(180deg, #FFF8F3 0%, #FFE8D6 100%)' },
+        { id: 'eq-peach', label: '蜜桃', value: 'linear-gradient(135deg, #FFF8F3 0%, #FFDAB9 100%)' },
+        { id: 'eq-mint', label: '青绿淡染', value: 'linear-gradient(180deg, #FFF8F3 0%, #E8FFF8 100%)' },
+        { id: 'eq-sunset', label: '夕照', value: 'linear-gradient(135deg, #FFE8D6 0%, #FFF8F3 50%, #E8FFF8 100%)' },
+      ],
+    }
+  ),
+  'tech-blue': theme(
+    'tech-blue',
+    '科技蓝',
+    {
+      bg: '#0A1628',
+      bgMuted: '#152238',
+      text: '#E8F4FF',
+      textMuted: '#94A3B8',
+      accent: '#38BDF8',
+      accent2: '#6366F1',
+      onAccent: '#0A1628',
     },
-    margins: {
-      mobile: { x: 28, contentWidth: 319 },
-      web: { x: 72, contentWidth: 1136 },
+    'linear-gradient(180deg, #0A1628 0%, #152238 100%)',
+    ['#E8F4FF', '#38BDF8', '#6366F1', '#94A3B8', '#152238', '#0A1628']
+  ),
+  'dark-pro': theme(
+    'dark-pro',
+    '深色专业',
+    {
+      bg: '#1A1A1A',
+      bgMuted: '#2D2D2D',
+      text: '#F5F5F5',
+      textMuted: '#A3A3A3',
+      accent: '#D4AF37',
+      accent2: '#F5E6A3',
+      onAccent: '#1A1A1A',
     },
-    gradients: [
-      { id: 'eq-warm', label: '暖白', value: 'linear-gradient(180deg, #FFF8F3 0%, #FFE8D6 100%)' },
-      { id: 'eq-peach', label: '蜜桃', value: 'linear-gradient(135deg, #FFF8F3 0%, #FFDAB9 100%)' },
-      { id: 'eq-mint', label: '青绿淡染', value: 'linear-gradient(180deg, #FFF8F3 0%, #E8FFF8 100%)' },
-      { id: 'eq-sunset', label: '夕照', value: 'linear-gradient(135deg, #FFE8D6 0%, #FFF8F3 50%, #E8FFF8 100%)' },
-    ],
-    palette: ['#2D3436', '#E17055', '#00B894', '#636E72', '#FFF8F3', '#FFE8D6'],
-  },
+    'linear-gradient(180deg, #1A1A1A 0%, #2D2D2D 100%)',
+    ['#F5F5F5', '#D4AF37', '#F5E6A3', '#A3A3A3', '#2D2D2D', '#1A1A1A']
+  ),
+  'fresh-green': theme(
+    'fresh-green',
+    '清新自然',
+    {
+      bg: '#F7FBF8',
+      bgMuted: '#E8F5EC',
+      text: '#1B4332',
+      textMuted: '#52796F',
+      accent: '#2D6A4F',
+      accent2: '#52B788',
+      onAccent: '#FFFFFF',
+    },
+    'linear-gradient(180deg, #F7FBF8 0%, #E8F5EC 100%)',
+    ['#1B4332', '#2D6A4F', '#52B788', '#52796F', '#E8F5EC', '#F7FBF8']
+  ),
+  'coral-vivid': theme(
+    'coral-vivid',
+    '活力珊瑚',
+    {
+      bg: '#FFF5F2',
+      bgMuted: '#FFE4DC',
+      text: '#7C2D12',
+      textMuted: '#9A3412',
+      accent: '#F97316',
+      accent2: '#FB923C',
+      onAccent: '#FFFFFF',
+    },
+    'linear-gradient(180deg, #FFF5F2 0%, #FFE4DC 100%)',
+    ['#7C2D12', '#F97316', '#FB923C', '#9A3412', '#FFE4DC', '#FFF5F2']
+  ),
+  'lavender-soft': theme(
+    'lavender-soft',
+    '雅致紫韵',
+    {
+      bg: '#FAF5FF',
+      bgMuted: '#EDE9FE',
+      text: '#4C1D95',
+      textMuted: '#6D28D9',
+      accent: '#8B5CF6',
+      accent2: '#A78BFA',
+      onAccent: '#FFFFFF',
+    },
+    'linear-gradient(180deg, #FAF5FF 0%, #EDE9FE 100%)',
+    ['#4C1D95', '#8B5CF6', '#A78BFA', '#6D28D9', '#EDE9FE', '#FAF5FF']
+  ),
+  'ocean-calm': theme(
+    'ocean-calm',
+    '海洋静谧',
+    {
+      bg: '#F0F9FF',
+      bgMuted: '#E0F2FE',
+      text: '#0C4A6E',
+      textMuted: '#0369A1',
+      accent: '#0284C7',
+      accent2: '#38BDF8',
+      onAccent: '#FFFFFF',
+    },
+    'linear-gradient(180deg, #F0F9FF 0%, #E0F2FE 100%)',
+    ['#0C4A6E', '#0284C7', '#38BDF8', '#0369A1', '#E0F2FE', '#F0F9FF']
+  ),
+  'sunset-warm': theme(
+    'sunset-warm',
+    '夕照暖橙',
+    {
+      bg: '#FFFBEB',
+      bgMuted: '#FEF3C7',
+      text: '#78350F',
+      textMuted: '#92400E',
+      accent: '#D97706',
+      accent2: '#F59E0B',
+      onAccent: '#FFFFFF',
+    },
+    'linear-gradient(180deg, #FFFBEB 0%, #FEF3C7 100%)',
+    ['#78350F', '#D97706', '#F59E0B', '#92400E', '#FEF3C7', '#FFFBEB']
+  ),
+  'minimal-gray': theme(
+    'minimal-gray',
+    '极简灰白',
+    {
+      bg: '#FAFAFA',
+      bgMuted: '#F0F0F0',
+      text: '#171717',
+      textMuted: '#737373',
+      accent: '#404040',
+      accent2: '#A3A3A3',
+      onAccent: '#FFFFFF',
+    },
+    'linear-gradient(180deg, #FAFAFA 0%, #F0F0F0 100%)',
+    ['#171717', '#404040', '#737373', '#A3A3A3', '#F0F0F0', '#FAFAFA']
+  ),
+  'elegant-gold': theme(
+    'elegant-gold',
+    '典雅金棕',
+    {
+      bg: '#FBF8F3',
+      bgMuted: '#F5EDE0',
+      text: '#3D2914',
+      textMuted: '#6B5344',
+      accent: '#B8860B',
+      accent2: '#D4A574',
+      onAccent: '#FFFFFF',
+    },
+    'linear-gradient(180deg, #FBF8F3 0%, #F5EDE0 100%)',
+    ['#3D2914', '#B8860B', '#D4A574', '#6B5344', '#F5EDE0', '#FBF8F3']
+  ),
+  'berry-bold': theme(
+    'berry-bold',
+    '莓果鲜明',
+    {
+      bg: '#FFF1F2',
+      bgMuted: '#FFE4E6',
+      text: '#881337',
+      textMuted: '#BE123C',
+      accent: '#E11D48',
+      accent2: '#FB7185',
+      onAccent: '#FFFFFF',
+    },
+    'linear-gradient(180deg, #FFF1F2 0%, #FFE4E6 100%)',
+    ['#881337', '#E11D48', '#FB7185', '#BE123C', '#FFE4E6', '#FFF1F2']
+  ),
 }
 
 export function getTheme(themeId) {
@@ -74,17 +237,24 @@ export function getThemePalette(themeId) {
   return getTheme(themeId).palette
 }
 
+
 export function isWebViewport(viewportId) {
   return String(viewportId || '').startsWith('web')
 }
 
 export function getThemeTypeScale(themeId, viewportId) {
   const theme = getTheme(themeId)
+  if (isWideWebViewport(viewportId)) {
+    return { display: 34, h1: 28, h2: 22, body: 16, caption: 13 }
+  }
   return isWebViewport(viewportId) ? theme.typeScale.web : theme.typeScale.mobile
 }
 
 export function getThemeMargins(themeId, viewportId) {
   const theme = getTheme(themeId)
+  if (isWideWebViewport(viewportId)) {
+    return { x: 40, contentWidth: 944 }
+  }
   return isWebViewport(viewportId) ? theme.margins.web : theme.margins.mobile
 }
 

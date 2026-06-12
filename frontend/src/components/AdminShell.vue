@@ -110,6 +110,7 @@ const avatarLetter = computed(() => displayName.value.charAt(0).toUpperCase())
 const navItems = [
   { label: '数据仪表盘', to: '/admin', match: '/admin', icon: 'dashboard' },
   { label: '用户管理', to: '/admin/users', match: '/admin/users', icon: 'group' },
+  { label: 'AI 生成记录', to: '/admin/generation-logs', match: '/admin/generation-logs', icon: 'history' },
   { label: 'H5 模板', to: '/admin/templates', match: '/admin/templates', icon: 'dashboard_customize' },
   { label: '版式管理', to: '/admin/layouts', match: '/admin/layouts', icon: 'view_quilt' },
   { label: '文稿提示词', to: '/admin/prompts', match: '/admin/prompts', icon: 'description' },

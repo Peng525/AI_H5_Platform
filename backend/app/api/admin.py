@@ -10,8 +10,10 @@ from sqlalchemy.orm import selectinload
 from app.api.auth import pwd_context
 from app.database import get_db
 from app.deps.auth import is_admin_user, require_admin
-from app.models import Order, User
+from app.models import GenerationLog, Order, Project, User
 from app.schemas import (
+    AdminGenerationLogListOut,
+    AdminGenerationLogOut,
     H5TemplateCreate,
     H5TemplateOut,
     H5TemplateUpdate,
@@ -838,3 +840,45 @@ async def admin_reject_order(
     except OrderServiceError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _order_out(order)
+
+
+@router.get("/生成日志", response_model=AdminGenerationLogListOut, summary="AI 生成记录")
+async def admin_list_generation_logs(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    username: str = Query("", description="按用户名筛选"),
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    base = (
+        select(GenerationLog, Project, User)
+        .outerjoin(Project, GenerationLog.project_id == Project.id)
+        .outerjoin(User, Project.user_id == User.id)
+        .order_by(GenerationLog.created_at.desc())
+    )
+    if username.strip():
+        base = base.where(User.username.ilike(f"%{username.strip()}%"))
+
+    count_q = select(func.count()).select_from(base.subquery())
+    total = (await db.execute(count_q)).scalar_one() or 0
+
+    offset = (page - 1) * page_size
+    result = await db.execute(base.offset(offset).limit(page_size))
+    rows = result.all()
+
+    items = [
+        AdminGenerationLogOut(
+            id=log.id,
+            username=user.username if user else None,
+            project_public_id=project.public_id if project else None,
+            template_id=log.template_id,
+            channel=log.channel,
+            model=log.model or "",
+            duration_ms=log.duration_ms,
+            success=bool(log.success),
+            message=log.message or "",
+            created_at=log.created_at,
+        )
+        for log, project, user in rows
+    ]
+    return AdminGenerationLogListOut(items=items, total=total, page=page, page_size=page_size)

@@ -1,6 +1,6 @@
 import { computed, ref, watch } from 'vue'
 import { getViewportPreset } from '../constants/editorPresets'
-import { slideBackgroundCSSValue, slideBackgroundToStorage } from '../utils/slideBackground'
+import { slideBackgroundCSSValue, slideBackgroundToStorage, serializeSlideBackgroundsForApi } from '../utils/slideBackground'
 import { DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
 import { api } from '../api/client'
 
@@ -62,7 +62,7 @@ export function useProjectEditorSettings(projectIdRef) {
           scrollEffect: settings.value.scrollEffect,
           themeId: settings.value.themeId,
           showScrollHint: settings.value.showScrollHint,
-          slideBackgrounds: settings.value.slideBackgrounds,
+          slideBackgrounds: serializeSlideBackgroundsForApi(settings.value.slideBackgrounds),
           bgm: settings.value.bgm,
           defaultChatTapToContinue: settings.value.defaultChatTapToContinue,
         })

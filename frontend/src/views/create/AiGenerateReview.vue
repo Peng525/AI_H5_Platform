@@ -1,12 +1,15 @@
 <template>
   <div class="h-dvh overflow-hidden bg-surface-container-low flex flex-col">
-    <header class="h-14 border-b border-outline-variant bg-white flex items-center justify-between px-4 sm:px-6 shrink-0">
-      <button type="button" class="text-sm text-on-surface-variant hover:text-primary inline-flex items-center gap-1" @click="router.push('/create/generate')">
-        <span class="material-symbols-outlined text-[18px]">arrow_back</span>
-        上一步
-      </button>
-      <h1 class="text-base font-semibold">提示编辑器</h1>
-      <UserMenu />
+    <header class="h-14 border-b border-outline-variant bg-white flex items-center px-4 sm:px-6 shrink-0 gap-3">
+      <CreateHomeButton />
+
+      <h1 class="flex-1 text-base font-semibold truncate min-w-0">提示词编辑器</h1>
+
+      <BackToResultButton />
+
+      <div class="flex items-center gap-2 shrink-0">
+        <UserMenu />
+      </div>
     </header>
 
     <div class="lg:hidden flex gap-1 p-2 bg-white border-b border-outline-variant">
@@ -52,6 +55,12 @@
         <label class="block text-sm">
           <span class="text-xs font-medium text-on-surface-variant">语气</span>
           <textarea v-model="tone" rows="3" class="sidebar-field mt-1 w-full" />
+        </label>
+        <label class="block text-sm">
+          <span class="text-xs font-medium text-on-surface-variant">演示主题</span>
+          <select v-model="themeId" class="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+            <option v-for="opt in themeOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+          </select>
         </label>
         <label class="block text-sm">
           <span class="text-xs font-medium text-on-surface-variant">语言</span>
@@ -185,37 +194,34 @@
       @cancel="truncateDialogOpen = false"
       @confirm="confirmDecreasePageCount"
     />
-
-    <DeckGenerateOverlay
-      :open="overlayOpen"
-      :estimated-seconds="estimatedSeconds"
-    />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { api } from '../../api/client'
 import CardSplitModeDialog from '../../components/create/CardSplitModeDialog.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
-import DeckGenerateOverlay from '../../components/create/DeckGenerateOverlay.vue'
+import CreateHomeButton from '../../components/create/CreateHomeButton.vue'
+import BackToResultButton from '../../components/create/BackToResultButton.vue'
 import UserMenu from '../../components/create/UserMenu.vue'
 import { useToast } from '../../composables/useToast.js'
 import { useQuota } from '../../composables/useQuota.js'
 import {
-  applyProjectSettingsLocal,
-  grantGenerateResultAccess,
+  clearReturnToResult,
   loadDraft,
+  PENDING_RESULT_PUBLIC_ID,
   requireDeckDraft,
   saveDraft,
+  saveGenerateJob,
   syncPageContents,
 } from '../../composables/useAiCreateDraft.js'
 import { splitContentIntoPages } from '../../utils/splitContentIntoPages.js'
+import { listThemeOptions } from '../../utils/applyProjectTheme.js'
 
 const router = useRouter()
 const { success: toastSuccess } = useToast()
-const { quotaText, refreshQuota } = useQuota()
+const { quotaText } = useQuota()
 const draft = ref(loadDraft())
 const mobileTab = ref('content')
 const mobileTabs = [
@@ -230,6 +236,8 @@ const textDensity = ref('精炼')
 const audience = ref('')
 const tone = ref('专业、清晰、具说服力')
 const language = ref('简体中文')
+const themeId = ref('zjy-minimal')
+const themeOptions = listThemeOptions()
 const extraContent = ref('')
 const extraInstructions = ref('')
 const contentMode = ref('free')
@@ -239,7 +247,6 @@ const splitDialogOpen = ref(false)
 const truncateDialogOpen = ref(false)
 const pendingPageCount = ref(null)
 const generating = ref(false)
-const overlayOpen = ref(false)
 const error = ref('')
 
 const estimatedSeconds = computed(() => 8 + pageCount.value * 4)
@@ -337,6 +344,7 @@ onMounted(async () => {
   audience.value = d.audience || ''
   tone.value = d.tone || '专业、清晰、具说服力'
   language.value = d.language || '简体中文'
+  themeId.value = d.themeId || 'zjy-minimal'
   extraContent.value = d.extraContent || d.topic || ''
   extraInstructions.value = d.extraInstructions || ''
   contentMode.value = d.contentMode || 'free'
@@ -351,6 +359,7 @@ function buildDraftPatch() {
     audience: audience.value,
     tone: tone.value,
     language: language.value,
+    themeId: themeId.value,
     extraContent: extraContent.value,
     extraInstructions: extraInstructions.value,
     contentMode: contentMode.value,
@@ -365,7 +374,36 @@ function save() {
   toastSuccess('草稿已保存')
 }
 
-async function generate() {
+function buildGenerateBody() {
+  let topic = (draft.value.topic || '').trim()
+  if (!topic && contentMode.value === 'per_page') {
+    const firstPage = pageContents.value.find((p) => String(p || '').trim())
+    topic = String(firstPage || '演示文稿').trim().slice(0, 8000)
+  }
+  const body = {
+    topic,
+    page_count: pageCount.value,
+    audience: audience.value,
+    tone: tone.value,
+    text_density: textDensity.value,
+    language: language.value,
+    viewport_mode: draft.value.viewportMode || 'auto',
+    background_preset: draft.value.background ?? '',
+    theme_id: themeId.value || draft.value.themeId || 'zjy-minimal',
+    extra_instructions: extraInstructions.value,
+    content_mode: contentMode.value,
+  }
+  if (contentMode.value === 'per_page') {
+    body.page_contents = syncPageContents(pageContents.value, pageCount.value)
+    body.extra_content = body.page_contents.filter(Boolean).join('\n\n')
+  } else {
+    body.extra_content = extraContent.value
+    body.page_contents = []
+  }
+  return body
+}
+
+function generate() {
   if (contentMode.value === 'per_page') {
     const hasAny = pageContents.value.some((p) => p.trim())
     if (!hasAny) {
@@ -375,40 +413,16 @@ async function generate() {
   }
 
   generating.value = true
-  overlayOpen.value = true
   error.value = ''
-  saveDraft(buildDraftPatch())
+  clearReturnToResult()
+  saveDraft({ ...buildDraftPatch(), themeId: themeId.value })
   try {
-    const body = {
-      topic: draft.value.topic,
-      page_count: pageCount.value,
-      audience: audience.value,
-      tone: tone.value,
-      text_density: textDensity.value,
-      language: language.value,
-      viewport_mode: draft.value.viewportMode || 'auto',
-      background_preset: draft.value.background ?? '',
-      extra_instructions: extraInstructions.value,
-      content_mode: contentMode.value,
-      model: 'gpt-5.5',
-    }
-    if (contentMode.value === 'per_page') {
-      body.page_contents = syncPageContents(pageContents.value, pageCount.value)
-      body.extra_content = body.page_contents.filter(Boolean).join('\n\n')
-    } else {
-      body.extra_content = extraContent.value
-      body.page_contents = []
-    }
-    const project = await api.generateAiDeck(body)
-    applyProjectSettingsLocal(project.public_id, project.settings || {})
-    grantGenerateResultAccess(project.public_id)
-    await refreshQuota()
-    overlayOpen.value = false
+    const body = buildGenerateBody()
+    saveGenerateJob(body, { estimatedSeconds: estimatedSeconds.value })
     generating.value = false
-    router.push(`/create/generate/result/${project.public_id}`)
+    router.push(`/create/generate/result/${PENDING_RESULT_PUBLIC_ID}`)
   } catch (e) {
-    error.value = e.message || '生成失败'
-    overlayOpen.value = false
+    error.value = e.message || '无法开始生成'
     generating.value = false
   }
 }

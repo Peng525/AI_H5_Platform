@@ -101,7 +101,7 @@ defineEmits(['toggle-bgm-mute'])
 
 const rootShellClass = computed(() => {
   if (props.plainCard || !props.showChrome) {
-    return 'rounded-lg bg-white w-full h-full'
+    return 'w-full h-full overflow-hidden'
   }
   if (props.showChrome && props.viewport.device === 'mobile') {
     return 'bg-white shadow-2xl rounded-[2rem] border-[8px] border-gray-900'
@@ -129,6 +129,7 @@ const sortedElements = computed(() =>
 )
 
 const animClass = computed(() => {
+  if (props.animation === 'none') return ''
   const id = props.animation || getSlideAnimation(props.slide)
   return animationEnterClass(id)
 })

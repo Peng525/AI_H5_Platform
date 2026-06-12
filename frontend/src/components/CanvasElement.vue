@@ -1,6 +1,7 @@
 <template>
   <div
     class="absolute select-none"
+    :data-element-id="element.id"
     :class="[
       readonly && element.type !== 'chartStack' ? 'pointer-events-none' : readonly ? '' : 'touch-none',
       selectionRingClass,
@@ -13,6 +14,7 @@
       height: element.height + 'px',
       zIndex: element.zIndex ?? CANVAS_Z.CONTENT_BASE,
       animationDelay: staggerDelay,
+      ...selectionStyle,
     }"
     @mousedown.stop="onRootMouseDown"
   >
@@ -178,22 +180,19 @@
       />
     </div>
 
-    <template v-if="selected && !readonly && element.type === 'image'">
+    <template v-if="selected && !readonly">
       <span
+        v-if="element.type === 'image'"
         class="absolute top-0 left-0 z-[60] text-[10px] leading-none bg-primary text-white px-1.5 py-0.5 rounded-br pointer-events-none antialiased"
       >已选中</span>
-      <div class="absolute -top-1 -left-1 w-1.5 h-1.5 bg-primary border border-white rounded-sm pointer-events-none" />
-      <div class="absolute -top-1 -right-1 w-1.5 h-1.5 bg-primary border border-white rounded-sm pointer-events-none" />
-      <div class="absolute -bottom-1 -left-1 w-1.5 h-1.5 bg-primary border border-white rounded-sm pointer-events-none" />
       <div
-        class="absolute -bottom-1 -right-1 w-3 h-3 bg-primary border border-white rounded-sm cursor-se-resize shadow-sm"
-        @mousedown.stop="startResize"
-      />
-    </template>
-    <template v-else-if="selected && !readonly">
-      <div
-        class="absolute -bottom-1 -right-1 w-3 h-3 bg-white border border-black/35 rounded-sm cursor-se-resize shadow-sm"
-        @mousedown.stop="startResize"
+        v-for="handle in resizeHandles"
+        :key="handle.corner"
+        data-resize-handle
+        class="absolute z-[70] w-2.5 h-2.5 rounded-sm shadow-sm"
+        :class="handle.class"
+        :style="handle.style"
+        @mousedown.stop="(e) => startResize(e, handle.corner)"
       />
     </template>
   </div>
@@ -204,6 +203,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { CANVAS_Z } from '../composables/useSlideCanvas.js'
 import { renderWordCloud } from './wordcloud/WordCloudRenderer.js'
 import ChartStack from './charts/ChartStack.vue'
+import { selectionChromeForBackground } from '../utils/selectionChrome.js'
 
 const props = defineProps({
   element: { type: Object, required: true },
@@ -212,6 +212,8 @@ const props = defineProps({
   scale: { type: Number, default: 1 },
   staggerIndex: { type: Number, default: -1 },
   themeId: { type: String, default: 'zjy-minimal' },
+  canvasBackground: { type: String, default: '' },
+  canvasBounds: { type: Object, default: () => ({ width: 9999, height: 9999 }) },
 })
 
 const emit = defineEmits(['select', 'update', 'remove', 'batch-start', 'batch-end', 'edit-wordcloud', 'edit-chart-stack', 'move-delta'])
@@ -258,12 +260,38 @@ const iconStyle = computed(() => ({
 
 const iconSize = computed(() => Math.min(props.element.width, props.element.height) * 0.55)
 
+const selectionChrome = computed(() =>
+  selectionChromeForBackground(props.canvasBackground, props.themeId)
+)
+
+const selectionStyle = computed(() => {
+  if (!props.selected || props.readonly) return {}
+  const chrome = selectionChrome.value
+  return {
+    outline: `${chrome.outlineWidth}px solid ${chrome.ringColor}`,
+    outlineOffset: '0px',
+    boxShadow: chrome.shadow,
+  }
+})
+
 const selectionRingClass = computed(() => {
   if (!props.selected || props.readonly) return ''
-  if (props.element.type === 'image') {
-    return 'z-50 outline outline-2 outline-primary outline-offset-0 shadow-[0_0_0_1px_rgba(0,93,170,0.45)]'
+  return 'z-50'
+})
+
+const resizeHandles = computed(() => {
+  if (!props.selected || props.readonly) return []
+  const chrome = selectionChrome.value
+  const baseStyle = {
+    background: chrome.handleBg,
+    border: `2px solid ${chrome.handleBorder}`,
   }
-  return 'ring-2 ring-white z-50 shadow-[0_0_0_1px_rgba(0,0,0,0.35)]'
+  return [
+    { corner: 'nw', class: '-top-1.5 -left-1.5 cursor-nw-resize', style: baseStyle },
+    { corner: 'ne', class: '-top-1.5 -right-1.5 cursor-ne-resize', style: baseStyle },
+    { corner: 'sw', class: '-bottom-1.5 -left-1.5 cursor-sw-resize', style: baseStyle },
+    { corner: 'se', class: '-bottom-1.5 -right-1.5 cursor-se-resize', style: baseStyle },
+  ]
 })
 
 const imageCrop = computed(() => {
@@ -367,7 +395,7 @@ function onSelect(e, allowDrag = true) {
     shiftKey: e.shiftKey,
   }
   emit('select', payload)
-  if (e.target.closest('.cursor-se-resize')) return
+  if (e.target.closest('[data-resize-handle]')) return
   if (!allowDrag) return
   if (payload.ctrlKey || payload.shiftKey) return
   startDrag(e)
@@ -430,19 +458,66 @@ function startDrag(e) {
   window.addEventListener('mouseup', onUp)
 }
 
-function startResize(e) {
+function startResize(e, corner = 'se') {
   emit('batch-start', props.element.id)
   const startX = e.clientX
   const startY = e.clientY
+  const origX = props.element.x
+  const origY = props.element.y
   const origW = props.element.width
   const origH = props.element.height
   const s = props.scale
+  const minSize = 24
+  const bounds = props.canvasBounds || { width: 9999, height: 9999 }
 
   function onMove(ev) {
-    emit('update', props.element.id, {
-      width: Math.max(24, origW + (ev.clientX - startX) / s),
-      height: Math.max(24, origH + (ev.clientY - startY) / s),
-    })
+    const dx = (ev.clientX - startX) / s
+    const dy = (ev.clientY - startY) / s
+
+    let x = origX
+    let y = origY
+    let w = origW
+    let h = origH
+
+    if (corner.includes('e')) {
+      w = Math.max(minSize, origW + dx)
+    }
+    if (corner.includes('w')) {
+      const newW = Math.max(minSize, origW - dx)
+      x = origX + (origW - newW)
+      w = newW
+    }
+    if (corner.includes('s')) {
+      h = Math.max(minSize, origH + dy)
+    }
+    if (corner.includes('n')) {
+      const newH = Math.max(minSize, origH - dy)
+      y = origY + (origH - newH)
+      h = newH
+    }
+
+    x = Math.max(0, x)
+    y = Math.max(0, y)
+    if (x + w > bounds.width) {
+      if (corner.includes('w')) {
+        x = Math.max(0, bounds.width - w)
+        w = Math.min(w, bounds.width)
+      } else {
+        w = Math.max(minSize, bounds.width - x)
+      }
+    }
+    if (y + h > bounds.height) {
+      if (corner.includes('n')) {
+        y = Math.max(0, bounds.height - h)
+        h = Math.min(h, bounds.height)
+      } else {
+        h = Math.max(minSize, bounds.height - y)
+      }
+    }
+    w = Math.max(minSize, Math.min(w, bounds.width - x))
+    h = Math.max(minSize, Math.min(h, bounds.height - y))
+
+    emit('update', props.element.id, { x, y, width: w, height: h })
   }
   function onUp() {
     window.removeEventListener('mousemove', onMove)

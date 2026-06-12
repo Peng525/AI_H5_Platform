@@ -23,11 +23,20 @@
         :theme-id="projectSettings?.themeId || 'zjy-minimal'"
         :primary-layouts="primaryLayouts"
         :more-layouts="moreLayouts"
+        :show-background-picker="false"
         @add="onMaterialAdd"
-        @canvas-bg-change="emit('canvas-bg-change', $event)"
         @apply-layout="emit('apply-layout', $event)"
         @open-dialogue-generator="emit('open-dialogue-generator')"
         @open-wordcloud-editor="emit('open-wordcloud-editor')"
+      />
+    </ResultToolModal>
+
+    <ResultToolModal :open="backgroundOpen" title="页面背景" @close="closeModal('background')">
+      <CanvasBackgroundPicker
+        class="p-4"
+        :canvas-background="canvasBackground"
+        :theme-id="projectSettings?.themeId || 'zjy-minimal'"
+        @canvas-bg-change="onBackgroundChange"
       />
     </ResultToolModal>
 
@@ -55,6 +64,7 @@
 <script setup>
 import { ref } from 'vue'
 import BgmPanel from '../BgmPanel.vue'
+import CanvasBackgroundPicker from '../CanvasBackgroundPicker.vue'
 import MaterialPanel from '../MaterialPanel.vue'
 import SlideEffectPanel from '../SlideEffectPanel.vue'
 import ResultToolModal from './ResultToolModal.vue'
@@ -83,11 +93,13 @@ const emit = defineEmits([
 
 const activeTool = ref(null)
 const materialOpen = ref(false)
+const backgroundOpen = ref(false)
 const effectOpen = ref(false)
 const musicOpen = ref(false)
 
 const railItems = [
   { id: 'material', label: '素材', icon: 'cloud_upload' },
+  { id: 'background', label: '页面背景', icon: 'palette' },
   { id: 'effect', label: '动效', icon: 'animation' },
   { id: 'music', label: '音乐', icon: 'music_note' },
   { id: 'ai', label: 'AI 生图', icon: 'image' },
@@ -101,8 +113,16 @@ function iconClass(id) {
   return 'bg-white text-on-surface-variant shadow-[0_1px_3px_rgba(0,0,0,0.1),0_0_0_1px_rgba(0,0,0,0.06)] hover:shadow-md hover:text-on-surface'
 }
 
+function closeAllModals() {
+  materialOpen.value = false
+  backgroundOpen.value = false
+  effectOpen.value = false
+  musicOpen.value = false
+}
+
 function closeModal(id) {
   if (id === 'material') materialOpen.value = false
+  if (id === 'background') backgroundOpen.value = false
   if (id === 'effect') effectOpen.value = false
   if (id === 'music') musicOpen.value = false
   if (activeTool.value === id) activeTool.value = null
@@ -110,35 +130,35 @@ function closeModal(id) {
 
 function onRailClick(id) {
   if (id === 'ai') {
+    closeAllModals()
     activeTool.value = 'ai'
     emit('open-ai-image')
     return
   }
-  if (id === 'material') {
-    materialOpen.value = !materialOpen.value
-    activeTool.value = materialOpen.value ? 'material' : null
-    effectOpen.value = false
-    musicOpen.value = false
-    return
+
+  const toggles = {
+    material: materialOpen,
+    background: backgroundOpen,
+    effect: effectOpen,
+    music: musicOpen,
   }
-  if (id === 'effect') {
-    effectOpen.value = !effectOpen.value
-    activeTool.value = effectOpen.value ? 'effect' : null
-    materialOpen.value = false
-    musicOpen.value = false
-    return
-  }
-  if (id === 'music') {
-    musicOpen.value = !musicOpen.value
-    activeTool.value = musicOpen.value ? 'music' : null
-    materialOpen.value = false
-    effectOpen.value = false
-  }
+
+  const target = toggles[id]
+  if (!target) return
+
+  const willOpen = !target.value
+  closeAllModals()
+  target.value = willOpen
+  activeTool.value = willOpen ? id : null
 }
 
 function onMaterialAdd(payload) {
   emit('add-material', payload)
   closeModal('material')
+}
+
+function onBackgroundChange(color) {
+  emit('canvas-bg-change', color)
 }
 
 function clearAiHighlight() {

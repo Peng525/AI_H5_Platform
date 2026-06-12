@@ -8,6 +8,7 @@ import {
   getThemeTypeScale,
   isWebViewport,
 } from './designThemes.js'
+import { getLayoutCanvasSize } from './editorPresets.js'
 import { compileStructuredSlide } from '../utils/compileStructuredSlide.js'
 
 let _uid = 0
@@ -37,8 +38,7 @@ function ctx(themeId, viewportId) {
   const scale = getThemeTypeScale(themeId, viewportId)
   const margin = getThemeMargins(themeId, viewportId)
   const web = isWebViewport(viewportId)
-  const W = web ? 1280 : 375
-  const H = web ? 692 : 785
+  const { width: W, height: H } = getLayoutCanvasSize(viewportId)
   const { colors, fonts } = theme
   const cx = margin.x + margin.contentWidth / 2
   return { theme, scale, margin, web, W, H, colors, fonts, cx }

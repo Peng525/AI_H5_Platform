@@ -51,7 +51,7 @@
         :project-settings="settings"
         :live-slide-id="current?.id ?? null"
         :live-elements="elements"
-        @select="selectSlide"
+        @select="onResultSelectSlide"
         @add="addSlide"
         @remove="removeSlide"
       />
@@ -88,58 +88,84 @@
     </div>
 
     <!-- 中栏 -->
-    <div v-if="layoutMode === 'result'" class="flex flex-col flex-1 min-w-0 min-h-0">
-      <ResultEditorToolbar
-        :slide-index="slideIndex"
-        :slide-layout="current?.layout || ''"
-        :slide-id="current?.id ?? ''"
-        :selected-element="selectedElementForToolbar"
-        :theme-id="settings.themeId || 'zjy-minimal'"
-        :viewport-id="settings.viewportId"
-        :canvas-background="canvasBackground"
-        :can-undo="canUndo()"
-        :can-redo="canRedo()"
-        @add-text="addElement('text')"
-        @add-shape="addElement('shape')"
-        @add-image="addImagePlaceholder"
-        @style-change="onStyleChange"
-        @duplicate="onDuplicate"
-        @delete-selected="onDeleteSelected"
-        @bring-front="onBringFront"
-        @send-back="onSendBack"
-        @bring-forward="onBringForward"
-        @send-backward="onSendBackward"
-        @center-element="onCenterElement"
-        @image-fit="onImageFit"
-        @image-crop="onImageCrop"
-        @undo="undo"
-        @redo="redo"
-        @edit-chart-stack="onEditChartStack"
-        @canvas-bg-change="onCanvasBgChange"
-      />
-      <ResultSlidesOverview
-        ref="overviewRef"
-        :slides="project?.slides || []"
-        :current-id="current?.id ?? null"
-        :project-id="projectId"
-        :project-settings="settings"
-        :display-viewport="resultDisplayViewport"
-        :viewport-id="settings.viewportId"
-        :theme-id="settings.themeId || 'zjy-minimal'"
-        :elements="elements"
-        :selected-ids="selectedIds"
-        :canvas-background="canvasBackground"
-        @select="selectSlide"
-        @select-element="onSelectElement"
-        @deselect="clearSelection"
-        @marquee-select="onMarqueeSelect"
-        @update-element="updateElement"
-        @batch-start="onBatchStart"
-        @batch-end="onBatchEnd"
-        @move-delta="onMoveDelta"
-        @edit-wordcloud="onEditWordCloud"
-        @edit-chart-stack="onEditChartStack"
-      />
+    <div v-if="layoutMode === 'result'" class="flex flex-col flex-1 min-w-0 min-h-0 relative">
+      <div
+        v-if="reveal.isRevealing.value"
+        class="shrink-0 px-4 py-2 bg-primary/8 border-b border-primary/20 flex items-center justify-between gap-3 text-sm"
+      >
+        <span class="text-on-surface font-medium inline-flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary text-[20px] animate-pulse">draw</span>
+          正在绘制…
+        </span>
+        <button
+          type="button"
+          class="text-xs font-medium text-primary hover:underline shrink-0"
+          @click="onSkipReveal"
+        >
+          跳过动画
+        </button>
+      </div>
+      <div class="relative flex-1 min-h-0 min-w-0">
+        <ResultEditorToolbar
+          v-show="!reveal.isRevealing.value && selectedElementForToolbar"
+          :slide-id="current?.id ?? ''"
+          :selected-element="selectedElementForToolbar"
+          :theme-id="settings.themeId || 'zjy-minimal'"
+          :viewport-id="effectiveViewportId"
+          :can-undo="canUndo()"
+          :can-redo="canRedo()"
+          @add-text="addElement('text')"
+          @add-shape="addElement('shape')"
+          @add-image="addImagePlaceholder"
+          @style-change="onStyleChange"
+          @duplicate="onDuplicate"
+          @delete-selected="onDeleteSelected"
+          @bring-front="onBringFront"
+          @send-back="onSendBack"
+          @bring-forward="onBringForward"
+          @send-backward="onSendBackward"
+          @center-element="onCenterElement"
+          @image-fit="onImageFit"
+          @image-crop="onImageCrop"
+          @undo="undo"
+          @redo="redo"
+          @edit-chart-stack="onEditChartStack"
+        />
+        <ResultSlidesOverview
+          ref="overviewRef"
+          class="h-full"
+          :slides="project?.slides || []"
+          :current-id="current?.id ?? null"
+          :project-id="projectId"
+          :project-settings="settings"
+          :display-viewport="resultDisplayViewport"
+          :viewport-id="effectiveViewportId"
+          :theme-id="settings.themeId || 'zjy-minimal'"
+          :elements="elements"
+          :selected-ids="selectedIds"
+          :canvas-background="canvasBackground"
+          :reveal-active="reveal.isRevealing.value"
+          :interaction-locked="reveal.isRevealing.value"
+          :visible-slide-count="reveal.visibleSlideCount.value"
+          :visible-element-ids-by-slide="reveal.visibleElementIdsBySlide.value"
+          @select="onResultSelectSlide"
+          @select-element="onSelectElement"
+          @deselect="clearSelection"
+          @marquee-select="onMarqueeSelect"
+          @update-element="updateElement"
+          @batch-start="onBatchStart"
+          @batch-end="onBatchEnd"
+          @move-delta="onMoveDelta"
+          @edit-wordcloud="onEditWordCloud"
+          @edit-chart-stack="onEditChartStack"
+          @deselect-slide="deselectCurrentSlide"
+        />
+        <DeckRevealBrush
+          :active="reveal.isRevealing.value"
+          :target="reveal.brushTarget.value"
+          :resolve-element-el="resolveRevealElementEl"
+        />
+      </div>
     </div>
     <EditorPhoneCanvas
       v-else
@@ -149,7 +175,7 @@
       :slide="current"
       :slide-index="slideIndex"
       :viewport="viewport"
-      :viewport-id="settings.viewportId"
+      :viewport-id="effectiveViewportId"
       :preview-animation="previewAnimation"
       :preview-animation-tick="previewAnimationTick"
       :canvas-background="canvasBackground"
@@ -176,7 +202,7 @@
       @center-element="onCenterElement"
       @image-fit="onImageFit"
       @image-crop="onImageCrop"
-      @viewport-change="setViewport"
+      @viewport-change="onViewportChange"
       @undo="undo"
       @redo="redo"
       :can-undo="canUndo()"
@@ -210,13 +236,13 @@
       @preview-animation="onPreviewAnimation"
       @bgm-change="onBgmChange"
     />
-    <div v-else :class="aiPanelClass">
+    <div v-else-if="layoutMode !== 'result'" :class="aiPanelClass">
       <AiPanel
         ref="aiPanelRef"
         :image-loading="imageLoading"
         :quota-remaining="quota.remaining"
         :quota-total="quota.total"
-        :canvas-viewport-id="settings.viewportId"
+        :canvas-viewport-id="effectiveViewportId"
         @generate-image="onGenerateImage"
         @add-image-to-page="onAddImageToPage"
       />
@@ -236,7 +262,7 @@
     :image-loading="imageLoading"
     :quota-remaining="quota.remaining"
     :quota-total="quota.total"
-    :canvas-viewport-id="settings.viewportId"
+    :canvas-viewport-id="effectiveViewportId"
     @close="aiImageOpen = false; resultRailRef?.clearAiHighlight?.()"
     @generate-image="onGenerateImage"
     @add-image-to-page="onAddImageToPage"
@@ -259,13 +285,23 @@
     @close="layoutSaveOpen = false"
     @saved="onLayoutSaved"
   />
+  <ThemeSidebarDrawer
+    v-if="layoutMode === 'result'"
+    :open="themeDrawerOpen"
+    :active-theme-id="settings.themeId || 'zjy-minimal'"
+    :disabled="reveal.isRevealing.value"
+    @close="emit('close-theme-drawer')"
+    @select="onThemeDrawerSelect"
+  />
   </div>
 </template>
 
 <script setup>
 import { ref, toRef, watch, computed } from 'vue'
-import { getViewportPreset } from '../constants/editorPresets.js'
+import { getViewportPreset, DEFAULT_WEB_VIEWPORT_ID } from '../constants/editorPresets.js'
 import { useDeckEditor } from '../composables/useDeckEditor.js'
+import { useDeckRevealAnimation } from '../composables/useDeckRevealAnimation.js'
+import { ensureSlideCompiled } from '../utils/compileStructuredSlide.js'
 import ResultSlidesOverview from './create/ResultSlidesOverview.vue'
 import ResultEditorToolbar from './create/ResultEditorToolbar.vue'
 import AiPanel from './AiPanel.vue'
@@ -281,23 +317,31 @@ import PageLoading from './PageLoading.vue'
 import EmptyState from './EmptyState.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import ResultEditRail from './create/ResultEditRail.vue'
+import DeckRevealBrush from './create/DeckRevealBrush.vue'
 import AiImageModal from './create/AiImageModal.vue'
 import AdminPresetSaveDialog from './admin/AdminPresetSaveDialog.vue'
 import AdminLayoutSaveDialog from './admin/AdminLayoutSaveDialog.vue'
+import ThemeSidebarDrawer from './create/ThemeSidebarDrawer.vue'
 
 const props = defineProps({
   projectId: { type: [String, Number], required: true },
+  initialProject: { type: Object, default: null },
   layoutMode: { type: String, default: 'studio', validator: (v) => ['studio', 'result'].includes(v) },
   adminPresetId: { type: String, default: '' },
   adminLayoutId: { type: String, default: '' },
+  autoRevealOnLoad: { type: Boolean, default: false },
+  themeDrawerOpen: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['project-loaded', 'project-load-error'])
+const emit = defineEmits(['project-loaded', 'project-load-error', 'reveal-complete', 'close-theme-drawer'])
+
+const initialProjectRef = toRef(props, 'initialProject')
 
 const editor = useDeckEditor(toRef(props, 'projectId'), {
   layoutMode: props.layoutMode,
   adminPresetId: toRef(props, 'adminPresetId'),
   adminLayoutId: toRef(props, 'adminLayoutId'),
+  initialProject: initialProjectRef,
   onProjectLoaded: (p) => emit('project-loaded', p),
   onProjectLoadError: (err) => emit('project-load-error', err),
 })
@@ -309,6 +353,7 @@ const {
   loadError,
   load,
   selectSlide,
+  deselectCurrentSlide,
   addSlide,
   removeSlide,
   saveSlideFields,
@@ -350,6 +395,7 @@ const {
   onImageFit,
   onImageCrop,
   setViewport,
+  onViewportChange,
   undo,
   redo,
   canUndo,
@@ -404,7 +450,46 @@ const {
   openPresetSave,
   pptImporting,
   onAdminPptxImport,
+  applyGlobalTheme,
+  compileAllSlidesLazy,
 } = editor
+
+const reveal = useDeckRevealAnimation()
+let revealStarted = false
+
+function getSlideElementsForReveal(slide) {
+  if (!slide) return []
+  return ensureSlideCompiled(
+    slide,
+    settings.value.viewportId || DEFAULT_WEB_VIEWPORT_ID,
+    settings.value.themeId || 'zjy-minimal'
+  )
+}
+
+function resolveRevealElementEl(slideId, elementId) {
+  return overviewRef.value?.resolveElementEl?.(slideId, elementId) || null
+}
+
+function onSkipReveal() {
+  reveal.skipReveal()
+  compileAllSlidesLazy(true)
+}
+
+function tryStartReveal() {
+  if (!props.autoRevealOnLoad || revealStarted) return
+  if (props.layoutMode !== 'result') return
+  if (projectLoading.value || !project.value?.slides?.length) return
+  revealStarted = true
+  reveal.startReveal({
+    slides: project.value.slides,
+    getElements: getSlideElementsForReveal,
+    scrollToSlide: (id) => overviewRef.value?.scrollToSlide?.(id, false),
+    onComplete: () => {
+      compileAllSlidesLazy(true)
+      emit('reveal-complete')
+    },
+  })
+}
 
 const selectedElementForToolbar = computed(() => {
   const primaryId = selectedIds.value[selectedIds.value.length - 1]
@@ -413,15 +498,44 @@ const selectedElementForToolbar = computed(() => {
 
 const overviewRef = ref(null)
 const resultRailRef = ref(null)
-const resultDisplayViewport = getViewportPreset('web-1280')
+const resultDisplayViewport = computed(() =>
+  getViewportPreset(settings.value.viewportId || DEFAULT_WEB_VIEWPORT_ID)
+)
+const effectiveViewportId = computed(
+  () => settings.value.viewportId || DEFAULT_WEB_VIEWPORT_ID
+)
+
+async function onResultSelectSlide(slide) {
+  const sameSlide = current.value?.id === slide.id
+  if (!sameSlide) {
+    await selectSlide(slide)
+  }
+  overviewRef.value?.scrollToSlide?.(slide.id)
+}
+
+async function onThemeDrawerSelect(themeId) {
+  await applyGlobalTheme(themeId)
+  emit('close-theme-drawer')
+}
 
 watch(
   [projectLoading, loadError, project],
   ([loading, err, p]) => {
     if (!loading && err) emit('project-load-error', err)
-    else if (!loading && !err && p) emit('project-loaded', p)
+    else if (!loading && !err && p) {
+      emit('project-loaded', p)
+      tryStartReveal()
+    }
   },
   { flush: 'post', immediate: true }
+)
+
+watch(
+  () => props.projectId,
+  () => {
+    revealStarted = false
+    reveal.resetReveal()
+  }
 )
 
 defineExpose({
@@ -434,6 +548,8 @@ defineExpose({
   openPresetSave,
   pptImporting,
   onAdminPptxImport,
+  applyGlobalTheme,
+  reveal,
 })
 </script>
 

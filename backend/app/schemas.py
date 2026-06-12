@@ -153,6 +153,7 @@ class AiDeckGenerateRequest(BaseModel):
     language: str = Field("简体中文", description="简体中文|English")
     viewport_mode: str = Field("auto", description="auto|web|mobile")
     background_preset: str = Field("", description="classic_white|light_gray|空表示不预设")
+    theme_id: str = Field("zjy-minimal", description="设计主题 id，见 VALID_THEME_IDS")
     extra_content: str = Field("", max_length=12000, description="扩写内容")
     extra_instructions: str = Field("", max_length=2000, description="附加说明")
     content_mode: str = Field("free", description="free|per_page")
@@ -529,3 +530,23 @@ class LlmTestResult(BaseModel):
     channel: str
     model: str = ""
     message: str
+
+
+class AdminGenerationLogOut(BaseModel):
+    id: int
+    username: str | None = None
+    project_public_id: str | None = None
+    template_id: str
+    channel: str
+    model: str = ""
+    duration_ms: int | None = None
+    success: bool
+    message: str = ""
+    created_at: datetime
+
+
+class AdminGenerationLogListOut(BaseModel):
+    items: list[AdminGenerationLogOut]
+    total: int
+    page: int
+    page_size: int

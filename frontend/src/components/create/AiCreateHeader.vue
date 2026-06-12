@@ -1,23 +1,16 @@
 <template>
   <header class="h-14 border-b border-outline-variant/60 bg-white/80 backdrop-blur flex items-center justify-between px-4 sm:px-8 shrink-0 gap-3">
     <!-- entry: 左上导航 -->
-    <div v-if="variant === 'entry'" class="flex items-center shrink-0 min-w-0">
-      <nav class="flex flex-wrap items-center gap-1 text-sm">
-        <router-link
-          to="/create/generate"
-          class="px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap"
-          :class="isActive('/create/generate') ? 'text-primary font-medium bg-primary/10' : 'text-on-surface-variant hover:text-primary'"
-        >
-          主页
-        </router-link>
-        <router-link
-          to="/dashboard"
-          class="px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap"
-          :class="isActive('/dashboard') ? 'text-primary font-medium bg-primary/10' : 'text-on-surface-variant hover:text-primary'"
-        >
-          我的工作台
-        </router-link>
-      </nav>
+    <div v-if="variant === 'entry'" class="flex items-center gap-2 shrink-0 min-w-0">
+      <CreateHomeButton />
+      <router-link
+        to="/dashboard"
+        class="px-2.5 py-1 rounded-lg text-sm transition-colors whitespace-nowrap"
+        :class="isActive('/dashboard') ? 'text-primary font-medium bg-primary/10' : 'text-on-surface-variant hover:text-primary'"
+      >
+        我的工作台
+      </router-link>
+      <BackToResultButton />
     </div>
 
     <!-- step: 返回 -->
@@ -59,6 +52,8 @@
 
 <script setup>
 import { useRoute } from 'vue-router'
+import CreateHomeButton from './CreateHomeButton.vue'
+import BackToResultButton from './BackToResultButton.vue'
 import UserMenu from './UserMenu.vue'
 
 defineProps({

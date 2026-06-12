@@ -1,6 +1,10 @@
 <template>
-  <div class="flex flex-col items-center gap-1 w-full max-w-full min-w-0 overflow-visible" data-editor-chrome>
-    <div class="flex items-center gap-0.5 sm:gap-1 bg-white shadow-card rounded-lg px-1 sm:px-2 py-1 border border-outline-variant flex-wrap justify-center max-w-full overflow-visible">
+  <div class="relative w-full max-w-full min-w-0 overflow-visible" data-editor-chrome>
+    <!-- 基础行：撤销 / 重做 / 添加（结果页可隐藏） -->
+    <div
+      v-if="!hideBaseBar"
+      class="flex items-center gap-0.5 sm:gap-1 bg-white shadow-card rounded-lg px-1 sm:px-2 py-1 border border-outline-variant justify-center max-w-full mx-auto overflow-visible"
+    >
       <button
         type="button"
         class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant disabled:opacity-35"
@@ -20,7 +24,6 @@
         <span class="material-symbols-outlined text-[18px]">redo</span>
       </button>
       <div class="w-px h-5 bg-outline-variant" />
-      <!-- 添加 -->
       <div ref="addMenuRef" class="relative">
         <button
           type="button"
@@ -49,245 +52,246 @@
           </div>
         </div>
       </div>
+    </div>
 
-      <template v-if="selected">
-        <div class="w-px h-5 bg-outline-variant" />
+    <!-- 上下文行：选中组件时显示；结果页无基础行时独立浮层 -->
+    <div
+      v-if="selected"
+      class="left-0 right-0 z-[40] flex items-center gap-0.5 sm:gap-1 flex-wrap justify-center bg-white/98 backdrop-blur-sm shadow-lg rounded-lg px-1 sm:px-2 py-1.5 border border-outline-variant max-w-full mx-auto overflow-visible pointer-events-auto"
+      :class="hideBaseBar ? 'relative' : 'absolute top-full mt-1'"
+    >
+      <!-- 文本格式（Word 风格） -->
+      <template v-if="isText">
+        <select
+          :value="currentFontId"
+          class="text-xs border border-outline-variant rounded px-1 py-1 max-w-[88px]"
+          title="字体"
+          @change="onStyle({ fontFamily: fontById($event.target.value) })"
+        >
+          <option v-for="f in FONT_FAMILIES" :key="f.id" :value="f.id">{{ f.label }}</option>
+        </select>
 
-        <!-- 文本格式（Word 风格） -->
-        <template v-if="isText">
-          <select
-            :value="currentFontId"
-            class="text-xs border border-outline-variant rounded px-1 py-1 max-w-[88px]"
-            title="字体"
-            @change="onStyle({ fontFamily: fontById($event.target.value) })"
-          >
-            <option v-for="f in FONT_FAMILIES" :key="f.id" :value="f.id">{{ f.label }}</option>
-          </select>
+        <select
+          :value="selected.style?.fontSize || 16"
+          class="text-xs border border-outline-variant rounded px-1 py-1 w-14"
+          title="字号"
+          @change="onStyle({ fontSize: Number($event.target.value) })"
+        >
+          <option v-for="s in FONT_SIZES" :key="s" :value="s">{{ s }}</option>
+        </select>
 
-          <select
-            :value="selected.style?.fontSize || 16"
-            class="text-xs border border-outline-variant rounded px-1 py-1 w-14"
-            title="字号"
-            @change="onStyle({ fontSize: Number($event.target.value) })"
-          >
-            <option v-for="s in FONT_SIZES" :key="s" :value="s">{{ s }}</option>
-          </select>
-
-          <button
-            type="button"
-            class="p-1.5 rounded hover:bg-surface-container"
-            :class="isBold ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant'"
-            title="加粗"
-            @click="toggleBold"
-          >
-            <span class="material-symbols-outlined text-[18px] font-bold">format_bold</span>
-          </button>
-
-          <button
-            type="button"
-            class="p-1.5 rounded hover:bg-surface-container"
-            :class="textAlign === 'left' ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant'"
-            title="左对齐"
-            @click="onStyle({ textAlign: 'left' })"
-          >
-            <span class="material-symbols-outlined text-[18px]">format_align_left</span>
-          </button>
-          <button
-            type="button"
-            class="p-1.5 rounded hover:bg-surface-container"
-            :class="textAlign === 'center' ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant'"
-            title="居中"
-            @click="onStyle({ textAlign: 'center' })"
-          >
-            <span class="material-symbols-outlined text-[18px]">format_align_center</span>
-          </button>
-          <button
-            type="button"
-            class="p-1.5 rounded hover:bg-surface-container"
-            :class="textAlign === 'right' ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant'"
-            title="右对齐"
-            @click="onStyle({ textAlign: 'right' })"
-          >
-            <span class="material-symbols-outlined text-[18px]">format_align_right</span>
-          </button>
-
-          <select
-            class="text-xs border border-outline-variant rounded px-1 py-1 max-w-[72px]"
-            title="主题样式"
-            @change="applyThemePreset($event.target.value)"
-          >
-            <option value="" disabled selected hidden>主题</option>
-            <option v-for="(p, key) in themePresets" :key="'th-' + key" :value="key">{{ p.label }}</option>
-          </select>
-
-          <select
-            class="text-xs border border-outline-variant rounded px-1 py-1 max-w-[72px]"
-            title="样式"
-            @change="applyPreset($event.target.value)"
-          >
-            <option value="" disabled selected hidden>样式</option>
-            <option v-for="(p, key) in TEXT_PRESETS" :key="key" :value="key">{{ p.label }}</option>
-          </select>
-
-          <select
-            :value="selected.style?.lineHeight ?? 1.5"
-            class="text-xs border border-outline-variant rounded px-1 py-1 max-w-[72px]"
-            title="行距"
-            @change="onStyle({ lineHeight: Number($event.target.value) })"
-          >
-            <option v-for="lh in LINE_HEIGHTS" :key="lh.value" :value="lh.value">行距 {{ lh.label }}</option>
-          </select>
-
-          <select
-            :value="selected.style?.letterSpacing ?? 0"
-            class="text-xs border border-outline-variant rounded px-1 py-1 max-w-[72px]"
-            title="字间距"
-            @change="onStyle({ letterSpacing: Number($event.target.value) })"
-          >
-            <option v-for="ls in LETTER_SPACINGS" :key="ls.value" :value="ls.value">间距 {{ ls.label }}</option>
-          </select>
-
-          <WordColorPicker
-            :model-value="selected.style?.color || '#1b1b1c'"
-            :context-key="colorPickerContextKey"
-            label="字体颜色"
-            icon="format_color_text"
-            @change="onStyle({ color: $event })"
-          />
-          <WordColorPicker
-            :model-value="selected.style?.background || '#ffffff'"
-            :context-key="colorPickerContextKey"
-            label="背景颜色"
-            icon="format_color_fill"
-            @change="onStyle({ background: $event })"
-          />
-        </template>
-
-        <!-- 形状 / 表格 / 图表 / 图标 填充色 -->
-        <template v-else-if="isShape">
-          <WordColorPicker
-            :model-value="selected.style?.background || '#005daa'"
-            :context-key="colorPickerContextKey"
-            label="填充颜色"
-            icon="format_color_fill"
-            @change="onStyle({ background: $event })"
-          />
-          <label class="text-[10px] text-on-surface-variant flex items-center gap-1">
-            圆角
-            <input
-              type="range"
-              min="0"
-              max="48"
-              :value="selected.style?.borderRadius ?? 8"
-              class="w-16"
-              @input="onStyle({ borderRadius: Number($event.target.value) })"
-            />
-          </label>
-        </template>
-        <!-- 表格：双击单元格编辑 -->
-        <template v-else-if="selected.type === 'table'">
-          <span class="text-xs text-on-surface-variant px-1">双击单元格编辑</span>
-          <WordColorPicker
-            :model-value="selected.style?.headerBackground || '#005daa'"
-            :context-key="colorPickerContextKey"
-            label="表头背景"
-            icon="format_color_fill"
-            @change="onStyle({ headerBackground: $event })"
-          />
-        </template>
-        <template v-else-if="selected.type === 'chart'">
-          <WordColorPicker
-            :model-value="selected.style?.chartColor || '#005daa'"
-            :context-key="colorPickerContextKey"
-            label="图表颜色"
-            icon="format_color_fill"
-            @change="onStyle({ chartColor: $event })"
-          />
-        </template>
-        <template v-else-if="selected.type === 'chartStack'">
-          <button
-            type="button"
-            class="px-2 py-1 text-xs font-medium rounded border border-outline-variant hover:bg-surface-container whitespace-nowrap"
-            title="编辑图表卡组"
-            @click="$emit('edit-chart-stack')"
-          >
-            编辑卡组
-          </button>
-          <WordColorPicker
-            :model-value="selected.style?.chartColor || '#005daa'"
-            :context-key="colorPickerContextKey"
-            label="图表颜色"
-            icon="format_color_fill"
-            @change="onStyle({ chartColor: $event })"
-          />
-        </template>
-        <template v-else-if="selected.type === 'icon'">
-          <WordColorPicker
-            :model-value="selected.style?.color || '#005daa'"
-            :context-key="colorPickerContextKey"
-            label="图标颜色"
-            icon="format_color_text"
-            @change="onStyle({ color: $event })"
-          />
-          <WordColorPicker
-            :model-value="selected.style?.background || '#e8f0fe'"
-            :context-key="colorPickerContextKey"
-            label="背景颜色"
-            icon="format_color_fill"
-            @change="onStyle({ background: $event })"
-          />
-        </template>
-        <template v-else-if="selected.type === 'image'">
-          <button
-            v-for="m in imageFitModes"
-            :key="m.id"
-            type="button"
-            class="px-2 py-1 text-xs font-medium rounded border whitespace-nowrap antialiased"
-            :class="activeImageFit === m.id
-              ? 'bg-primary/10 border-primary text-primary'
-              : 'border-outline-variant hover:bg-surface-container'"
-            :title="m.label"
-            @click="$emit('image-fit', m.id)"
-          >
-            {{ m.short }}
-          </button>
-          <button
-            type="button"
-            class="px-2 py-1 text-xs font-medium rounded border border-outline-variant hover:bg-surface-container whitespace-nowrap antialiased"
-            title="裁切图片"
-            @click="$emit('image-crop')"
-          >
-            裁切
-          </button>
-        </template>
-
-        <div class="w-px h-5 bg-outline-variant" />
-
-        <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="水平居中" @click="$emit('center-element', 'h')">
-          <span class="material-symbols-outlined text-[18px]">align_horizontal_center</span>
+        <button
+          type="button"
+          class="p-1.5 rounded hover:bg-surface-container"
+          :class="isBold ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant'"
+          title="加粗"
+          @click="toggleBold"
+        >
+          <span class="material-symbols-outlined text-[18px] font-bold">format_bold</span>
         </button>
-        <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="垂直居中" @click="$emit('center-element', 'v')">
-          <span class="material-symbols-outlined text-[18px]">align_vertical_center</span>
+
+        <button
+          type="button"
+          class="p-1.5 rounded hover:bg-surface-container"
+          :class="textAlign === 'left' ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant'"
+          title="左对齐"
+          @click="onStyle({ textAlign: 'left' })"
+        >
+          <span class="material-symbols-outlined text-[18px]">format_align_left</span>
         </button>
-        <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="复制" @click="$emit('duplicate')">
-          <span class="material-symbols-outlined text-[18px]">content_copy</span>
+        <button
+          type="button"
+          class="p-1.5 rounded hover:bg-surface-container"
+          :class="textAlign === 'center' ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant'"
+          title="居中"
+          @click="onStyle({ textAlign: 'center' })"
+        >
+          <span class="material-symbols-outlined text-[18px]">format_align_center</span>
         </button>
-        <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="置顶" @click="$emit('bring-front')">
-          <span class="material-symbols-outlined text-[18px]">vertical_align_top</span>
+        <button
+          type="button"
+          class="p-1.5 rounded hover:bg-surface-container"
+          :class="textAlign === 'right' ? 'bg-surface-container-high text-primary' : 'text-on-surface-variant'"
+          title="右对齐"
+          @click="onStyle({ textAlign: 'right' })"
+        >
+          <span class="material-symbols-outlined text-[18px]">format_align_right</span>
         </button>
-        <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="置底" @click="$emit('send-back')">
-          <span class="material-symbols-outlined text-[18px]">vertical_align_bottom</span>
+
+        <select
+          class="text-xs border border-outline-variant rounded px-1 py-1 max-w-[72px]"
+          title="主题样式"
+          @change="applyThemePreset($event.target.value)"
+        >
+          <option value="" disabled selected hidden>主题</option>
+          <option v-for="(p, key) in themePresets" :key="'th-' + key" :value="key">{{ p.label }}</option>
+        </select>
+
+        <select
+          class="text-xs border border-outline-variant rounded px-1 py-1 max-w-[72px]"
+          title="样式"
+          @change="applyPreset($event.target.value)"
+        >
+          <option value="" disabled selected hidden>样式</option>
+          <option v-for="(p, key) in TEXT_PRESETS" :key="key" :value="key">{{ p.label }}</option>
+        </select>
+
+        <select
+          :value="selected.style?.lineHeight ?? 1.5"
+          class="text-xs border border-outline-variant rounded px-1 py-1 max-w-[72px]"
+          title="行距"
+          @change="onStyle({ lineHeight: Number($event.target.value) })"
+        >
+          <option v-for="lh in LINE_HEIGHTS" :key="lh.value" :value="lh.value">行距 {{ lh.label }}</option>
+        </select>
+
+        <select
+          :value="selected.style?.letterSpacing ?? 0"
+          class="text-xs border border-outline-variant rounded px-1 py-1 max-w-[72px]"
+          title="字间距"
+          @change="onStyle({ letterSpacing: Number($event.target.value) })"
+        >
+          <option v-for="ls in LETTER_SPACINGS" :key="ls.value" :value="ls.value">间距 {{ ls.label }}</option>
+        </select>
+
+        <WordColorPicker
+          :model-value="selected.style?.color || '#1b1b1c'"
+          :context-key="colorPickerContextKey"
+          label="字体颜色"
+          icon="format_color_text"
+          @change="onStyle({ color: $event })"
+        />
+        <WordColorPicker
+          :model-value="selected.style?.background || '#ffffff'"
+          :context-key="colorPickerContextKey"
+          label="背景颜色"
+          icon="format_color_fill"
+          @change="onStyle({ background: $event })"
+        />
+      </template>
+
+      <template v-else-if="isShape">
+        <WordColorPicker
+          :model-value="selected.style?.background || '#005daa'"
+          :context-key="colorPickerContextKey"
+          label="填充颜色"
+          icon="format_color_fill"
+          @change="onStyle({ background: $event })"
+        />
+        <label class="text-[10px] text-on-surface-variant flex items-center gap-1">
+          圆角
+          <input
+            type="range"
+            min="0"
+            max="48"
+            :value="selected.style?.borderRadius ?? 8"
+            class="w-16"
+            @input="onStyle({ borderRadius: Number($event.target.value) })"
+          />
+        </label>
+      </template>
+      <template v-else-if="selected.type === 'table'">
+        <span class="text-xs text-on-surface-variant px-1">双击单元格编辑</span>
+        <WordColorPicker
+          :model-value="selected.style?.headerBackground || '#005daa'"
+          :context-key="colorPickerContextKey"
+          label="表头背景"
+          icon="format_color_fill"
+          @change="onStyle({ headerBackground: $event })"
+        />
+      </template>
+      <template v-else-if="selected.type === 'chart'">
+        <WordColorPicker
+          :model-value="selected.style?.chartColor || '#005daa'"
+          :context-key="colorPickerContextKey"
+          label="图表颜色"
+          icon="format_color_fill"
+          @change="onStyle({ chartColor: $event })"
+        />
+      </template>
+      <template v-else-if="selected.type === 'chartStack'">
+        <button
+          type="button"
+          class="px-2 py-1 text-xs font-medium rounded border border-outline-variant hover:bg-surface-container whitespace-nowrap"
+          title="编辑图表卡组"
+          @click="$emit('edit-chart-stack')"
+        >
+          编辑卡组
         </button>
-        <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="上移一层" @click="$emit('bring-forward')">
-          <span class="material-symbols-outlined text-[18px]">keyboard_arrow_up</span>
+        <WordColorPicker
+          :model-value="selected.style?.chartColor || '#005daa'"
+          :context-key="colorPickerContextKey"
+          label="图表颜色"
+          icon="format_color_fill"
+          @change="onStyle({ chartColor: $event })"
+        />
+      </template>
+      <template v-else-if="selected.type === 'icon'">
+        <WordColorPicker
+          :model-value="selected.style?.color || '#005daa'"
+          :context-key="colorPickerContextKey"
+          label="图标颜色"
+          icon="format_color_text"
+          @change="onStyle({ color: $event })"
+        />
+        <WordColorPicker
+          :model-value="selected.style?.background || '#e8f0fe'"
+          :context-key="colorPickerContextKey"
+          label="背景颜色"
+          icon="format_color_fill"
+          @change="onStyle({ background: $event })"
+        />
+      </template>
+      <template v-else-if="selected.type === 'image'">
+        <button
+          v-for="m in imageFitModes"
+          :key="m.id"
+          type="button"
+          class="px-2 py-1 text-xs font-medium rounded border whitespace-nowrap antialiased"
+          :class="activeImageFit === m.id
+            ? 'bg-primary/10 border-primary text-primary'
+            : 'border-outline-variant hover:bg-surface-container'"
+          :title="m.label"
+          @click="$emit('image-fit', m.id)"
+        >
+          {{ m.short }}
         </button>
-        <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="下移一层" @click="$emit('send-backward')">
-          <span class="material-symbols-outlined text-[18px]">keyboard_arrow_down</span>
-        </button>
-        <button type="button" class="p-1.5 hover:bg-red-50 rounded text-red-600" title="删除" @click="$emit('delete')">
-          <span class="material-symbols-outlined text-[18px]">delete</span>
+        <button
+          type="button"
+          class="px-2 py-1 text-xs font-medium rounded border border-outline-variant hover:bg-surface-container whitespace-nowrap antialiased"
+          title="裁切图片"
+          @click="$emit('image-crop')"
+        >
+          裁切
         </button>
       </template>
+
+      <div class="w-px h-5 bg-outline-variant" />
+
+      <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="水平居中" @click="$emit('center-element', 'h')">
+        <span class="material-symbols-outlined text-[18px]">align_horizontal_center</span>
+      </button>
+      <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="垂直居中" @click="$emit('center-element', 'v')">
+        <span class="material-symbols-outlined text-[18px]">align_vertical_center</span>
+      </button>
+      <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="复制" @click="$emit('duplicate')">
+        <span class="material-symbols-outlined text-[18px]">content_copy</span>
+      </button>
+      <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="置顶" @click="$emit('bring-front')">
+        <span class="material-symbols-outlined text-[18px]">vertical_align_top</span>
+      </button>
+      <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="置底" @click="$emit('send-back')">
+        <span class="material-symbols-outlined text-[18px]">vertical_align_bottom</span>
+      </button>
+      <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="上移一层" @click="$emit('bring-forward')">
+        <span class="material-symbols-outlined text-[18px]">keyboard_arrow_up</span>
+      </button>
+      <button type="button" class="p-1.5 hover:bg-surface-container rounded text-on-surface-variant" title="下移一层" @click="$emit('send-backward')">
+        <span class="material-symbols-outlined text-[18px]">keyboard_arrow_down</span>
+      </button>
+      <button type="button" class="p-1.5 hover:bg-red-50 rounded text-red-600" title="删除" @click="$emit('delete')">
+        <span class="material-symbols-outlined text-[18px]">delete</span>
+      </button>
     </div>
   </div>
 </template>
@@ -311,6 +315,7 @@ const props = defineProps({
   slideId: { type: String, default: '' },
   canUndo: { type: Boolean, default: false },
   canRedo: { type: Boolean, default: false },
+  hideBaseBar: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['add-text', 'add-shape', 'add-image', 'style-change', 'duplicate', 'delete', 'bring-front', 'send-back', 'bring-forward', 'send-backward', 'center-element', 'image-fit', 'image-crop', 'undo', 'redo', 'edit-chart-stack'])

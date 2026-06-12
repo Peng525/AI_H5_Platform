@@ -1,9 +1,11 @@
 /** 生成页「生成图片」Tab 下拉选项 */
 
+import { DEFAULT_WEB_VIEWPORT_ID } from './editorPresets.js'
+
 export const IMAGE_RATIO_OPTIONS = [
   { value: '1:1', label: '1:1', iconW: 12, iconH: 12, viewportMode: 'mobile' },
-  { value: '16:9', label: '16:9', iconW: 16, iconH: 9, viewportMode: 'web' },
-  { value: '4:3', label: '4:3', iconW: 16, iconH: 12, viewportMode: 'web' },
+  { value: '1024:401', label: '宽屏卡片', iconW: 25, iconH: 10, viewportMode: 'web', presetId: DEFAULT_WEB_VIEWPORT_ID },
+  { value: '16:9', label: '16:9', iconW: 16, iconH: 9, viewportMode: 'web', presetId: 'web-1280' },  { value: '4:3', label: '4:3', iconW: 16, iconH: 12, viewportMode: 'web' },
   { value: '3:4', label: '3:4', iconW: 12, iconH: 16, viewportMode: 'mobile' },
   { value: '4:5', label: '4:5', iconW: 13, iconH: 16, viewportMode: 'mobile' },
   { value: '9:16', label: '9:16', iconW: 9, iconH: 16, viewportMode: 'mobile' },
@@ -46,7 +48,9 @@ export function aspectRatioToViewportMode(ratio) {
 }
 
 export function aspectRatioToPresetId(ratio) {
-  return aspectRatioToViewportMode(ratio) === 'web' ? 'web-1280' : 'mobile-375'
+  const opt = getImageRatioOption(ratio)
+  if (opt.presetId) return opt.presetId
+  return aspectRatioToViewportMode(ratio) === 'web' ? DEFAULT_WEB_VIEWPORT_ID : 'mobile-375'
 }
 
 /** 从旧 draft viewportMode 推断比例 */

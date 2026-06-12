@@ -1,12 +1,15 @@
 <template>
   <div
-    class="rounded-lg border border-outline-variant/50 bg-white shadow-sm overflow-hidden mx-auto"
+    class="mx-auto overflow-hidden"
+    :class="fillCard ? 'w-full' : 'rounded-lg border border-outline-variant/50 bg-white shadow-sm'"
     :style="boxStyle"
   >
     <div class="origin-top-left" :style="innerScaleStyle">
       <PreviewSlideFrame
-        v-if="!active"
+        v-show="!active"
         plain-card
+        :animation="'none'"
+        :enable-stagger="revealStagger"
         :viewport="viewport"
         :elements="previewElements"
         :canvas-background="canvasBackground"
@@ -16,13 +19,15 @@
         :show-chrome="false"
       />
       <div
-        v-else
-        class="relative overflow-hidden rounded-lg bg-white"
+        v-show="active"
+        class="relative overflow-visible"
+        :class="fillCard ? '' : 'rounded-lg bg-white'"
         :style="{ width: viewport.width + 'px', height: viewport.height + 'px', background: canvasBackground }"
+        @click.stop
       >
         <div
           ref="canvasRef"
-          class="absolute inset-0"
+          class="absolute inset-0 overflow-visible"
         >
           <div
             class="absolute inset-0 z-[1] cursor-crosshair"
@@ -35,12 +40,16 @@
             :style="marqueeStyle"
           />
           <CanvasElement
-            v-for="el in sortedElements"
+            v-for="(el, idx) in sortedElements"
             :key="el.id"
             :element="el"
             :selected="selectedIds.includes(el.id)"
-            :scale="1"
+            :scale="scale"
+            :canvas-background="canvasBackground"
+            :canvas-bounds="canvasBounds"
             :theme-id="themeId"
+            :readonly="revealStagger"
+            :stagger-index="revealStagger ? idx : -1"
             @select="$emit('select', $event)"
             @update="(id, patch) => $emit('update-element', id, patch)"
             @batch-start="(id) => $emit('batch-start', id)"
@@ -62,6 +71,7 @@ import PreviewSlideFrame from '../PreviewSlideFrame.vue'
 
 const props = defineProps({
   active: { type: Boolean, default: false },
+  fillCard: { type: Boolean, default: false },
   scale: { type: Number, required: true },
   viewport: { type: Object, required: true },
   previewElements: { type: Array, default: () => [] },
@@ -72,6 +82,7 @@ const props = defineProps({
   slide: { type: Object, default: null },
   slideIndex: { type: Number, default: 0 },
   slideTotal: { type: Number, default: 1 },
+  revealStagger: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
@@ -89,10 +100,19 @@ const emit = defineEmits([
 const canvasRef = ref(null)
 const marqueeRect = ref(null)
 
-const boxStyle = computed(() => ({
-  width: `${Math.round(props.viewport.width * props.scale)}px`,
-  height: `${Math.round(props.viewport.height * props.scale)}px`,
-}))
+const boxStyle = computed(() => {
+  if (props.fillCard) {
+    return {
+      width: '100%',
+      height: `${Math.round(props.viewport.height * props.scale)}px`,
+      aspectRatio: `${props.viewport.width} / ${props.viewport.height}`,
+    }
+  }
+  return {
+    width: `${Math.round(props.viewport.width * props.scale)}px`,
+    height: `${Math.round(props.viewport.height * props.scale)}px`,
+  }
+})
 
 const innerScaleStyle = computed(() => ({
   transform: `scale(${props.scale})`,
@@ -104,6 +124,11 @@ const innerScaleStyle = computed(() => ({
 const sortedElements = computed(() =>
   [...props.elements].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
 )
+
+const canvasBounds = computed(() => ({
+  width: props.viewport.width,
+  height: props.viewport.height,
+}))
 
 const marqueeStyle = computed(() => {
   const r = marqueeRect.value
@@ -190,4 +215,6 @@ function onCanvasPointerDown(e) {
   window.addEventListener('mousemove', onMove)
   window.addEventListener('mouseup', onUp)
 }
+
+defineExpose({ canvasRef })
 </script>

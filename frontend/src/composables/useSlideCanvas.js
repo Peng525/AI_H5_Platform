@@ -1,7 +1,8 @@
 import { computed, ref, watch } from 'vue'
 import { api } from '../api/client'
 import { DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
-import { getCanvasContentSize } from '../constants/editorPresets.js'
+import { getCanvasContentSize, DEFAULT_WEB_VIEWPORT_ID, isWideWebViewport } from '../constants/editorPresets.js'
+import { getThemeMargins } from '../constants/designThemes.js'
 import { textColorForSlideBackground } from '../utils/slideBackground.js'
 import { compileSlideIfNeeded, resolveSlideStructured } from '../utils/compileStructuredSlide.js'
 
@@ -22,15 +23,17 @@ export function buildElementsFromSlide(slide, viewportId = 'mobile-375') {
   if (!slide) return []
   const textColor = textColorForSlideBackground(slide.canvas_background)
   const isWeb = String(viewportId).startsWith('web')
-  const marginX = isWeb ? 80 : 20
-  const contentW = isWeb ? 1120 : 320
-  const titleSize = isWeb ? 40 : 22
-  const subtitleSize = isWeb ? 20 : 14
-  const bodySize = isWeb ? 18 : 14
-  const titleY = isWeb ? 120 : 80
-  const subtitleY = isWeb ? 190 : 130
-  const bulletsStartY = isWeb ? 240 : 170
-  const bulletLineH = isWeb ? 36 : 28
+  const wide = isWideWebViewport(viewportId)
+  const margin = wide ? getThemeMargins('zjy-minimal', viewportId) : null
+  const marginX = wide ? margin.x : isWeb ? 80 : 20
+  const contentW = wide ? margin.contentWidth : isWeb ? 1120 : 320
+  const titleSize = wide ? 28 : isWeb ? 40 : 22
+  const subtitleSize = wide ? 14 : isWeb ? 20 : 14
+  const bodySize = wide ? 14 : isWeb ? 18 : 14
+  const titleY = wide ? 48 : isWeb ? 120 : 80
+  const subtitleY = wide ? 96 : isWeb ? 190 : 130
+  const bulletsStartY = wide ? 140 : isWeb ? 240 : 170
+  const bulletLineH = wide ? 24 : isWeb ? 36 : 28
 
   const items = []
   if (slide.title) {
@@ -146,7 +149,7 @@ export function computeImageFitLayout(fit, viewport, meta = {}) {
 }
 
 /** 预览用：localStorage → 服务端 canvas → structured 编译 → 由 slide 字段生成 */
-export function resolvePreviewElements(projectId, slide, viewportId = 'web-1280', themeId = 'zjy-minimal') {
+export function resolvePreviewElements(projectId, slide, viewportId = DEFAULT_WEB_VIEWPORT_ID, themeId = 'zjy-minimal') {
   if (!slide?.id) return []
   const stored = loadCanvasElements(projectId, slide.id)
   if (stored.length) return stored
@@ -500,7 +503,7 @@ export function useSlideCanvas(projectIdRef, slideIdRef, viewportIdRef = null) {
     const prev = elements.value[idx]
     let nextStyle = prev.style
     if (patch.style) {
-      nextStyle = { ...prev.style, ...patch.style }
+      nextStyle = { ...(prev.style || {}), ...patch.style }
       if (Object.prototype.hasOwnProperty.call(patch.style, 'crop') && patch.style.crop == null) {
         delete nextStyle.crop
       }

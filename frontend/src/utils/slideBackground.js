@@ -29,6 +29,20 @@ export function slideBackgroundToStorage(raw) {
   return n.value
 }
 
+/** 提交 API 时 slideBackgrounds 值必须为 CSS 字符串 */
+export function serializeSlideBackgroundForApi(raw) {
+  return slideBackgroundCSSValue(raw)
+}
+
+export function serializeSlideBackgroundsForApi(map) {
+  const out = {}
+  for (const [key, val] of Object.entries(map || {})) {
+    if (val == null || val === '') continue
+    out[String(key)] = serializeSlideBackgroundForApi(val)
+  }
+  return out
+}
+
 function hexRelativeLuminance(hex) {
   const h = hex.replace('#', '').trim()
   if (h.length !== 3 && h.length !== 6) return 0.5

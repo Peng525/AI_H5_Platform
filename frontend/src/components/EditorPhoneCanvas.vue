@@ -140,7 +140,7 @@
 
         <div
           ref="canvasRef"
-          class="flex-1 relative overflow-hidden"
+          class="flex-1 relative overflow-visible"
           :style="{ background: canvasBackground }"
         >
           <div
@@ -165,7 +165,9 @@
               :key="el.id"
               :element="el"
               :selected="selectedIds.includes(el.id)"
-              :scale="1"
+              :scale="displayScale"
+              :canvas-background="canvasBackground"
+              :canvas-bounds="canvasBounds"
               :theme-id="themeId"
               @select="$emit('select', $event)"
               @update="(id, patch) => $emit('update-element', id, patch)"
@@ -354,6 +356,15 @@ const autoScale = computed(() => {
 const displayScale = computed(() => {
   const s = autoScale.value * (zoomPercent.value / 100)
   return Number.isFinite(s) && s > 0 ? s : autoScale.value
+})
+
+const canvasBounds = computed(() => {
+  const vp = safeViewport.value
+  const chrome = vp.device === 'mobile' ? 28 : 32
+  return {
+    width: vp.width,
+    height: vp.height - chrome,
+  }
 })
 
 const canvasTransformStyle = computed(() => ({

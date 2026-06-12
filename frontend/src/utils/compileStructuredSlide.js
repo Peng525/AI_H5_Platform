@@ -2,6 +2,7 @@
  * 结构化幻灯片 → canvas_elements（流式 Y 排版 + 文本测量）
  */
 import { getTheme, getThemeMargins, getThemeTypeScale, isWebViewport } from '../constants/designThemes.js'
+import { getLayoutCanvasSize, isWideWebViewport, WIDE_VIEWPORT_RATIO } from '../constants/editorPresets.js'
 import { CANVAS_Z } from '../composables/useSlideCanvas.js'
 import { measureTextBlock } from './measureTextBlock.js'
 
@@ -29,8 +30,8 @@ function textEl(id, x, y, w, h, content, style, z = CANVAS_Z.CONTENT_BASE) {
   }
 }
 
-function shapeEl(id, x, y, w, h, style, z = CANVAS_Z.CONTENT_BASE) {
-  return { id, type: 'shape', x, y, width: w, height: h, zIndex: z, content: '', style }
+function shapeEl(id, x, y, w, h, style = {}, z = CANVAS_Z.CONTENT_BASE) {
+  return { id, type: 'shape', x, y, width: w, height: h, zIndex: z, content: '', style: { background: '#005daa', ...style } }
 }
 
 function iconEl(id, x, y, size, name, color, z = CANVAS_Z.CONTENT_BASE) {
@@ -92,10 +93,9 @@ function layoutCtx(viewportId, themeId) {
   const scale = getThemeTypeScale(themeId, viewportId)
   const margin = getThemeMargins(themeId, viewportId)
   const web = isWebViewport(viewportId)
-  const W = web ? 1280 : 375
-  const H = web ? 720 : 812
+  const { width: W, height: H } = getLayoutCanvasSize(viewportId)
   const { colors, fonts } = theme
-  return { theme, scale, margin, web, W, H, colors, fonts }
+  return { theme, scale, margin, web, wide: isWideWebViewport(viewportId), W, H, colors, fonts }
 }
 
 function measuredText(x, y, w, content, style, z) {
@@ -113,9 +113,114 @@ function measuredText(x, y, w, content, style, z) {
   }
 }
 
-function buildCover(c, st) {
+function imageEl(id, x, y, w, h, url, z = CANVAS_Z.BACKGROUND) {
+  return {
+    id,
+    type: 'image',
+    x,
+    y,
+    width: w,
+    height: h,
+    zIndex: z,
+    content: url || '',
+    style: { background: 'transparent', objectFit: 'cover' },
+  }
+}
+
+function buildCoverWideSplit(c, st) {
+  const { W, H, scale, fonts, colors } = c
+  const imgW = Math.round(W * 0.38)
+  const panelX = imgW
+  const panelW = W - imgW
+  const panelBg = colors.text
+  const textLight = '#FFFFFF'
+  const textMuted = 'rgba(255,255,255,0.78)'
+  const padX = 48
+  const padY = Math.round(H * 0.14)
+  const textW = panelW - padX * 2
+  const seed = encodeURIComponent((st.title || 'cover').slice(0, 12))
+  const els = [
+    imageEl(uid('img'), 0, 0, imgW, H, st.image_url || `https://picsum.photos/seed/${seed}/${imgW}/${H}`),
+    shapeEl(uid('panel'), panelX, 0, panelW, H, { background: panelBg, borderRadius: 0 }, CANVAS_Z.BACKGROUND),
+  ]
+  let y = padY
+  const eyebrow = st.eyebrow || st.modules?.[0]?.eyebrow || ''
+  if (eyebrow) {
+    els.push(
+      textEl(uid('ey'), panelX + padX, y, textW, 24, eyebrow, {
+        fontSize: scale.caption,
+        color: textMuted,
+        fontFamily: fonts.body,
+      })
+    )
+    y += 28
+  }
+  const title = st.title || '主标题'
+  const t1 = measuredText(panelX + padX, y, textW, title, {
+    fontSize: scale.display,
+    fontWeight: 'bold',
+    color: textLight,
+    fontFamily: fonts.display,
+    lineHeight: 1.25,
+  })
+  els.push(t1.el)
+  y += t1.height + 12
+  const body = st.subtitle || st.modules?.[0]?.body || ''
+  if (body) {
+    const t2 = measuredText(panelX + padX, y, textW, body, {
+      fontSize: scale.body,
+      color: textMuted,
+      fontFamily: fonts.body,
+      lineHeight: 1.55,
+    })
+    els.push(t2.el)
+  }
+  return els
+}
+
+function buildCoverMobileStack(c, st) {
+  const { W, H, scale, fonts, colors } = c
+  const imgH = Math.round(H * 0.42)
+  const panelY = imgH
+  const panelH = H - imgH
+  const panelBg = colors.text
+  const textLight = '#FFFFFF'
+  const textMuted = 'rgba(255,255,255,0.78)'
+  const padX = 28
+  const padY = 24
+  const textW = W - padX * 2
+  const seed = encodeURIComponent((st.title || 'cover').slice(0, 12))
+  const els = [
+    imageEl(uid('img'), 0, 0, W, imgH, st.image_url || `https://picsum.photos/seed/${seed}/${W}/${imgH}`),
+    shapeEl(uid('panel'), 0, panelY, W, panelH, { background: panelBg, borderRadius: 0 }, CANVAS_Z.BACKGROUND),
+  ]
+  let y = panelY + padY
+  const title = st.title || '主标题'
+  const t1 = measuredText(padX, y, textW, title, {
+    fontSize: scale.h1,
+    fontWeight: 'bold',
+    color: textLight,
+    fontFamily: fonts.display,
+    lineHeight: 1.25,
+  })
+  els.push(t1.el)
+  y += t1.height + 8
+  const body = st.subtitle || st.modules?.[0]?.body || ''
+  if (body) {
+    const t2 = measuredText(padX, y, textW, body, {
+      fontSize: scale.body,
+      color: textMuted,
+      fontFamily: fonts.body,
+      lineHeight: 1.5,
+    })
+    els.push(t2.el)
+  }
+  return els
+}
+
+function buildCoverClassic(c, st) {
   const { scale, margin, colors, fonts, H } = c
-  const y0 = Math.round(H * 0.32)
+  const y0 = Math.round(H * 0.2)
   return [
     shapeEl(uid('bar'), margin.x + margin.contentWidth / 2 - (c.web ? 60 : 40), y0 + (c.web ? 100 : 88), c.web ? 120 : 80, 3, {
       background: colors.accent,
@@ -137,9 +242,53 @@ function buildCover(c, st) {
   ]
 }
 
-function buildSection(c, st) {
+function buildCover(c, st) {
+  if (c.wide || (c.web && c.W / c.H >= WIDE_VIEWPORT_RATIO)) {
+    return buildCoverWideSplit(c, st)
+  }
+  if (!c.web) {
+    return buildCoverMobileStack(c, st)
+  }
+  return buildCoverClassic(c, st)
+}
+
+function buildSectionWide(c, st) {
   const { scale, margin, colors, fonts, H } = c
-  let y = Math.round(H * 0.28)
+  const topPad = 20
+  let y = topPad
+  const barH = Math.min(48, Math.round(H * 0.12))
+  const els = [
+    shapeEl(uid('bar'), margin.x, y, 4, barH, { background: colors.accent, borderRadius: 2 }),
+  ]
+  const t1 = measuredText(margin.x + 14, y, margin.contentWidth - 14, st.title || '章节', {
+    fontSize: scale.h2,
+    fontWeight: 'bold',
+    color: colors.text,
+    fontFamily: fonts.display,
+    lineHeight: 1.25,
+  })
+  els.push(t1.el)
+  y += Math.max(t1.height, barH) + 10
+  const body = st.modules?.[0]?.body || st.subtitle || ''
+  if (body) {
+    const maxBodyH = Math.max(40, H - y - 16)
+    const t2 = measuredText(margin.x + 14, y, margin.contentWidth - 14, body, {
+      fontSize: scale.body,
+      color: colors.textMuted,
+      fontFamily: fonts.body,
+      lineHeight: 1.45,
+    })
+    els.push({ ...t2.el, height: Math.min(t2.height, maxBodyH) })
+  }
+  return els
+}
+
+function buildSection(c, st) {
+  if (c.wide || c.H < 500) {
+    return buildSectionWide(c, st)
+  }
+  const { scale, margin, colors, fonts, H } = c
+  let y = Math.round(H * 0.18)
   const els = [
     shapeEl(uid('bar'), margin.x, y, 4, c.web ? 120 : 100, { background: colors.accent, borderRadius: 2 }),
   ]
@@ -163,14 +312,89 @@ function buildSection(c, st) {
   return els
 }
 
+function buildGrid2x2Wide(c, st) {
+  const { scale, margin, colors, fonts, H } = c
+  const modules = (st.modules || []).slice(0, 4)
+  while (modules.length < 4) modules.push({ title: '模块', body: '内容', icon: 'circle' })
+
+  const gap = 10
+  const pad = 8
+  const iconSize = 18
+  const topPad = 14
+  const bottomPad = 12
+  let y = topPad
+  const els = []
+
+  if (st.headline) {
+    const hl = measuredText(margin.x, y, margin.contentWidth, st.headline, {
+      fontSize: scale.h2,
+      fontWeight: 'bold',
+      color: colors.accent,
+      fontFamily: fonts.display,
+      lineHeight: 1.2,
+    })
+    els.push(hl.el)
+    y += hl.height + 6
+  }
+  if (st.title) {
+    const tt = measuredText(margin.x, y, margin.contentWidth, st.title, {
+      fontSize: scale.body,
+      fontWeight: '600',
+      color: colors.text,
+      fontFamily: fonts.display,
+      lineHeight: 1.25,
+    })
+    els.push(tt.el)
+    y += tt.height + 8
+  }
+
+  const availH = H - y - bottomPad
+  const colW = Math.floor((margin.contentWidth - gap * 3) / 4)
+  const rowH = Math.max(72, Math.min(availH, 130))
+
+  modules.forEach((mod, i) => {
+    const x = margin.x + i * (colW + gap)
+    els.push(
+      shapeEl(uid('card'), x, y, colW, rowH, {
+        background: colors.bgMuted,
+        borderRadius: 10,
+        border: `1px solid ${colors.textMuted}33`,
+      })
+    )
+    els.push(iconEl(uid('ic'), x + pad, y + pad, iconSize, mod.icon || 'circle', colors.accent))
+    let cy = y + pad + iconSize + 4
+    const tTitle = measuredText(x + pad, cy, colW - pad * 2, mod.title || '', {
+      fontSize: scale.caption,
+      fontWeight: '600',
+      color: colors.text,
+      fontFamily: fonts.display,
+      lineHeight: 1.2,
+    })
+    els.push(tTitle.el)
+    cy += tTitle.height + 4
+    const tBody = measuredText(x + pad, cy, colW - pad * 2, mod.body || '', {
+      fontSize: scale.caption - 1,
+      color: colors.textMuted,
+      fontFamily: fonts.body,
+      lineHeight: 1.35,
+    })
+    const maxBodyH = Math.max(20, y + rowH - pad - cy)
+    els.push({ ...tBody.el, height: Math.min(tBody.height, maxBodyH) })
+  })
+  return els
+}
+
 function buildGrid2x2(c, st) {
+  if (c.wide || c.H < 500) {
+    return buildGrid2x2Wide(c, st)
+  }
   const { scale, margin, colors, fonts } = c
   const modules = (st.modules || []).slice(0, 4)
   while (modules.length < 4) modules.push({ title: '模块', body: '内容', icon: 'circle' })
 
   const gap = c.web ? 20 : 12
   const headerH = c.web ? 56 : 44
-  let y = c.web ? 100 : 88
+  let y = c.web ? 72 : 64
   const els = []
 
   if (st.title) {
@@ -255,7 +479,7 @@ function buildCardsRow(c, st) {
   const count = Math.max(modules.length, 3)
   const gap = c.web ? 16 : 10
   const cardW = Math.floor((margin.contentWidth - gap * (count - 1)) / count)
-  let y = c.web ? 120 : 100
+  let y = c.web ? 80 : 72
   const els = []
 
   if (st.title) {
@@ -315,7 +539,7 @@ function buildSplitLr(c, st) {
   const gap = c.web ? 40 : 16
   const leftW = Math.floor((margin.contentWidth - gap) * 0.52)
   const rightW = margin.contentWidth - gap - leftW
-  let y = c.web ? 100 : 88
+  let y = c.web ? 72 : 64
   const els = []
   const leftMod = st.modules?.[0] || { title: st.title, body: st.subtitle || '' }
 
@@ -355,7 +579,7 @@ function buildSplitLr(c, st) {
 function buildStatHero(c, st) {
   const { scale, margin, colors, fonts, H } = c
   const mod = st.modules?.[0] || {}
-  const y0 = Math.round(H * 0.28)
+  const y0 = Math.round(H * 0.22)
   const els = []
   if (st.title) {
     els.push(
@@ -487,7 +711,7 @@ const BUILDERS = {
   closing: buildClosing,
 }
 
-export function compileStructuredSlide(structured, viewportId = 'web-1280', themeId = 'zjy-minimal') {
+export function compileStructuredSlide(structured, viewportId = 'web-wide-1024', themeId = 'zjy-minimal') {
   if (!structured?.template) return []
   resetCompileIds()
   const c = layoutCtx(viewportId, themeId)
@@ -513,15 +737,73 @@ export function resolveSlideStructured(slide) {
   return null
 }
 
-export function shouldCompileSlide(slide) {
+export function elementsOutOfBounds(elements, viewportId) {
+  if (!elements?.length) return false
+  const { width: W, height: H } = getLayoutCanvasSize(viewportId)
+  return elements.some((el) => {
+    const x = el.x ?? 0
+    const y = el.y ?? 0
+    const w = el.width ?? 0
+    const h = el.height ?? 0
+    return x < -2 || y < -2 || x + w > W + 2 || y + h > H + 2
+  })
+}
+
+/** 宽屏视口下元素仍挤在左侧（mobile 坐标未重编译） */
+export function elementsLookMobileOnWideCanvas(elements, viewportId) {
+  if (!elements?.length || !isWideWebViewport(viewportId)) return false
+  const { width: W } = getLayoutCanvasSize(viewportId)
+  const threshold = W * 0.45
+  const maxRight = Math.max(...elements.map((el) => (el.x ?? 0) + (el.width ?? 0)))
+  return maxRight < threshold
+}
+
+export function shouldCompileSlide(slide, viewportId) {
   if (!slide) return false
+  if (!resolveSlideStructured(slide)) return false
   const hasCanvas = Array.isArray(slide.canvas_elements) && slide.canvas_elements.length > 0
-  if (hasCanvas) return false
-  return !!resolveSlideStructured(slide)
+  if (!hasCanvas) return true
+  if (!slide._compiledViewportId) return true
+  if (slide._compiledViewportId !== viewportId) return true
+  if (elementsLookMobileOnWideCanvas(slide.canvas_elements, viewportId)) return true
+  return elementsOutOfBounds(slide.canvas_elements, viewportId)
 }
 
 export function compileSlideIfNeeded(slide, viewportId, themeId) {
   const structured = resolveSlideStructured(slide)
   if (!structured) return slide?.canvas_elements || []
-  return compileStructuredSlide(structured, viewportId, themeId)
+  const elements = compileStructuredSlide(structured, viewportId, themeId)
+  slide._compiledViewportId = viewportId
+  return elements
+}
+
+export function ensureSlideCompiled(slide, viewportId, themeId) {
+  if (!slide) return []
+  const cached = slide.canvas_elements
+  if (
+    Array.isArray(cached) &&
+    cached.length &&
+    slide._compiledViewportId === viewportId &&
+    !elementsOutOfBounds(cached, viewportId) &&
+    !elementsLookMobileOnWideCanvas(cached, viewportId)
+  ) {
+    return cached
+  }
+  if (!shouldCompileSlide(slide, viewportId)) {
+    return cached || []
+  }
+  const structured = resolveSlideStructured(slide)
+  if (!structured) return cached || []
+  const elements = compileStructuredSlide(structured, viewportId, themeId)
+  slide.canvas_elements = elements
+  slide._compiledViewportId = viewportId
+  return elements
+}
+
+/** 批量 lazy compile（reveal 完成或跳过后调用） */
+export function compileRemainingSlides(slides, viewportId, themeId, skipFirst = false) {
+  for (let i = 0; i < (slides || []).length; i++) {
+    if (skipFirst && i === 0) continue
+    ensureSlideCompiled(slides[i], viewportId, themeId)
+  }
 }

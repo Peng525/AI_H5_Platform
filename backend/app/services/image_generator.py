@@ -34,7 +34,7 @@ async def generate_slide_image(
         await _log(db, project_id, body.channel or "auto", False, str(exc))
         raise
 
-    await _log(db, project_id, channel, True, f"配图成功 · 模型 {model}")
+    await _log(db, project_id, channel, True, f"配图成功 · 模型 {model}", model=model)
     await db.commit()
     return {
         "image_url": image_url,
@@ -70,7 +70,7 @@ async def generate_standalone_image(
         await _log(db, None, body.channel or "auto", False, str(exc))
         raise
 
-    await _log(db, None, channel, True, f"独立生图成功 · 模型 {model}")
+    await _log(db, None, channel, True, f"独立生图成功 · 模型 {model}", model=model)
     await db.commit()
     return {
         "image_url": image_url,
@@ -87,12 +87,14 @@ async def _log(
     channel: str | None,
     success: bool,
     message: str,
+    model: str = "",
 ) -> None:
     db.add(
         GenerationLog(
             project_id=project_id,
             template_id="image_gen",
             channel=channel or "auto",
+            model=model or "",
             success=1 if success else 0,
             message=message[:2000],
         )

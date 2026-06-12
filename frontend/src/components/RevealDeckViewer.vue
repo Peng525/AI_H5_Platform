@@ -21,7 +21,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { getViewportPreset } from '../constants/editorPresets.js'
+import { DEFAULT_WEB_VIEWPORT_ID, getViewportPreset } from '../constants/editorPresets.js'
 import SlideTemplateRenderer from '../slide-templates/SlideTemplateRenderer.vue'
 import { resolveSlideStructured } from '../utils/compileStructuredSlide.js'
 
@@ -36,7 +36,7 @@ const scale = ref(1)
 const deckRef = ref(null)
 
 const settings = computed(() => props.project?.settings || {})
-const viewport = computed(() => getViewportPreset(settings.value.viewportId || 'web-1280'))
+const viewport = computed(() => getViewportPreset(settings.value.viewportId || DEFAULT_WEB_VIEWPORT_ID))
 
 const slides = computed(() =>
   (props.project?.slides || []).filter((s) => resolveSlideStructured(s))

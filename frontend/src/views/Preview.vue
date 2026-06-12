@@ -17,6 +17,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api/client'
 import PresentationViewer from '../components/PresentationViewer.vue'
 import RevealDeckViewer from '../components/RevealDeckViewer.vue'
+import { DEFAULT_WEB_VIEWPORT_ID } from '../constants/editorPresets.js'
 import { compileSlideIfNeeded, shouldCompileSlide } from '../utils/compileStructuredSlide.js'
 import { shouldUseRevealPreview } from '../utils/revealAdapter.js'
 
@@ -35,10 +36,10 @@ function exitReveal() {
 onMounted(async () => {
   try {
     project.value = await api.getProject(projectId.value)
-    const vp = project.value.settings?.viewportId || 'web-1280'
+    const vp = project.value.settings?.viewportId || DEFAULT_WEB_VIEWPORT_ID
     const themeId = project.value.settings?.themeId || 'zjy-minimal'
     for (const s of project.value.slides || []) {
-      if (shouldCompileSlide(s)) {
+      if (shouldCompileSlide(s, vp)) {
         s.canvas_elements = compileSlideIfNeeded(s, vp, themeId)
       }
     }
