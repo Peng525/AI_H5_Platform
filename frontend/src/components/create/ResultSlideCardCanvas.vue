@@ -57,6 +57,8 @@
             @move-delta="$emit('move-delta', $event)"
             @edit-wordcloud="$emit('edit-wordcloud', $event)"
             @edit-chart-stack="$emit('edit-chart-stack', $event)"
+            @text-edit-start="$emit('text-edit-start', $event)"
+            @text-edit-end="$emit('text-edit-end', $event)"
           />
         </div>
       </div>
@@ -95,6 +97,8 @@ const emit = defineEmits([
   'move-delta',
   'edit-wordcloud',
   'edit-chart-stack',
+  'text-edit-start',
+  'text-edit-end',
 ])
 
 const canvasRef = ref(null)

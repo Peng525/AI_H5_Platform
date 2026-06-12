@@ -139,6 +139,11 @@ export const api = {
     }),
   addSlide: (publicId, body) =>
     request(`${projectApiPath(publicId)}/页面`, { method: 'POST', body: JSON.stringify(body) }),
+  generateAiSlide: (publicId, body) =>
+    request(`${projectApiPath(publicId)}/页面/ai-生成`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   deleteSlide: (publicId, slideId) =>
     request(`${projectApiPath(publicId)}/页面/${slideId}`, { method: 'DELETE' }),
   getPromptTemplates: () => request('/api/v1/设置/模板列表'),

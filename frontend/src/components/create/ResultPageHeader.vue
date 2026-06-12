@@ -12,11 +12,15 @@
       <span class="sm:hidden">编辑器</span>
     </button>
 
-    <div class="flex flex-none items-center min-w-0">
+    <div class="inline-grid max-w-[min(48rem,calc(100vw-22rem))] min-w-0">
+      <span
+        class="invisible whitespace-pre col-start-1 row-start-1 px-2 py-1 text-sm font-semibold min-w-[8rem]"
+        aria-hidden="true"
+      >{{ title || '无标题' }}</span>
       <input
         :value="title"
         type="text"
-        class="w-[21rem] max-w-[21rem] border border-transparent hover:border-outline-variant focus:border-primary/40 rounded-lg px-2 py-1 text-sm font-semibold bg-transparent focus:outline-none focus:ring-1 focus:ring-primary/30"
+        class="col-start-1 row-start-1 w-full min-w-[8rem] border border-transparent hover:border-outline-variant focus:border-primary/40 rounded-lg px-2 py-1 text-sm font-semibold bg-transparent focus:outline-none focus:ring-1 focus:ring-primary/30"
         placeholder="无标题"
         @input="$emit('update:title', $event.target.value)"
         @blur="$emit('save-title')"

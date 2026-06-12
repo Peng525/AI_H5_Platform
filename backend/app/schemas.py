@@ -450,6 +450,23 @@ class SlideCreate(BaseModel):
     bullets: list[str] = Field(default_factory=list)
     speaker_notes: str = ""
     animation: str = "fade"
+    insert_after_slide_id: int | None = Field(None, description="插入到指定页面之后，空则追加到末尾")
+
+
+class AiSlideGenerateRequest(BaseModel):
+    prompt: str = Field(..., min_length=2, max_length=4000, description="卡片生成提示词")
+    insert_after_slide_id: int | None = Field(None, description="插入到指定页面之后")
+    template_hint: str = Field("magic", description="magic|text|split|image|grid")
+    language: str = Field("简体中文", description="简体中文|English")
+    channel: str | None = Field(None, description="LLM 通道")
+    tier: str | None = Field(None, description="free|pro")
+    model: str | None = Field(None, max_length=64, description="覆盖默认文稿模型")
+
+    @field_validator("template_hint")
+    @classmethod
+    def normalize_template_hint(cls, v: str) -> str:
+        allowed = {"magic", "text", "split", "image", "grid"}
+        return v if v in allowed else "magic"
 
 
 class SlideUpdate(BaseModel):

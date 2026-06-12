@@ -2,7 +2,7 @@
   <div
     ref="scrollRootRef"
     class="flex-1 min-w-0 min-h-0 overflow-y-auto bg-surface-container-low"
-    @click="onContainerClick"
+    @click="onContainerPointerDown"
   >
     <div
       class="mx-auto w-full px-3 sm:px-4 py-3 flex flex-col"
@@ -52,8 +52,16 @@
           @move-delta="$emit('move-delta', $event)"
           @edit-wordcloud="$emit('edit-wordcloud', $event)"
           @edit-chart-stack="$emit('edit-chart-stack', $event)"
+          @text-edit-start="$emit('text-edit-start', $event)"
+          @text-edit-end="$emit('text-edit-end', $event)"
         />
       </section>
+      <SlideInsertAffordance
+        v-if="slide.id === currentId && !interactionLocked && !revealActive"
+        :visible="true"
+        @add-blank="$emit('add-slide-after', slide.id)"
+        @open-generate="$emit('open-generate-card', slide.id)"
+      />
       </template>
 
       <EmptyState
@@ -70,6 +78,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import ResultSlideCardCanvas from './ResultSlideCardCanvas.vue'
+import SlideInsertAffordance from './SlideInsertAffordance.vue'
 import EmptyState from '../EmptyState.vue'
 import { DEFAULT_WEB_VIEWPORT_ID, isWideWebViewport } from '../../constants/editorPresets.js'
 import { resolveSlideCanvasBackground } from '../../utils/slideBackground.js'
@@ -110,6 +119,10 @@ const emit = defineEmits([
   'move-delta',
   'edit-wordcloud',
   'edit-chart-stack',
+  'text-edit-start',
+  'text-edit-end',
+  'add-slide-after',
+  'open-generate-card',
 ])
 
 const scrollRootRef = ref(null)
@@ -201,8 +214,14 @@ function onCardClick(slide) {
   emit('select', slide)
 }
 
-function onContainerClick() {
+function isChromeTarget(target) {
+  if (!(target instanceof Element)) return false
+  return !!target.closest('[data-element-id], [data-editor-chrome], [data-slide-insert], [data-slide-id]')
+}
+
+function onContainerPointerDown(e) {
   if (props.interactionLocked) return
+  if (isChromeTarget(e.target)) return
   if (props.currentId != null) {
     emit('deselect')
   }
@@ -232,7 +251,7 @@ onUnmounted(() => {
   resizeObserver?.disconnect()
 })
 
-defineExpose({ scrollToSlide, resolveElementEl })
+defineExpose({ scrollToSlide, resolveElementEl, scrollRootRef })
 </script>
 
 <style scoped>

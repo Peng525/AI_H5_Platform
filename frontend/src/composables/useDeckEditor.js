@@ -14,6 +14,7 @@ import { applyProjectTheme } from '../utils/applyProjectTheme.js'
 import { compileSlideIfNeeded, shouldCompileSlide, ensureSlideCompiled, compileRemainingSlides, resolveSlideStructured } from '../utils/compileStructuredSlide.js'
 import { serializeSlideBackgroundForApi, serializeSlideBackgroundsForApi, resolveSlideCanvasBackground } from '../utils/slideBackground.js'
 import { DEFAULT_WEB_VIEWPORT_ID } from '../constants/editorPresets.js'
+import { fitTextElementBox } from '../utils/measureTextBlock.js'
 
 const COACH_KEY = 'ai_h5_editor_coach_seen'
 
@@ -456,24 +457,77 @@ async function selectSlide(slide) {
   selectSlideInternal(slide)
 }
 
-async function addSlide() {
+async function addSlide(insertAfterSlideId = null) {
   if (adminLayoutId.value) {
     toastError('版式编辑仅支持单页画布')
     return
   }
   saveElements()
   try {
-    const slide = await api.addSlide(apiProjectRef(), {
+    const body = {
       title: '新页面',
       subtitle: '',
       bullets: [],
       layout: 'bullets',
       animation: 'fade',
-    })
-    project.value.slides.push(slide)
+    }
+    if (insertAfterSlideId != null) {
+      body.insert_after_slide_id = insertAfterSlideId
+    }
+    const slide = await api.addSlide(apiProjectRef(), body)
+    insertSlideInList(slide, insertAfterSlideId)
     finishNewSlide(slide)
+    return slide
   } catch (e) {
     toastError(e.message)
+    return null
+  }
+}
+
+function insertSlideInList(slide, afterSlideId) {
+  if (!project.value?.slides) return
+  const slides = project.value.slides
+  if (afterSlideId == null) {
+    slides.push(slide)
+    return
+  }
+  const idx = slides.findIndex((s) => s.id === afterSlideId)
+  if (idx >= 0) slides.splice(idx + 1, 0, slide)
+  else slides.push(slide)
+}
+
+async function addSlideAfter(afterSlideId) {
+  const slide = await addSlide(afterSlideId)
+  return slide
+}
+
+const slideGenerating = ref(false)
+const generateCardContext = ref({ afterSlideId: null })
+
+async function generateSlideAfter(afterSlideId, { prompt, templateHint, language }) {
+  if (adminLayoutId.value) {
+    toastError('版式编辑不支持 AI 生成')
+    return null
+  }
+  saveElements()
+  slideGenerating.value = true
+  try {
+    const slide = await api.generateAiSlide(apiProjectRef(), {
+      prompt,
+      insert_after_slide_id: afterSlideId ?? undefined,
+      template_hint: templateHint || 'magic',
+      language: language || settings.value.aiLanguage || '简体中文',
+    })
+    insertSlideInList(slide, afterSlideId)
+    finishNewSlide(slide)
+    await refreshQuota()
+    toastSuccess('卡片已生成')
+    return slide
+  } catch (e) {
+    toastError(e.message)
+    return null
+  } finally {
+    slideGenerating.value = false
   }
 }
 
@@ -733,7 +787,15 @@ function onStyleChange(patch) {
   if (!selectedId.value) return
   const el = elements.value.find((e) => e.id === selectedId.value)
   if (!el) return
-  updateElement(selectedId.value, { style: { ...(el.style || {}), ...patch } })
+  const mergedStyle = { ...(el.style || {}), ...patch }
+  const update = { style: mergedStyle }
+  if (el.type === 'text') {
+    const vp = viewport.value
+    const bounds = vp ? { width: vp.width, height: vp.height } : { width: 9999, height: 9999 }
+    const fit = fitTextElementBox({ ...el, style: mergedStyle }, el.content, bounds)
+    if (fit) Object.assign(update, fit)
+  }
+  updateElement(selectedId.value, update)
 }
 
 function onDuplicate() {
@@ -941,6 +1003,79 @@ function onImageFit(fit) {
   applyImageFitToSelected(fit, viewport.value)
 }
 
+function onImageLayout(mode) {
+  const id = selectedId.value
+  if (!id) return
+  const el = elements.value.find((e) => e.id === id)
+  if (!el || el.type !== 'image') return
+  const vp = viewport.value
+  const margin = 24
+  const presets = {
+    left: {
+      x: margin,
+      y: margin,
+      width: Math.round(vp.width * 0.45 - margin),
+      height: vp.height - margin * 2,
+    },
+    right: {
+      x: Math.round(vp.width * 0.55),
+      y: margin,
+      width: Math.round(vp.width * 0.45 - margin),
+      height: vp.height - margin * 2,
+    },
+    top: {
+      x: margin,
+      y: margin,
+      width: vp.width - margin * 2,
+      height: Math.round(vp.height * 0.42 - margin),
+    },
+  }
+  const patch = presets[mode]
+  if (patch) updateElement(id, patch)
+}
+
+async function onRegenerateSelectedImage() {
+  const id = selectedId.value
+  if (!id) return
+  const el = elements.value.find((e) => e.id === id)
+  if (!el || el.type !== 'image') return
+  const prompt =
+    el.style?.imagePrompt ||
+    el.meta?.prompt ||
+    'Professional presentation illustration, clean modern style'
+  imageLoading.value = true
+  try {
+    const vp = viewport.value
+    const result = await api.generateImage(apiProjectRef(), {
+      prompt,
+      fit_mode: el.fitIntent || 'width',
+      viewport_preset_id: settings.value.viewportId,
+      viewport_width: vp?.width,
+      viewport_height: vp?.height,
+    })
+    updateElement(id, {
+      content: result.image_url,
+      style: { ...(el.style || {}), imagePrompt: prompt },
+    })
+    await refreshQuota()
+    toastSuccess('图片已更新')
+  } catch (e) {
+    toastError(e.message)
+  } finally {
+    imageLoading.value = false
+  }
+}
+
+const textEditingId = ref(null)
+
+function onTextEditStart(elementId) {
+  textEditingId.value = elementId
+}
+
+function onTextEditEnd() {
+  textEditingId.value = null
+}
+
 function onImageCrop() {
   const id = selectedId.value
   if (!id) return
@@ -1134,6 +1269,10 @@ async function applyGlobalTheme(themeId) {
     selectSlide,
     deselectCurrentSlide,
     addSlide,
+    addSlideAfter,
+    generateSlideAfter,
+    slideGenerating,
+    generateCardContext,
     finishNewSlide,
     applyLayoutBlock,
     removeSlide,
@@ -1168,7 +1307,12 @@ async function applyGlobalTheme(themeId) {
     onGenerateImage,
     onAddImageToPage,
     onImageFit,
+    onImageLayout,
+    onRegenerateSelectedImage,
     onImageCrop,
+    onTextEditStart,
+    onTextEditEnd,
+    textEditingId,
     onCropConfirm,
     onCropReset,
     onPreviewAnimation,

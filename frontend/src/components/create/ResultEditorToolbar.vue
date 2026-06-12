@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="selectedElement"
-    class="absolute top-0 left-0 right-0 z-30 border-b border-outline-variant/70 bg-white/95 backdrop-blur-sm px-2 sm:px-3 py-2 shadow-md pointer-events-auto"
+    class="shrink-0 border-b border-outline-variant/70 bg-white px-2 sm:px-3 py-2 shadow-sm"
   >
     <EditorCanvasToolbar
       hide-base-bar

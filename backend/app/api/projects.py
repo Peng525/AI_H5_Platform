@@ -13,6 +13,7 @@ from app.deps.projects import get_owned_project, get_owned_slide, resolve_owned_
 from app.models import Project, Slide, User
 from app.schemas import (
     AiDeckGenerateRequest,
+    AiSlideGenerateRequest,
     GenerateImageRequest,
     GenerateImageResponse,
     GenerationMetaOut,
@@ -27,7 +28,12 @@ from app.schemas import (
     parse_project_settings,
     project_settings_out,
 )
-from app.services.deck_generation_service import generate_deck_from_ai
+from app.services.deck_generation_service import (
+    compute_insert_sort_order,
+    generate_deck_from_ai,
+    generate_single_slide_into_project,
+    shift_slide_sort_orders_from,
+)
 from app.services.deck_generator import new_public_id
 from app.services.h5_template_service import get_template as get_h5_template
 from app.services.image_generator import generate_slide_image
@@ -269,10 +275,12 @@ async def add_slide(
     project: Project = Depends(get_owned_project),
     db: AsyncSession = Depends(get_db),
 ):
-    order = len(project.slides)
+    new_order = compute_insert_sort_order(list(project.slides), body.insert_after_slide_id)
+    if body.insert_after_slide_id is not None:
+        await shift_slide_sort_orders_from(db, project.id, new_order)
     slide = Slide(
         project_id=project.id,
-        sort_order=order,
+        sort_order=new_order,
         layout=body.layout,
         title=body.title,
         subtitle=body.subtitle,
@@ -283,7 +291,32 @@ async def add_slide(
     db.add(slide)
     await db.commit()
     await db.refresh(slide)
-    return SlideOut.from_orm_slide(slide)
+    settings = project_settings_out(project)
+    bg_map = settings.slideBackgrounds or {}
+    return SlideOut.from_orm_slide(slide, canvas_background=bg_map.get(str(slide.id)))
+
+
+@router.post("/项目/{public_id}/页面/ai-生成", response_model=SlideOut, summary="AI 生成单页并插入")
+async def ai_generate_slide(
+    body: AiSlideGenerateRequest,
+    project: Project = Depends(get_owned_project),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        slide = await generate_single_slide_into_project(db, user, project, body)
+    except LlmError as exc:
+        await db.rollback()
+        msg = str(exc)
+        status = 402 if "配额" in msg else 502
+        raise HTTPException(status_code=status, detail=msg) from exc
+    except Exception as exc:
+        await db.rollback()
+        logger.exception("ai_generate_slide failed project_id=%s", project.id)
+        raise HTTPException(status_code=500, detail=f"生成落库失败：{exc}") from exc
+    settings = project_settings_out(project)
+    bg_map = settings.slideBackgrounds or {}
+    return SlideOut.from_orm_slide(slide, canvas_background=bg_map.get(str(slide.id)))
 
 
 @router.put("/项目/{public_id}/页面/{slide_id}", response_model=SlideOut, summary="更新页面")

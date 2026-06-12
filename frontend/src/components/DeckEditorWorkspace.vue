@@ -106,31 +106,6 @@
         </button>
       </div>
       <div class="relative flex-1 min-h-0 min-w-0">
-        <ResultEditorToolbar
-          v-show="!reveal.isRevealing.value && selectedElementForToolbar"
-          :slide-id="current?.id ?? ''"
-          :selected-element="selectedElementForToolbar"
-          :theme-id="settings.themeId || 'zjy-minimal'"
-          :viewport-id="effectiveViewportId"
-          :can-undo="canUndo()"
-          :can-redo="canRedo()"
-          @add-text="addElement('text')"
-          @add-shape="addElement('shape')"
-          @add-image="addImagePlaceholder"
-          @style-change="onStyleChange"
-          @duplicate="onDuplicate"
-          @delete-selected="onDeleteSelected"
-          @bring-front="onBringFront"
-          @send-back="onSendBack"
-          @bring-forward="onBringForward"
-          @send-backward="onSendBackward"
-          @center-element="onCenterElement"
-          @image-fit="onImageFit"
-          @image-crop="onImageCrop"
-          @undo="undo"
-          @redo="redo"
-          @edit-chart-stack="onEditChartStack"
-        />
         <ResultSlidesOverview
           ref="overviewRef"
           class="h-full"
@@ -158,7 +133,31 @@
           @move-delta="onMoveDelta"
           @edit-wordcloud="onEditWordCloud"
           @edit-chart-stack="onEditChartStack"
+          @text-edit-start="onTextEditStart"
+          @text-edit-end="onTextEditEnd"
+          @add-slide-after="onAddSlideAfter"
+          @open-generate-card="onOpenGenerateCard"
           @deselect-slide="deselectCurrentSlide"
+        />
+        <EditorContextLayer
+          :hidden="reveal.isRevealing.value"
+          :selected-element="selectedElementForToolbar"
+          :slide-id="current?.id ?? null"
+          :text-editing="!!textEditingId"
+          :theme-id="settings.themeId || 'zjy-minimal'"
+          :viewport-id="effectiveViewportId"
+          :viewport="resultDisplayViewport"
+          :resolve-element-el="resolveRevealElementEl"
+          :scroll-root-ref="overviewScrollRoot"
+          @style-change="onStyleChange"
+          @image-fit="onImageFit"
+          @image-crop="onImageCrop"
+          @image-layout="onImageLayout"
+          @duplicate="onDuplicate"
+          @bring-front="onBringFront"
+          @send-back="onSendBack"
+          @delete-selected="onDeleteSelected"
+          @edit-chart-stack="onEditChartStack"
         />
         <DeckRevealBrush
           :active="reveal.isRevealing.value"
@@ -216,8 +215,19 @@
     />
 
     <!-- 右栏 -->
+    <ElementMediaPanel
+      v-if="layoutMode === 'result' && showMediaPanel"
+      :selected-element="selectedElementForToolbar"
+      :image-loading="imageLoading"
+      :quota-remaining="quota.remaining"
+      :quota-total="quota.total"
+      @close="clearSelection"
+      @image-fit="onImageFit"
+      @image-crop="onImageCrop"
+      @regenerate-image="onRegenerateSelectedImage"
+    />
     <ResultEditRail
-      v-if="layoutMode === 'result'"
+      v-else-if="layoutMode === 'result'"
       ref="resultRailRef"
       :current-slide="current"
       :canvas-background="canvasBackground"
@@ -285,6 +295,15 @@
     @close="layoutSaveOpen = false"
     @saved="onLayoutSaved"
   />
+  <GenerateCardModal
+    v-if="layoutMode === 'result'"
+    :open="generateCardOpen"
+    :loading="slideGenerating"
+    :quota-remaining="quota.remaining"
+    :quota-total="quota.total"
+    @close="generateCardOpen = false"
+    @generate="onGenerateCardSubmit"
+  />
   <ThemeSidebarDrawer
     v-if="layoutMode === 'result'"
     :open="themeDrawerOpen"
@@ -303,7 +322,9 @@ import { useDeckEditor } from '../composables/useDeckEditor.js'
 import { useDeckRevealAnimation } from '../composables/useDeckRevealAnimation.js'
 import { ensureSlideCompiled } from '../utils/compileStructuredSlide.js'
 import ResultSlidesOverview from './create/ResultSlidesOverview.vue'
-import ResultEditorToolbar from './create/ResultEditorToolbar.vue'
+import EditorContextLayer from './create/EditorContextLayer.vue'
+import ElementMediaPanel from './create/ElementMediaPanel.vue'
+import GenerateCardModal from './create/GenerateCardModal.vue'
 import AiPanel from './AiPanel.vue'
 import EditorPhoneCanvas from './EditorPhoneCanvas.vue'
 import EditorToolbox from './EditorToolbox.vue'
@@ -352,9 +373,12 @@ const {
   projectLoading,
   loadError,
   load,
+  addSlide,
+  addSlideAfter,
+  generateSlideAfter,
+  slideGenerating,
   selectSlide,
   deselectCurrentSlide,
-  addSlide,
   removeSlide,
   saveSlideFields,
   syncCanvasFromSlide,
@@ -393,7 +417,12 @@ const {
   onSendBackward,
   onCenterElement,
   onImageFit,
+  onImageLayout,
+  onRegenerateSelectedImage,
   onImageCrop,
+  onTextEditStart,
+  onTextEditEnd,
+  textEditingId,
   setViewport,
   onViewportChange,
   undo,
@@ -496,14 +525,48 @@ const selectedElementForToolbar = computed(() => {
   return elements.value.find((el) => el.id === primaryId) || null
 })
 
+const showMediaPanel = computed(
+  () =>
+    !reveal.isRevealing.value &&
+    selectedElementForToolbar.value?.type === 'image' &&
+    !textEditingId.value,
+)
+
 const overviewRef = ref(null)
+const overviewScrollRoot = computed(() => {
+  const exposed = overviewRef.value?.scrollRootRef
+  if (!exposed) return null
+  return exposed.value ?? exposed
+})
 const resultRailRef = ref(null)
+const generateCardOpen = ref(false)
+const generateCardAfterSlideId = ref(null)
 const resultDisplayViewport = computed(() =>
   getViewportPreset(settings.value.viewportId || DEFAULT_WEB_VIEWPORT_ID)
 )
 const effectiveViewportId = computed(
   () => settings.value.viewportId || DEFAULT_WEB_VIEWPORT_ID
 )
+
+async function onAddSlideAfter(afterSlideId) {
+  const slide = await addSlideAfter(afterSlideId)
+  if (slide?.id) {
+    overviewRef.value?.scrollToSlide?.(slide.id)
+  }
+}
+
+function onOpenGenerateCard(afterSlideId) {
+  generateCardAfterSlideId.value = afterSlideId
+  generateCardOpen.value = true
+}
+
+async function onGenerateCardSubmit(payload) {
+  const slide = await generateSlideAfter(generateCardAfterSlideId.value, payload)
+  generateCardOpen.value = false
+  if (slide?.id) {
+    overviewRef.value?.scrollToSlide?.(slide.id)
+  }
+}
 
 async function onResultSelectSlide(slide) {
   const sameSlide = current.value?.id === slide.id

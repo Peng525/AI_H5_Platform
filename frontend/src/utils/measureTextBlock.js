@@ -73,3 +73,68 @@ export function measureTextBlock({
 export function measureTextBlocks(blocks) {
   return blocks.reduce((sum, b) => sum + measureTextBlock(b).height, 0)
 }
+
+/**
+ * 单行或多行文本中最宽一行的像素宽度。
+ */
+export function measureTextWidth({
+  content,
+  fontSize,
+  fontFamily = 'sans-serif',
+  fontWeight = 'normal',
+}) {
+  const ctx = getMeasureContext(fontFamily, fontSize, fontWeight)
+  if (!ctx) return 0
+  const lines = String(content || '').split('\n')
+  let max = 0
+  for (const line of lines) {
+    max = Math.max(max, ctx.measureText(line || ' ').width)
+  }
+  return Math.ceil(max)
+}
+
+/**
+ * 根据文本内容自适应 text 元素的宽高（单行优先扩宽，多行优先增高）。
+ * @returns {null | { width?: number, height?: number }}
+ */
+export function fitTextElementBox(
+  element,
+  content,
+  canvasBounds,
+  { minWidth = 48, minHeight = 24, horizontalPadding = 12, verticalPadding = 8 } = {},
+) {
+  if (element?.type !== 'text') return null
+  const style = element.style || {}
+  const fontSize = style.fontSize || 16
+  const fontFamily = style.fontFamily || 'sans-serif'
+  const fontWeight = style.fontWeight || 'normal'
+  const lineHeight = style.lineHeight ?? 1.5
+  const text = String(content ?? element.content ?? '')
+
+  const maxCanvasW = canvasBounds
+    ? Math.max(minWidth, canvasBounds.width - (element.x || 0))
+    : 2000
+  const naturalW = measureTextWidth({ content: text, fontSize, fontFamily, fontWeight }) + horizontalPadding
+  const hasNewline = text.includes('\n')
+
+  let width = element.width || minWidth
+  if (!hasNewline && naturalW > width) {
+    width = Math.min(maxCanvasW, Math.max(minWidth, naturalW))
+  }
+
+  const { height } = measureTextBlock({
+    content: text,
+    width,
+    fontSize,
+    lineHeight,
+    fontFamily,
+    fontWeight,
+    verticalPadding,
+  })
+  const newHeight = Math.max(minHeight, height)
+
+  const patch = {}
+  if (width !== element.width) patch.width = width
+  if (newHeight !== element.height) patch.height = newHeight
+  return Object.keys(patch).length ? patch : null
+}

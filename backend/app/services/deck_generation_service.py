@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import GenerationLog, Project, Slide, User
-from app.schemas import AiDeckGenerateRequest
+from app.schemas import AiDeckGenerateRequest, AiSlideGenerateRequest
 from app.services.deck_generator import new_public_id
 from app.services.llm.provider import LlmError, chat_completion, extract_json
 from app.services.project_seed_service import reload_project, seed_project_slides
@@ -365,3 +365,178 @@ async def generate_deck_from_ai(
         raise
 
     return await reload_project(db, project.id)
+
+
+TEMPLATE_HINT_INSTRUCTIONS = {
+    "magic": "自动选择最合适的 template（cover/section/split_lr/grid_2x2/cards_row 等）",
+    "text": "优先 section 或 cards_row，以文字内容为主",
+    "split": "必须使用 split_lr template，左右分栏",
+    "image": "优先 split_lr，一侧为 chart_placeholder 或视觉区域",
+    "grid": "必须使用 grid_2x2 template，四宫格卡片",
+}
+
+
+def compute_insert_sort_order(slides: list, after_slide_id: int | None) -> int:
+    sorted_slides = sorted(slides, key=lambda s: s.sort_order)
+    if after_slide_id is None:
+        if not sorted_slides:
+            return 0
+        return sorted_slides[-1].sort_order + 1
+    for s in sorted_slides:
+        if s.id == after_slide_id:
+            return s.sort_order + 1
+    return len(sorted_slides)
+
+
+def _neighbor_context(slides: list, after_slide_id: int | None) -> tuple[str, str, str]:
+    sorted_slides = sorted(slides, key=lambda s: s.sort_order)
+    idx = -1
+    if after_slide_id is not None:
+        for i, s in enumerate(sorted_slides):
+            if s.id == after_slide_id:
+                idx = i
+                break
+    prev_title = sorted_slides[idx].title if idx >= 0 else ""
+    next_title = sorted_slides[idx + 1].title if 0 <= idx + 1 < len(sorted_slides) else ""
+    style_summary = "；".join(s.title for s in sorted_slides[:8] if s.title)
+    return prev_title, next_title, style_summary
+
+
+async def shift_slide_sort_orders_from(
+    db: AsyncSession,
+    project_id: int,
+    from_order: int,
+) -> None:
+    result = await db.execute(
+        select(Slide).where(Slide.project_id == project_id, Slide.sort_order >= from_order)
+    )
+    for slide in result.scalars():
+        slide.sort_order += 1
+
+
+async def generate_single_slide_into_project(
+    db: AsyncSession,
+    user: User,
+    project: Project,
+    body: AiSlideGenerateRequest,
+) -> Slide:
+    tier = body.tier or user.tier or "free"
+    try:
+        await check_and_consume(db, user.id, tier)
+    except QuotaExceeded as exc:
+        raise LlmError(str(exc)) from exc
+
+    prev_title, next_title, style_summary = _neighbor_context(project.slides, body.insert_after_slide_id)
+    hint = TEMPLATE_HINT_INSTRUCTIONS.get(body.template_hint or "magic", TEMPLATE_HINT_INSTRUCTIONS["magic"])
+    context_bits = [
+        f"模板偏好：{hint}",
+        f"演示整体标题：{project.title}",
+    ]
+    if prev_title:
+        context_bits.append(f"前一页标题：{prev_title}")
+    if next_title:
+        context_bits.append(f"后一页标题：{next_title}")
+    if style_summary:
+        context_bits.append(f"已有页面风格参考：{style_summary}")
+
+    deck_body = AiDeckGenerateRequest(
+        topic=body.prompt.strip(),
+        page_count=1,
+        language=body.language or "简体中文",
+        text_density="精炼",
+        extra_instructions="；".join(context_bits),
+        channel=body.channel,
+        tier=tier,
+        model=body.model,
+    )
+
+    variables = {
+        "page_count": 1,
+        "topic": _build_topic(deck_body),
+        "audience": "通用受众",
+        "style": _build_style(deck_body),
+        "language": deck_body.language or "简体中文",
+        "text_density": deck_body.text_density or "精炼",
+        "extra_instructions": deck_body.extra_instructions or "无",
+        "content_mode": "free",
+        "page_contents": [],
+    }
+
+    messages = render_template("全量生成.yaml", variables)
+    model_override = (body.model or "").strip() or None
+    t0 = time.perf_counter()
+    raw = ""
+    channel = ""
+    model = ""
+    try:
+        raw, channel, model = await chat_completion(
+            messages,
+            channel=body.channel,
+            tier=tier,
+            model=model_override,
+        )
+        data = extract_json(raw)
+        _, _, slides_raw = _normalize_deck_json(data, 1)
+        if not slides_raw:
+            raise LlmError("大模型未返回有效页面")
+        slide_raw = slides_raw[0]
+    except LlmError:
+        raise
+    except Exception as exc:
+        raise LlmError(f"生成失败：{exc}") from exc
+
+    duration_ms = int((time.perf_counter() - t0) * 1000)
+
+    try:
+        settings = json.loads(project.settings_json or "{}")
+    except json.JSONDecodeError:
+        settings = {}
+    theme_id = str(settings.get("themeId") or "zjy-minimal").strip()
+    if theme_id not in VALID_THEME_IDS:
+        theme_id = "zjy-minimal"
+    bg = THEME_DEFAULT_GRADIENTS.get(theme_id, THEME_DEFAULT_GRADIENTS["zjy-minimal"])
+
+    slides_seed = _llm_slides_to_seed(slides_raw, bg)
+    seed = slides_seed[0]
+    structured = seed.get("structured") or {}
+
+    new_order = compute_insert_sort_order(list(project.slides), body.insert_after_slide_id)
+    await shift_slide_sort_orders_from(db, project.id, new_order)
+
+    slide = Slide(
+        project_id=project.id,
+        sort_order=new_order,
+        layout=seed.get("layout", structured.get("template", "section"))[:32],
+        title=seed.get("title", "")[:255],
+        subtitle=seed.get("subtitle", "")[:512],
+        bullets_json=json.dumps(seed.get("bullets", []), ensure_ascii=False),
+        speaker_notes=str(seed.get("speakerNotes", ""))[:8000],
+        animation=str(seed.get("animation", "fade"))[:32],
+        canvas_json=json.dumps(seed.get("canvas_elements", []), ensure_ascii=False),
+        chat_script_json=json.dumps(seed.get("chat_script") or {}, ensure_ascii=False),
+        structured_json=json.dumps(structured, ensure_ascii=False),
+    )
+    db.add(slide)
+    await db.flush()
+
+    canvas_bg = seed.get("canvas_background")
+    if canvas_bg:
+        merged_bg = {**(settings.get("slideBackgrounds") or {}), str(slide.id): canvas_bg}
+        settings["slideBackgrounds"] = merged_bg
+        project.settings_json = json.dumps(settings, ensure_ascii=False)
+
+    db.add(
+        GenerationLog(
+            project_id=project.id,
+            template_id="single_slide",
+            channel=channel,
+            model=model,
+            duration_ms=duration_ms,
+            success=1,
+            message=f"AI 单页生成成功 · {seed.get('title', '')[:40]}",
+        )
+    )
+    await db.commit()
+    await db.refresh(slide)
+    return slide
+

@@ -40,6 +40,7 @@
           textAlign: element.style?.textAlign || 'left',
         }"
         @blur="commitEdit"
+        @select="onTextSelect"
         @mousedown.stop
       />
       <span v-else class="block w-full h-full whitespace-pre-wrap break-words">{{ element.content }}</span>
@@ -204,6 +205,7 @@ import { CANVAS_Z } from '../composables/useSlideCanvas.js'
 import { renderWordCloud } from './wordcloud/WordCloudRenderer.js'
 import ChartStack from './charts/ChartStack.vue'
 import { selectionChromeForBackground } from '../utils/selectionChrome.js'
+import { fitTextElementBox } from '../utils/measureTextBlock.js'
 
 const props = defineProps({
   element: { type: Object, required: true },
@@ -216,7 +218,7 @@ const props = defineProps({
   canvasBounds: { type: Object, default: () => ({ width: 9999, height: 9999 }) },
 })
 
-const emit = defineEmits(['select', 'update', 'remove', 'batch-start', 'batch-end', 'edit-wordcloud', 'edit-chart-stack', 'move-delta'])
+const emit = defineEmits(['select', 'update', 'remove', 'batch-start', 'batch-end', 'edit-wordcloud', 'edit-chart-stack', 'move-delta', 'text-edit-start', 'text-edit-end'])
 
 const wordCloudCanvasRef = ref(null)
 
@@ -405,15 +407,29 @@ function startEdit() {
   if (props.readonly) return
   editing.value = true
   editText.value = props.element.content ?? ''
+  emit('text-edit-start', props.element.id)
   nextTick(() => {
     inputRef.value?.focus()
     if (inputRef.value?.select) inputRef.value.select()
   })
 }
 
+function onTextSelect() {
+  if (editing.value) emit('text-edit-start', props.element.id)
+}
+
 function commitEdit() {
   editing.value = false
-  emit('update', props.element.id, { content: editText.value })
+  emit('text-edit-end', props.element.id)
+  const content = editText.value
+  const patch = { content }
+  const fit = fitTextElementBox(
+    { ...props.element, content },
+    content,
+    props.canvasBounds,
+  )
+  if (fit) Object.assign(patch, fit)
+  emit('update', props.element.id, patch)
 }
 
 function startCellEdit(ri, ci) {
