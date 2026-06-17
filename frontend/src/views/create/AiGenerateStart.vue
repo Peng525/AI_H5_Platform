@@ -60,17 +60,12 @@
       </div>
 
       <div>
-        <div class="rounded-2xl border border-outline-variant shadow-card overflow-hidden bg-white">
-          <textarea
-            ref="topicEl"
-            v-model="topic"
-            rows="1"
-            class="topic-input w-full px-4 sm:px-5 py-3 sm:py-3.5 bg-transparent text-sm leading-relaxed resize-none overflow-y-hidden placeholder:text-on-surface-variant/60 caret-primary box-border"
-            placeholder="描述您想生成的…"
-            @input="resizeTopicInput"
-            @paste="onPaste"
-          />
-        </div>
+        <GenerateTopicInput
+          ref="topicInputRef"
+          v-model="topic"
+          placeholder="描述您想生成的…"
+          @paste="onPaste"
+        />
         <p class="text-right text-xs text-on-surface-variant/60 mt-1.5 tabular-nums">{{ charCount }}</p>
       </div>
 
@@ -151,6 +146,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AiCreateLayout from '../../components/create/AiCreateLayout.vue'
 import AspectRatioSelect from '../../components/create/AspectRatioSelect.vue'
+import GenerateTopicInput from '../../components/create/GenerateTopicInput.vue'
 import PromptTemplateCard from '../../components/create/PromptTemplateCard.vue'
 import PageLoading from '../../components/PageLoading.vue'
 import { loadDraft, saveDraft } from '../../composables/useAiCreateDraft.js'
@@ -167,10 +163,6 @@ import {
   viewportModeToAspectRatio,
 } from '../../constants/imageGenerateOptions.js'
 
-const TOPIC_MIN_PX = 44
-const TOPIC_MAX_EMPTY_PX = 192
-const TOPIC_MAX_FILLED_PX = 320
-
 const router = useRouter()
 const type = ref('deck')
 const pageCount = ref(10)
@@ -181,7 +173,7 @@ const imageColor = ref('')
 const imageStyle = ref('')
 const language = ref('简体中文')
 const topic = ref('')
-const topicEl = ref(null)
+const topicInputRef = ref(null)
 const selectedImageTemplateId = ref('')
 const selectedDeckTemplateId = ref('')
 
@@ -213,11 +205,12 @@ const imageStyleOptions = IMAGE_STYLE_OPTIONS
 const charCount = computed(() => topic.value.length)
 const hasTopic = computed(() => topic.value.trim().length > 0)
 
-function topicMaxPx() {
-  if (hasTopic.value && typeof window !== 'undefined') {
-    return Math.min(TOPIC_MAX_FILLED_PX, Math.round(window.innerHeight * 0.35))
-  }
-  return TOPIC_MAX_EMPTY_PX
+function resizeTopicInput() {
+  topicInputRef.value?.resize()
+}
+
+function scrollInputToTop() {
+  topicInputRef.value?.scrollToTop()
 }
 
 function onAspectRatioChange(ratio) {
@@ -254,30 +247,8 @@ watch(topic, (val) => {
   nextTick(resizeTopicInput)
 })
 
-function resizeTopicInput() {
-  const el = topicEl.value
-  if (!el) return
-  el.style.height = 'auto'
-  const maxPx = topicMaxPx()
-  const next = Math.min(Math.max(el.scrollHeight, TOPIC_MIN_PX), maxPx)
-  el.style.height = `${next}px`
-  el.style.overflowY = el.scrollHeight > maxPx ? 'auto' : 'hidden'
-}
-
-function scrollInputToTop() {
-  const el = topicEl.value
-  if (!el) return
-  el.scrollTop = 0
-  el.setSelectionRange(0, 0)
-}
-
 function onPaste() {
-  nextTick(() => {
-    requestAnimationFrame(() => {
-      scrollInputToTop()
-      resizeTopicInput()
-    })
-  })
+  /* resize handled inside GenerateTopicInput */
 }
 
 function applyDeckTemplate(tpl) {
@@ -349,21 +320,5 @@ function goNext() {
 
 .pill-chevron {
   @apply absolute right-1.5 text-[15px] text-on-surface-variant pointer-events-none;
-}
-
-.topic-input {
-  border: none;
-  outline: none;
-  box-shadow: none;
-  appearance: none;
-  -webkit-appearance: none;
-  min-height: 2.75rem;
-}
-
-.topic-input:focus,
-.topic-input:focus-visible {
-  border: none;
-  outline: none;
-  box-shadow: none;
 }
 </style>

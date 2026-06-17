@@ -43,7 +43,7 @@
         </div>
 
         <div class="flex flex-wrap justify-between gap-4 mt-8 pt-6 border-t border-outline-variant text-sm">
-          <router-link :to="`/editor/${$route.params.publicId}`" class="text-primary flex items-center gap-1 hover:underline">
+          <router-link :to="resultEditPath" class="text-primary flex items-center gap-1 hover:underline">
             <span class="material-symbols-outlined text-lg">arrow_back</span>
             返回编辑器
           </router-link>
@@ -62,6 +62,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import QRCode from 'qrcode'
 import { api } from '../api/client'
+import { openProjectInResult } from '../composables/useAiCreateDraft.js'
 import AppShell from '../components/AppShell.vue'
 import PageLoading from '../components/PageLoading.vue'
 import EmptyState from '../components/EmptyState.vue'
@@ -75,6 +76,11 @@ const loadError = ref('')
 const { success: toastSuccess } = useToast()
 
 const shareUrl = computed(() => (slug.value ? `${window.location.origin}/s/${slug.value}` : ''))
+
+const resultEditPath = computed(() => {
+  const id = String(route.params.publicId || '')
+  return id ? `/create/generate/result/${id}` : '/dashboard'
+})
 
 async function loadPublishInfo() {
   loading.value = true
@@ -90,7 +96,10 @@ async function loadPublishInfo() {
   }
 }
 
-onMounted(loadPublishInfo)
+onMounted(() => {
+  openProjectInResult(String(route.params.publicId))
+  loadPublishInfo()
+})
 
 watch(shareUrl, async (url) => {
   if (!url || !qrCanvas.value) return

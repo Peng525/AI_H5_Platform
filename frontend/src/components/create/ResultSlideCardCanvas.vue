@@ -20,14 +20,14 @@
       />
       <div
         v-show="active"
-        class="relative overflow-visible"
+        class="relative overflow-hidden"
         :class="fillCard ? '' : 'rounded-lg bg-white'"
         :style="{ width: viewport.width + 'px', height: viewport.height + 'px', background: canvasBackground }"
         @click.stop
       >
         <div
           ref="canvasRef"
-          class="absolute inset-0 overflow-visible"
+          class="absolute inset-0 overflow-hidden"
         >
           <div
             class="absolute inset-0 z-[1] cursor-crosshair"

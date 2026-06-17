@@ -17,16 +17,26 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { markReturnToResult, PENDING_RESULT_PUBLIC_ID } from '../../composables/useAiCreateDraft.js'
+import {
+  getLastGenerateResultPublicId,
+  markReturnToResult,
+  PENDING_RESULT_PUBLIC_ID,
+} from '../../composables/useAiCreateDraft.js'
 
 const route = useRoute()
 
 const isHomeActive = computed(() => route.path === '/create/generate' || route.path === '/create/generate/')
 
 function onNavigateHome() {
-  if (route.name !== 'ai-generate-result') return
-  const publicId = String(route.params.publicId || '').trim()
-  if (!publicId || publicId === PENDING_RESULT_PUBLIC_ID) return
-  markReturnToResult(publicId)
+  if (route.name === 'ai-generate-result') {
+    const publicId = String(route.params.publicId || '').trim()
+    if (!publicId || publicId === PENDING_RESULT_PUBLIC_ID) return
+    markReturnToResult(publicId)
+    return
+  }
+  if (route.name === 'ai-generate-review') {
+    const lastId = getLastGenerateResultPublicId()
+    if (lastId) markReturnToResult(lastId)
+  }
 }
 </script>

@@ -137,6 +137,12 @@
           @text-edit-end="onTextEditEnd"
           @add-slide-after="onAddSlideAfter"
           @open-generate-card="onOpenGenerateCard"
+          @close-generate-panel="onCloseGeneratePanel"
+          @generate-card="onGenerateCardSubmit"
+          :generate-panel-slide-id="generatePanelSlideId"
+          :generate-loading="slideGenerating"
+          :quota-remaining="quota.remaining"
+          :quota-total="quota.total"
           @deselect-slide="deselectCurrentSlide"
         />
         <EditorContextLayer
@@ -295,15 +301,6 @@
     @close="layoutSaveOpen = false"
     @saved="onLayoutSaved"
   />
-  <GenerateCardModal
-    v-if="layoutMode === 'result'"
-    :open="generateCardOpen"
-    :loading="slideGenerating"
-    :quota-remaining="quota.remaining"
-    :quota-total="quota.total"
-    @close="generateCardOpen = false"
-    @generate="onGenerateCardSubmit"
-  />
   <ThemeSidebarDrawer
     v-if="layoutMode === 'result'"
     :open="themeDrawerOpen"
@@ -324,7 +321,6 @@ import { ensureSlideCompiled } from '../utils/compileStructuredSlide.js'
 import ResultSlidesOverview from './create/ResultSlidesOverview.vue'
 import EditorContextLayer from './create/EditorContextLayer.vue'
 import ElementMediaPanel from './create/ElementMediaPanel.vue'
-import GenerateCardModal from './create/GenerateCardModal.vue'
 import AiPanel from './AiPanel.vue'
 import EditorPhoneCanvas from './EditorPhoneCanvas.vue'
 import EditorToolbox from './EditorToolbox.vue'
@@ -501,20 +497,20 @@ function resolveRevealElementEl(slideId, elementId) {
 
 function onSkipReveal() {
   reveal.skipReveal()
-  compileAllSlidesLazy(true)
 }
 
 function tryStartReveal() {
   if (!props.autoRevealOnLoad || revealStarted) return
+  if (reveal.isDone.value) return
   if (props.layoutMode !== 'result') return
   if (projectLoading.value || !project.value?.slides?.length) return
   revealStarted = true
+  compileAllSlidesLazy(false)
   reveal.startReveal({
     slides: project.value.slides,
     getElements: getSlideElementsForReveal,
     scrollToSlide: (id) => overviewRef.value?.scrollToSlide?.(id, false),
     onComplete: () => {
-      compileAllSlidesLazy(true)
       emit('reveal-complete')
     },
   })
@@ -539,7 +535,7 @@ const overviewScrollRoot = computed(() => {
   return exposed.value ?? exposed
 })
 const resultRailRef = ref(null)
-const generateCardOpen = ref(false)
+const generatePanelSlideId = ref(null)
 const generateCardAfterSlideId = ref(null)
 const resultDisplayViewport = computed(() =>
   getViewportPreset(settings.value.viewportId || DEFAULT_WEB_VIEWPORT_ID)
@@ -555,14 +551,23 @@ async function onAddSlideAfter(afterSlideId) {
   }
 }
 
-function onOpenGenerateCard(afterSlideId) {
+async function onOpenGenerateCard(afterSlideId) {
   generateCardAfterSlideId.value = afterSlideId
-  generateCardOpen.value = true
+  generatePanelSlideId.value = afterSlideId
+  const slide = project.value?.slides?.find((s) => s.id === afterSlideId)
+  if (slide) {
+    await selectSlide(slide)
+  }
+  overviewRef.value?.scrollToSlide?.(afterSlideId)
+}
+
+function onCloseGeneratePanel() {
+  generatePanelSlideId.value = null
 }
 
 async function onGenerateCardSubmit(payload) {
   const slide = await generateSlideAfter(generateCardAfterSlideId.value, payload)
-  generateCardOpen.value = false
+  generatePanelSlideId.value = null
   if (slide?.id) {
     overviewRef.value?.scrollToSlide?.(slide.id)
   }

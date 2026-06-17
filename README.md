@@ -39,7 +39,8 @@ docker compose -f docker-compose.yml -f docker-compose.cn.yml up -d --build
 
 - 项目管理、页面编辑、全屏 H5 预览与分享链接 `/s/{slug}`
 - **项目 URL 标识**：编辑器/预览/发布/生成结果等路由使用 opaque `public_id`（NanoID），不暴露数据库自增 id；旧数字 URL 自动重定向
-- **AI 生成向导**（登录默认）：Gamma 两态单页（deck 示例 / image 三胶囊+生图模板 → 有输入「编辑提示词」）→ 演示文稿进提示编辑器 → **生成结果页**（紧凑卡片纵览、选中组件时浮层格式工具栏、内联编辑；添加素材走右侧栏）；图片类型进两栏生图页
+- **AI 生成向导**（登录默认）：Gamma 两态单页（deck 示例 / image 三胶囊+生图模板 → 有输入「编辑提示词」）→ 演示文稿进提示编辑器 → **生成结果页**（紧凑卡片纵览、选中组件时浮层格式工具栏、内联编辑；cover/split_lr 自动主题场景图）；图片类型进两栏生图页
+- **用户端编辑入口**：工作台、模板库、PPT 导入、预览/发布返回等默认打开 **生成结果页** `/create/generate/result/:publicId`；Studio 三栏编辑器保留给管理端模板/版式
 - **我的工作台**：双栏侧栏显示用户名；**首页**为项目列表、**模板库**可选模板；顶栏 **新建演示** 与 **导入 PPT**
 - **模板库**：按类型与终端筛选；封面渲染第一页缩略图
 - **简约模板体系**：商务 + 叙事双主题，多种版式与 JSON 模板
@@ -186,6 +187,7 @@ cd frontend && npm install && npm run dev
 | [`docs/Push与发布规范.md`](docs/Push与发布规范.md) | push 前检查、分支约定、EC2 发布 |
 | [`docs/CI-CD与分支策略.md`](docs/CI-CD与分支策略.md) | GitHub Actions、分支与 Secrets |
 | [`docs/AI生成向导.md`](docs/AI生成向导.md) | 三步向导、API、冒烟检查 |
+| [`docs/幻灯片模板规范.md`](docs/幻灯片模板规范.md) | Structured template、场景配图、编译器契约 |
 | [`docs/功能开发说明书.md`](docs/功能开发说明书.md) | 各按钮逻辑、草稿字段、LLM 映射 |
 | [`docs/互动组件-对话生成器与文字云.md`](docs/互动组件-对话生成器与文字云.md) | 对话生成器、文字云 |
 | [`docs/互动组件-图表卡组.md`](docs/互动组件-图表卡组.md) | 图表卡组（堆叠卡片、上下切换） |

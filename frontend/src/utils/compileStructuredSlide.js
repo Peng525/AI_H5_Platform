@@ -4,7 +4,10 @@
 import { getTheme, getThemeMargins, getThemeTypeScale, isWebViewport } from '../constants/designThemes.js'
 import { getLayoutCanvasSize, isWideWebViewport, WIDE_VIEWPORT_RATIO } from '../constants/editorPresets.js'
 import { CANVAS_Z } from '../composables/useSlideCanvas.js'
-import { measureTextBlock } from './measureTextBlock.js'
+import { measureTextBlock, truncateLines } from './measureTextBlock.js'
+
+/** builder 行为变更时递增，触发 structured 页强制重编译 */
+export const STRUCTURED_COMPILE_VERSION = 3
 
 let _uid = 0
 export function resetCompileIds() {
@@ -49,12 +52,9 @@ function iconEl(id, x, y, size, name, color, z = CANVAS_Z.CONTENT_BASE) {
 }
 
 function chartPlaceholderEl(x, y, w, h, colors) {
-  const bgId = uid('ph')
-  const iconId = uid('phi')
-  const labelId = uid('phl')
   return [
     {
-      id: bgId,
+      id: uid('ph'),
       type: 'chartPlaceholder',
       x,
       y,
@@ -69,22 +69,6 @@ function chartPlaceholderEl(x, y, w, h, colors) {
         border: `2px dashed ${colors.textMuted}`,
       },
     },
-    iconEl(iconId, x + w / 2 - 24, y + h / 2 - 36, 48, 'analytics', colors.textMuted, CANVAS_Z.BACKGROUND + 1),
-    textEl(
-      labelId,
-      x,
-      y + h / 2 + 20,
-      w,
-      32,
-      '图表占位',
-      {
-        fontSize: 14,
-        color: colors.textMuted,
-        textAlign: 'center',
-        fontFamily: 'inherit',
-      },
-      CANVAS_Z.BACKGROUND + 1
-    ),
   ]
 }
 
@@ -113,6 +97,138 @@ function measuredText(x, y, w, content, style, z) {
   }
 }
 
+/** 页眉：headline → title → subtitle 顺序堆叠 */
+function stackPageHeader(c, st, startY, opts = {}) {
+  const { scale, margin, colors, fonts } = c
+  const x = opts.x ?? margin.x
+  const w = opts.width ?? margin.contentWidth
+  const gap = opts.gap ?? (c.wide ? 4 : 6)
+  const includeSubtitle = opts.includeSubtitle !== false
+  const els = []
+  let y = startY
+
+  if (st.headline) {
+    const hl = measuredText(x, y, w, st.headline, {
+      fontSize: opts.headlineSize ?? scale.h2,
+      fontWeight: 'bold',
+      color: colors.accent,
+      fontFamily: fonts.display,
+      lineHeight: 1.2,
+      ...(opts.headlineStyle || {}),
+    })
+    els.push(hl.el)
+    y += hl.height + gap
+  }
+  if (st.title) {
+    const tt = measuredText(x, y, w, st.title, {
+      fontSize: opts.titleSize ?? scale.h2,
+      fontWeight: '600',
+      color: colors.text,
+      fontFamily: fonts.display,
+      lineHeight: 1.25,
+      ...(opts.titleStyle || {}),
+    })
+    els.push(tt.el)
+    y += tt.height + gap
+  }
+  if (includeSubtitle && st.subtitle) {
+    const sub = measuredText(x, y, w, st.subtitle, {
+      fontSize: scale.body,
+      color: colors.textMuted,
+      fontFamily: fonts.body,
+      lineHeight: 1.45,
+    })
+    els.push(sub.el)
+    y += sub.height + gap
+  }
+  return { elements: els, nextY: y }
+}
+
+/** 在固定框内适配文本：缩字号 → 截断 */
+function fitTextInBox(x, y, boxW, boxH, content, baseStyle, z = CANVAS_Z.CONTENT_BASE) {
+  const text = String(content || '').trim()
+  if (!text || boxW <= 0 || boxH <= 0) {
+    return textEl(uid('t'), x, y, Math.max(boxW, 1), Math.min(boxH, 16), text, baseStyle, z)
+  }
+  let fontSize = baseStyle.fontSize || 16
+  const minFontSize = baseStyle.minFontSize ?? 10
+  const lineHeight = baseStyle.lineHeight ?? 1.3
+  const verticalPadding = 4
+
+  while (fontSize >= minFontSize) {
+    const m = measureTextBlock({
+      content: text,
+      width: boxW,
+      fontSize,
+      lineHeight,
+      fontFamily: baseStyle.fontFamily,
+      fontWeight: baseStyle.fontWeight,
+      verticalPadding,
+    })
+    if (m.height <= boxH) {
+      return textEl(uid('t'), x, y, boxW, m.height, text, { ...baseStyle, fontSize }, z)
+    }
+    fontSize -= 1
+  }
+
+  const style = { ...baseStyle, fontSize: minFontSize }
+  const probe = measureTextBlock({
+    content: text,
+    width: boxW,
+    fontSize: minFontSize,
+    lineHeight,
+    fontFamily: baseStyle.fontFamily,
+    fontWeight: baseStyle.fontWeight,
+    verticalPadding,
+  })
+  const maxLines = Math.max(1, Math.floor((boxH - verticalPadding) / (minFontSize * lineHeight)))
+  const truncated = truncateLines(probe.lines, maxLines).join('\n')
+  const m = measureTextBlock({
+    content: truncated,
+    width: boxW,
+    fontSize: minFontSize,
+    lineHeight,
+    fontFamily: baseStyle.fontFamily,
+    fontWeight: baseStyle.fontWeight,
+    verticalPadding,
+  })
+  return textEl(uid('t'), x, y, boxW, Math.min(boxH, m.height), truncated, style, z)
+}
+
+function appendGridCard(els, c, x, y, colW, rowH, mod, opts = {}) {
+  const { scale, colors, fonts } = c
+  const pad = opts.pad ?? 8
+  const iconSize = opts.iconSize ?? 16
+  els.push(
+    shapeEl(uid('card'), x, y, colW, rowH, {
+      background: colors.bgMuted,
+      borderRadius: opts.borderRadius ?? 10,
+      border: `1px solid ${colors.textMuted}33`,
+    })
+  )
+  els.push(iconEl(uid('ic'), x + pad, y + pad, iconSize, mod.icon || 'circle', colors.accent))
+  let cy = y + pad + iconSize + 4
+  const innerW = colW - pad * 2
+  const titleMaxH = Math.max(16, Math.round(rowH * 0.3))
+  const titleEl = fitTextInBox(x + pad, cy, innerW, titleMaxH, mod.title || '', {
+    fontSize: scale.caption,
+    fontWeight: '600',
+    color: colors.text,
+    fontFamily: fonts.display,
+    lineHeight: 1.2,
+  })
+  els.push(titleEl)
+  cy += titleEl.height + 4
+  const bodyMaxH = Math.max(12, y + rowH - pad - cy)
+  const bodyEl = fitTextInBox(x + pad, cy, innerW, bodyMaxH, mod.body || '', {
+    fontSize: Math.max(10, scale.caption - 2),
+    color: colors.textMuted,
+    fontFamily: fonts.body,
+    lineHeight: 1.3,
+  })
+  els.push(bodyEl)
+}
+
 function imageEl(id, x, y, w, h, url, z = CANVAS_Z.BACKGROUND) {
   return {
     id,
@@ -127,6 +243,21 @@ function imageEl(id, x, y, w, h, url, z = CANVAS_Z.BACKGROUND) {
   }
 }
 
+function picsumUrl(seedText, w, h) {
+  const seed = encodeURIComponent(String(seedText || 'cover').slice(0, 24))
+  return `https://picsum.photos/seed/${seed}/${w}/${h}`
+}
+
+function resolveCoverImageUrl(st, w, h) {
+  if (st.image_url) return st.image_url
+  return picsumUrl(st.image_prompt || st.title || 'cover', w, h)
+}
+
+function resolveSceneImageUrl(mod, fallbackSeed, w, h) {
+  if (mod?.image_url) return mod.image_url
+  return picsumUrl(mod?.image_prompt || fallbackSeed || 'scene', w, h)
+}
+
 function buildCoverWideSplit(c, st) {
   const { W, H, scale, fonts, colors } = c
   const imgW = Math.round(W * 0.38)
@@ -138,9 +269,8 @@ function buildCoverWideSplit(c, st) {
   const padX = 48
   const padY = Math.round(H * 0.14)
   const textW = panelW - padX * 2
-  const seed = encodeURIComponent((st.title || 'cover').slice(0, 12))
   const els = [
-    imageEl(uid('img'), 0, 0, imgW, H, st.image_url || `https://picsum.photos/seed/${seed}/${imgW}/${H}`),
+    imageEl(uid('img'), 0, 0, imgW, H, resolveCoverImageUrl(st, imgW, H)),
     shapeEl(uid('panel'), panelX, 0, panelW, H, { background: panelBg, borderRadius: 0 }, CANVAS_Z.BACKGROUND),
   ]
   let y = padY
@@ -156,24 +286,27 @@ function buildCoverWideSplit(c, st) {
     y += 28
   }
   const title = st.title || '主标题'
-  const t1 = measuredText(panelX + padX, y, textW, title, {
+  const titleMaxH = Math.round(H * 0.32)
+  const titleEl = fitTextInBox(panelX + padX, y, textW, titleMaxH, title, {
     fontSize: scale.display,
     fontWeight: 'bold',
     color: textLight,
     fontFamily: fonts.display,
     lineHeight: 1.25,
   })
-  els.push(t1.el)
-  y += t1.height + 12
+  els.push(titleEl)
+  y += titleEl.height + 8
   const body = st.subtitle || st.modules?.[0]?.body || ''
   if (body) {
-    const t2 = measuredText(panelX + padX, y, textW, body, {
-      fontSize: scale.body,
-      color: textMuted,
-      fontFamily: fonts.body,
-      lineHeight: 1.55,
-    })
-    els.push(t2.el)
+    const bodyMaxH = Math.max(24, H - y - padY)
+    els.push(
+      fitTextInBox(panelX + padX, y, textW, bodyMaxH, body, {
+        fontSize: scale.body,
+        color: textMuted,
+        fontFamily: fonts.body,
+        lineHeight: 1.55,
+      })
+    )
   }
   return els
 }
@@ -189,31 +322,33 @@ function buildCoverMobileStack(c, st) {
   const padX = 28
   const padY = 24
   const textW = W - padX * 2
-  const seed = encodeURIComponent((st.title || 'cover').slice(0, 12))
   const els = [
-    imageEl(uid('img'), 0, 0, W, imgH, st.image_url || `https://picsum.photos/seed/${seed}/${W}/${imgH}`),
+    imageEl(uid('img'), 0, 0, W, imgH, resolveCoverImageUrl(st, W, imgH)),
     shapeEl(uid('panel'), 0, panelY, W, panelH, { background: panelBg, borderRadius: 0 }, CANVAS_Z.BACKGROUND),
   ]
   let y = panelY + padY
   const title = st.title || '主标题'
-  const t1 = measuredText(padX, y, textW, title, {
+  const titleMaxH = Math.round(panelH * 0.35)
+  const titleEl = fitTextInBox(padX, y, textW, titleMaxH, title, {
     fontSize: scale.h1,
     fontWeight: 'bold',
     color: textLight,
     fontFamily: fonts.display,
     lineHeight: 1.25,
   })
-  els.push(t1.el)
-  y += t1.height + 8
+  els.push(titleEl)
+  y += titleEl.height + 8
   const body = st.subtitle || st.modules?.[0]?.body || ''
   if (body) {
-    const t2 = measuredText(padX, y, textW, body, {
-      fontSize: scale.body,
-      color: textMuted,
-      fontFamily: fonts.body,
-      lineHeight: 1.5,
-    })
-    els.push(t2.el)
+    const bodyMaxH = Math.max(24, panelY + panelH - y - padY)
+    els.push(
+      fitTextInBox(padX, y, textW, bodyMaxH, body, {
+        fontSize: scale.body,
+        color: textMuted,
+        fontFamily: fonts.body,
+        lineHeight: 1.5,
+      })
+    )
   }
   return els
 }
@@ -255,11 +390,30 @@ function buildCover(c, st) {
 function buildSectionWide(c, st) {
   const { scale, margin, colors, fonts, H } = c
   const topPad = 20
-  let y = topPad
   const barH = Math.min(48, Math.round(H * 0.12))
-  const els = [
-    shapeEl(uid('bar'), margin.x, y, 4, barH, { background: colors.accent, borderRadius: 2 }),
-  ]
+  const els = []
+
+  if (st.headline) {
+    const header = stackPageHeader(c, st, topPad, { includeSubtitle: false, titleSize: scale.h2 })
+    els.push(...header.elements)
+    let y = header.nextY + 8
+    const body = st.modules?.[0]?.body || st.subtitle || ''
+    if (body) {
+      const maxBodyH = Math.max(40, H - y - 16)
+      els.push(
+        fitTextInBox(margin.x, y, margin.contentWidth, maxBodyH, body, {
+          fontSize: scale.body,
+          color: colors.textMuted,
+          fontFamily: fonts.body,
+          lineHeight: 1.45,
+        })
+      )
+    }
+    return els
+  }
+
+  let y = topPad
+  els.push(shapeEl(uid('bar'), margin.x, y, 4, barH, { background: colors.accent, borderRadius: 2 }))
   const t1 = measuredText(margin.x + 14, y, margin.contentWidth - 14, st.title || '章节', {
     fontSize: scale.h2,
     fontWeight: 'bold',
@@ -272,13 +426,14 @@ function buildSectionWide(c, st) {
   const body = st.modules?.[0]?.body || st.subtitle || ''
   if (body) {
     const maxBodyH = Math.max(40, H - y - 16)
-    const t2 = measuredText(margin.x + 14, y, margin.contentWidth - 14, body, {
-      fontSize: scale.body,
-      color: colors.textMuted,
-      fontFamily: fonts.body,
-      lineHeight: 1.45,
-    })
-    els.push({ ...t2.el, height: Math.min(t2.height, maxBodyH) })
+    els.push(
+      fitTextInBox(margin.x + 14, y, margin.contentWidth - 14, maxBodyH, body, {
+        fontSize: scale.body,
+        color: colors.textMuted,
+        fontFamily: fonts.body,
+        lineHeight: 1.45,
+      })
+    )
   }
   return els
 }
@@ -288,10 +443,29 @@ function buildSection(c, st) {
     return buildSectionWide(c, st)
   }
   const { scale, margin, colors, fonts, H } = c
+  const topY = Math.round(H * 0.12)
+  const els = []
+
+  if (st.headline) {
+    const header = stackPageHeader(c, st, topY, { titleSize: scale.h1 })
+    els.push(...header.elements)
+    let y = header.nextY + 8
+    const body = st.modules?.[0]?.body || (st.subtitle && !st.title ? st.subtitle : '')
+    if (body) {
+      const maxBodyH = Math.max(40, H - y - 16)
+      els.push(
+        fitTextInBox(margin.x, y, margin.contentWidth, maxBodyH, body, {
+          fontSize: scale.body,
+          color: colors.textMuted,
+          fontFamily: fonts.body,
+        })
+      )
+    }
+    return els
+  }
+
   let y = Math.round(H * 0.18)
-  const els = [
-    shapeEl(uid('bar'), margin.x, y, 4, c.web ? 120 : 100, { background: colors.accent, borderRadius: 2 }),
-  ]
+  els.push(shapeEl(uid('bar'), margin.x, y, 4, c.web ? 120 : 100, { background: colors.accent, borderRadius: 2 }))
   const t1 = measuredText(margin.x + 16, y, margin.contentWidth - 16, st.title || '章节', {
     fontSize: scale.h1,
     fontWeight: 'bold',
@@ -302,85 +476,48 @@ function buildSection(c, st) {
   y += t1.height + 12
   const body = st.modules?.[0]?.body || st.subtitle || ''
   if (body) {
-    const t2 = measuredText(margin.x + 16, y, margin.contentWidth - 16, body, {
-      fontSize: scale.body,
-      color: colors.textMuted,
-      fontFamily: fonts.body,
-    })
-    els.push(t2.el)
+    const maxBodyH = Math.max(40, H - y - 16)
+    els.push(
+      fitTextInBox(margin.x + 16, y, margin.contentWidth - 16, maxBodyH, body, {
+        fontSize: scale.body,
+        color: colors.textMuted,
+        fontFamily: fonts.body,
+      })
+    )
   }
   return els
 }
 
 function buildGrid2x2Wide(c, st) {
-  const { scale, margin, colors, fonts, H } = c
-  const modules = (st.modules || []).slice(0, 4)
+  const { margin, H } = c
+  const modules = [...(st.modules || [])].slice(0, 4)
   while (modules.length < 4) modules.push({ title: '模块', body: '内容', icon: 'circle' })
 
   const gap = 10
-  const pad = 8
-  const iconSize = 18
-  const topPad = 14
-  const bottomPad = 12
-  let y = topPad
+  const topPad = 12
+  const bottomPad = 10
   const els = []
 
-  if (st.headline) {
-    const hl = measuredText(margin.x, y, margin.contentWidth, st.headline, {
-      fontSize: scale.h2,
-      fontWeight: 'bold',
-      color: colors.accent,
-      fontFamily: fonts.display,
-      lineHeight: 1.2,
-    })
-    els.push(hl.el)
-    y += hl.height + 6
-  }
-  if (st.title) {
-    const tt = measuredText(margin.x, y, margin.contentWidth, st.title, {
-      fontSize: scale.body,
-      fontWeight: '600',
-      color: colors.text,
-      fontFamily: fonts.display,
-      lineHeight: 1.25,
-    })
-    els.push(tt.el)
-    y += tt.height + 8
-  }
-
-  const availH = H - y - bottomPad
-  const colW = Math.floor((margin.contentWidth - gap * 3) / 4)
-  const rowH = Math.max(72, Math.min(availH, 130))
-
-  modules.forEach((mod, i) => {
-    const x = margin.x + i * (colW + gap)
-    els.push(
-      shapeEl(uid('card'), x, y, colW, rowH, {
-        background: colors.bgMuted,
-        borderRadius: 10,
-        border: `1px solid ${colors.textMuted}33`,
-      })
-    )
-    els.push(iconEl(uid('ic'), x + pad, y + pad, iconSize, mod.icon || 'circle', colors.accent))
-    let cy = y + pad + iconSize + 4
-    const tTitle = measuredText(x + pad, cy, colW - pad * 2, mod.title || '', {
-      fontSize: scale.caption,
-      fontWeight: '600',
-      color: colors.text,
-      fontFamily: fonts.display,
-      lineHeight: 1.2,
-    })
-    els.push(tTitle.el)
-    cy += tTitle.height + 4
-    const tBody = measuredText(x + pad, cy, colW - pad * 2, mod.body || '', {
-      fontSize: scale.caption - 1,
-      color: colors.textMuted,
-      fontFamily: fonts.body,
-      lineHeight: 1.35,
-    })
-    const maxBodyH = Math.max(20, y + rowH - pad - cy)
-    els.push({ ...tBody.el, height: Math.min(tBody.height, maxBodyH) })
+  const header = stackPageHeader(c, st, topPad, {
+    titleSize: c.scale.body,
+    gap: 4,
+    includeSubtitle: false,
   })
+  els.push(...header.elements)
+  const gridY = header.nextY + 6
+
+  const colW = Math.floor((margin.contentWidth - gap) / 2)
+  const availH = H - gridY - bottomPad
+  const rowH = Math.min(Math.max(72, Math.floor((availH - gap) / 2)), availH - gap)
+
+  for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < 2; col++) {
+      const mod = modules[row * 2 + col]
+      const x = margin.x + col * (colW + gap)
+      const y = gridY + row * (rowH + gap)
+      appendGridCard(els, c, x, y, colW, rowH, mod, { pad: 8, iconSize: 16 })
+    }
+  }
   return els
 }
 
@@ -389,33 +526,20 @@ function buildGrid2x2(c, st) {
     return buildGrid2x2Wide(c, st)
   }
   const { scale, margin, colors, fonts } = c
-  const modules = (st.modules || []).slice(0, 4)
+  const modules = [...(st.modules || [])].slice(0, 4)
   while (modules.length < 4) modules.push({ title: '模块', body: '内容', icon: 'circle' })
 
   const gap = c.web ? 20 : 12
-  const headerH = c.web ? 56 : 44
-  let y = c.web ? 72 : 64
+  const topPad = c.web ? 56 : 48
   const els = []
 
-  if (st.title) {
-    els.push(
-      textEl(uid('h'), margin.x, y - headerH, margin.contentWidth, headerH, st.title, {
-        fontSize: scale.h2,
-        fontWeight: '600',
-        color: colors.text,
-        fontFamily: fonts.display,
-      })
-    )
-  }
-  if (st.headline) {
-    const hl = measuredText(margin.x, y - headerH - (c.web ? 48 : 40), margin.contentWidth, st.headline, {
-      fontSize: scale.h1,
-      fontWeight: 'bold',
-      color: colors.accent,
-      fontFamily: fonts.display,
-    })
-    els.push(hl.el)
-  }
+  const header = stackPageHeader(c, st, topPad, {
+    titleSize: scale.h2,
+    headlineSize: scale.h1,
+    includeSubtitle: false,
+  })
+  els.push(...header.elements)
+  let y = header.nextY + (c.web ? 16 : 12)
 
   const colW = Math.floor((margin.contentWidth - gap) / 2)
   const pad = c.web ? 16 : 12
@@ -432,41 +556,22 @@ function buildGrid2x2(c, st) {
         fontWeight: '600',
         fontFamily: fonts.display,
       }).height
-      const bodyH = measureTextBlock({
+      const bodyProbe = measureTextBlock({
         content: mod.body || '',
         width: innerW,
         fontSize: scale.caption,
         fontFamily: fonts.body,
       }).height
-      return pad * 2 + iconSize + 8 + titleH + 6 + bodyH
+      return pad * 2 + iconSize + 8 + titleH + 6 + Math.min(bodyProbe, 80)
     })
     const rowH = Math.max(...cellHeights, c.web ? 140 : 120)
 
     rowMods.forEach((mod, col) => {
-      const x = margin.x + col * (colW + gap)
-      els.push(
-        shapeEl(uid('card'), x, y, colW, rowH, {
-          background: colors.bgMuted,
-          borderRadius: 12,
-          border: `1px solid ${colors.textMuted}33`,
-        })
-      )
-      els.push(iconEl(uid('ic'), x + pad, y + pad, iconSize, mod.icon || 'circle', colors.accent))
-      let cy = y + pad + iconSize + 8
-      const tTitle = measuredText(x + pad, cy, colW - pad * 2, mod.title || '', {
-        fontSize: scale.body,
-        fontWeight: '600',
-        color: colors.text,
-        fontFamily: fonts.display,
+      appendGridCard(els, c, margin.x + col * (colW + gap), y, colW, rowH, mod, {
+        pad,
+        iconSize,
+        borderRadius: 12,
       })
-      els.push(tTitle.el)
-      cy += tTitle.height + 6
-      const tBody = measuredText(x + pad, cy, colW - pad * 2, mod.body || '', {
-        fontSize: scale.caption,
-        color: colors.textMuted,
-        fontFamily: fonts.body,
-      })
-      els.push(tBody.el)
     })
     y += rowH + gap
   }
@@ -474,36 +579,44 @@ function buildGrid2x2(c, st) {
 }
 
 function buildCardsRow(c, st) {
-  const { scale, margin, colors, fonts } = c
-  const modules = (st.modules || []).slice(0, 4)
-  const count = Math.max(modules.length, 3)
-  const gap = c.web ? 16 : 10
-  const cardW = Math.floor((margin.contentWidth - gap * (count - 1)) / count)
-  let y = c.web ? 80 : 72
+  const { scale, margin, colors, fonts, H } = c
+  const modules = [...(st.modules || [])].slice(0, 4)
+  const count = Math.max(modules.length, 2)
+  const gap = c.wide ? 12 : c.web ? 16 : 10
+  const topPad = c.wide ? 12 : c.web ? 56 : 48
   const els = []
 
-  if (st.title) {
-    els.push(
-      textEl(uid('h'), margin.x, y - 52, margin.contentWidth, 44, st.title, {
-        fontSize: scale.h2,
-        fontWeight: '600',
-        color: colors.text,
-        fontFamily: fonts.display,
-      })
-    )
-  }
-
-  const heights = modules.map((mod) => {
-    const innerW = cardW - 24
-    return (
-      24 +
-      28 +
-      8 +
-      measureTextBlock({ content: mod.title || '', width: innerW, fontSize: scale.body, fontWeight: '600' }).height +
-      measureTextBlock({ content: mod.body || '', width: innerW, fontSize: scale.caption }).height
-    )
+  const header = stackPageHeader(c, st, topPad, {
+    titleSize: scale.h2,
+    includeSubtitle: false,
+    gap: c.wide ? 4 : 6,
   })
-  const cardH = Math.max(...heights, c.web ? 180 : 150)
+  els.push(...header.elements)
+  let y = header.nextY + (c.wide ? 8 : 12)
+
+  const cardW = Math.floor((margin.contentWidth - gap * (count - 1)) / count)
+  const maxCardH = Math.max(100, H - y - 16)
+  const iconSize = c.wide ? 22 : 28
+  const pad = 12
+
+  const cardHeights = modules.map((mod) => {
+    const innerW = cardW - pad * 2
+    const titleH = measureTextBlock({
+      content: mod.title || '',
+      width: innerW,
+      fontSize: scale.body,
+      fontWeight: '600',
+      fontFamily: fonts.display,
+    }).height
+    const bodyProbe = measureTextBlock({
+      content: mod.body || '',
+      width: innerW,
+      fontSize: scale.caption,
+      fontFamily: fonts.body,
+    }).height
+    return pad + iconSize + 12 + titleH + 6 + Math.min(bodyProbe, maxCardH * 0.55)
+  })
+  const cardH = Math.min(Math.max(...cardHeights, c.wide ? 120 : c.web ? 160 : 130), maxCardH)
 
   modules.forEach((mod, i) => {
     const x = margin.x + i * (cardW + gap)
@@ -514,65 +627,85 @@ function buildCardsRow(c, st) {
         border: `1px solid ${colors.textMuted}44`,
       })
     )
-    els.push(iconEl(uid('ic'), x + 12, y + 12, 28, mod.icon || 'star', colors.accent))
-    let cy = y + 48
-    const tt = measuredText(x + 12, cy, cardW - 24, mod.title || '', {
+    els.push(iconEl(uid('ic'), x + pad, y + pad, iconSize, mod.icon || 'star', colors.accent))
+    let cy = y + pad + iconSize + 8
+    const innerW = cardW - pad * 2
+    const titleMaxH = Math.round(cardH * 0.28)
+    const titleEl = fitTextInBox(x + pad, cy, innerW, titleMaxH, mod.title || '', {
       fontSize: scale.body,
       fontWeight: '600',
       color: colors.text,
       fontFamily: fonts.display,
+      lineHeight: 1.25,
     })
-    els.push(tt.el)
-    cy += tt.height + 6
-    const tb = measuredText(x + 12, cy, cardW - 24, mod.body || '', {
+    els.push(titleEl)
+    cy += titleEl.height + 6
+    const bodyMaxH = y + cardH - pad - cy
+    const bodyEl = fitTextInBox(x + pad, cy, innerW, bodyMaxH, mod.body || '', {
       fontSize: scale.caption,
       color: colors.textMuted,
       fontFamily: fonts.body,
+      lineHeight: 1.35,
     })
-    els.push(tb.el)
+    els.push(bodyEl)
   })
   return els
 }
 
 function buildSplitLr(c, st) {
   const { scale, margin, colors, fonts, H } = c
-  const gap = c.web ? 40 : 16
+  const gap = c.wide ? 12 : c.web ? 40 : 16
+  const rightPad = c.wide ? 8 : 0
+  const bottomPad = c.wide ? 12 : 16
   const leftW = Math.floor((margin.contentWidth - gap) * 0.52)
-  const rightW = margin.contentWidth - gap - leftW
-  let y = c.web ? 72 : 64
+  const rightW = margin.contentWidth - gap - leftW - rightPad
+  const topPad = c.wide ? 12 : c.web ? 56 : 48
   const els = []
   const leftMod = st.modules?.[0] || { title: st.title, body: st.subtitle || '' }
+  const rightMod = st.modules?.[1] || {}
 
-  if (st.title && st.title !== leftMod.title) {
-    els.push(
-      textEl(uid('ht'), margin.x, y - 48, margin.contentWidth, 40, st.title, {
-        fontSize: scale.h2,
-        fontWeight: '600',
-        color: colors.text,
-        fontFamily: fonts.display,
-      })
-    )
-  }
+  const pageTitle = st.title && st.title !== leftMod.title ? st.title : ''
+  const headerSt = pageTitle
+    ? { ...st, title: pageTitle, headline: st.headline, subtitle: '' }
+    : { headline: st.headline, title: '', subtitle: '' }
+  const header = stackPageHeader(c, headerSt, topPad, {
+    includeSubtitle: false,
+    width: leftW,
+    x: margin.x,
+  })
+  els.push(...header.elements)
+  let y = header.nextY + (c.wide ? 8 : 12)
 
-  const lt = measuredText(margin.x, y, leftW, leftMod.title || st.title || '', {
+  const titleMaxH = Math.round((H - y - bottomPad) * 0.22)
+  const lt = fitTextInBox(margin.x, y, leftW, titleMaxH, leftMod.title || st.title || '', {
     fontSize: scale.h2,
     fontWeight: '600',
     color: colors.text,
     fontFamily: fonts.display,
+    lineHeight: 1.25,
   })
-  els.push(lt.el)
-  let cy = y + lt.height + 12
-  const lb = measuredText(margin.x, cy, leftW, leftMod.body || st.subtitle || '', {
+  els.push(lt)
+  let cy = y + lt.height + 10
+  const lbMaxH = Math.max(40, H - cy - bottomPad)
+  const lb = fitTextInBox(margin.x, cy, leftW, lbMaxH, leftMod.body || st.subtitle || '', {
     fontSize: scale.body,
     color: colors.textMuted,
     fontFamily: fonts.body,
+    lineHeight: 1.45,
   })
-  els.push(lb.el)
+  els.push(lb)
 
   const phY = y
-  const phH = Math.min(c.web ? 360 : 280, H - phY - 80)
+  const phH = Math.max(80, H - phY - bottomPad)
   const phX = margin.x + leftW + gap
-  els.push(...chartPlaceholderEl(phX, phY, rightW, phH, colors))
+  const useChartPlaceholder =
+    rightMod.role === 'chart_placeholder' && !rightMod.image_url && !rightMod.image_prompt
+  if (useChartPlaceholder) {
+    els.push(...chartPlaceholderEl(phX, phY, rightW, phH, colors))
+  } else {
+    const sceneUrl = resolveSceneImageUrl(rightMod, st.title || leftMod.title, rightW, phH)
+    els.push(imageEl(uid('rimg'), phX, phY, rightW, phH, sceneUrl, CANVAS_Z.BACKGROUND))
+  }
   return els
 }
 
@@ -617,20 +750,25 @@ function buildSteps(c, st) {
   const { scale, margin, colors, fonts, H } = c
   const steps = (st.modules || []).slice(0, 3)
   while (steps.length < 3) steps.push({ title: `步骤 ${steps.length + 1}`, body: '' })
-  const y0 = Math.round(H * 0.32)
-  const stepW = Math.floor(margin.contentWidth / 3)
+  const topPad = c.wide ? 12 : Math.round(H * 0.14)
   const els = []
-  if (st.title) {
+
+  const header = stackPageHeader(c, st, topPad, {
+    titleSize: scale.h2,
+    includeSubtitle: false,
+    titleStyle: { textAlign: 'center' },
+    headlineStyle: { textAlign: 'center' },
+  })
+  if (header.elements.length) {
     els.push(
-      textEl(uid('h'), margin.x, y0 - 64, margin.contentWidth, 40, st.title, {
-        fontSize: scale.h2,
-        fontWeight: '600',
-        color: colors.text,
-        fontFamily: fonts.display,
-        textAlign: 'center',
-      })
+      ...header.elements.map((el) => ({
+        ...el,
+        style: { ...el.style, textAlign: 'center' },
+      }))
     )
   }
+  const y0 = header.nextY + (c.wide ? 12 : 24)
+  const stepW = Math.floor(margin.contentWidth / 3)
   steps.forEach((s, i) => {
     const x = margin.x + i * stepW + stepW / 2 - (c.web ? 28 : 22)
     els.push(shapeEl(uid('c'), x, y0, c.web ? 56 : 44, c.web ? 56 : 44, { background: colors.accent, borderRadius: 999 }))
@@ -749,6 +887,31 @@ export function elementsOutOfBounds(elements, viewportId) {
   })
 }
 
+export function clampElementsToViewport(elements, viewportId) {
+  if (!elements?.length) return elements || []
+  const { width: W, height: H } = getLayoutCanvasSize(viewportId)
+  const edge = 2
+  const maxW = Math.max(1, W - edge * 2)
+  const maxH = Math.max(1, H - edge * 2)
+  return elements.map((el) => {
+    let x = el.x ?? 0
+    let y = el.y ?? 0
+    let w = el.width ?? 0
+    let h = el.height ?? 0
+    if (x < edge) x = edge
+    if (y < edge) y = edge
+    if (w <= 0) w = 1
+    if (h <= 0) h = 1
+    if (w > maxW) w = maxW
+    if (h > maxH) h = maxH
+    if (x + w > W - edge) w = Math.max(1, W - edge - x)
+    if (y + h > H - edge) h = Math.max(1, H - edge - y)
+    if (x + w > W - edge) x = Math.max(edge, W - edge - w)
+    if (y + h > H - edge) y = Math.max(edge, H - edge - h)
+    return { ...el, x, y, width: w, height: h }
+  })
+}
+
 /** 宽屏视口下元素仍挤在左侧（mobile 坐标未重编译） */
 export function elementsLookMobileOnWideCanvas(elements, viewportId) {
   if (!elements?.length || !isWideWebViewport(viewportId)) return false
@@ -760,21 +923,33 @@ export function elementsLookMobileOnWideCanvas(elements, viewportId) {
 
 export function shouldCompileSlide(slide, viewportId) {
   if (!slide) return false
-  if (!resolveSlideStructured(slide)) return false
+  const structured = resolveSlideStructured(slide)
+  if (!structured) return false
+  if (slide._compileVersion !== STRUCTURED_COMPILE_VERSION) return true
   const hasCanvas = Array.isArray(slide.canvas_elements) && slide.canvas_elements.length > 0
   if (!hasCanvas) return true
   if (!slide._compiledViewportId) return true
   if (slide._compiledViewportId !== viewportId) return true
   if (elementsLookMobileOnWideCanvas(slide.canvas_elements, viewportId)) return true
-  return elementsOutOfBounds(slide.canvas_elements, viewportId)
+  if (elementsOutOfBounds(slide.canvas_elements, viewportId)) return true
+  return false
+}
+
+function applyCompiledSlide(slide, elements, viewportId) {
+  slide.canvas_elements = elements
+  slide._compiledViewportId = viewportId
+  slide._compileVersion = STRUCTURED_COMPILE_VERSION
+  return elements
 }
 
 export function compileSlideIfNeeded(slide, viewportId, themeId) {
   const structured = resolveSlideStructured(slide)
   if (!structured) return slide?.canvas_elements || []
-  const elements = compileStructuredSlide(structured, viewportId, themeId)
-  slide._compiledViewportId = viewportId
-  return elements
+  const elements = clampElementsToViewport(
+    compileStructuredSlide(structured, viewportId, themeId),
+    viewportId
+  )
+  return applyCompiledSlide(slide, elements, viewportId)
 }
 
 export function ensureSlideCompiled(slide, viewportId, themeId) {
@@ -784,20 +959,22 @@ export function ensureSlideCompiled(slide, viewportId, themeId) {
     Array.isArray(cached) &&
     cached.length &&
     slide._compiledViewportId === viewportId &&
+    slide._compileVersion === STRUCTURED_COMPILE_VERSION &&
     !elementsOutOfBounds(cached, viewportId) &&
     !elementsLookMobileOnWideCanvas(cached, viewportId)
   ) {
-    return cached
+    return clampElementsToViewport(cached, viewportId)
   }
   if (!shouldCompileSlide(slide, viewportId)) {
-    return cached || []
+    return clampElementsToViewport(cached || [], viewportId)
   }
   const structured = resolveSlideStructured(slide)
-  if (!structured) return cached || []
-  const elements = compileStructuredSlide(structured, viewportId, themeId)
-  slide.canvas_elements = elements
-  slide._compiledViewportId = viewportId
-  return elements
+  if (!structured) return clampElementsToViewport(cached || [], viewportId)
+  const elements = clampElementsToViewport(
+    compileStructuredSlide(structured, viewportId, themeId),
+    viewportId
+  )
+  return applyCompiledSlide(slide, elements, viewportId)
 }
 
 /** 批量 lazy compile（reveal 完成或跳过后调用） */

@@ -118,6 +118,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api/client'
+import { openProjectInResult } from '../composables/useAiCreateDraft.js'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import EmptyState from '../components/EmptyState.vue'
 import PageLoading from '../components/PageLoading.vue'
@@ -269,6 +270,7 @@ async function useTemplate(t) {
       localStorage.setItem(`${CANVAS_PREFIX}${p.public_id}_${slide.id}`, JSON.stringify(slide.canvas_elements))
     }
   }
-  router.push(`/editor/${p.public_id}`)
+  const path = openProjectInResult(p.public_id)
+  if (path) router.push(path)
 }
 </script>

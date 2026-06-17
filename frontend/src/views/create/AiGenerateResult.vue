@@ -76,7 +76,7 @@
         :auto-reveal-on-load="autoRevealOnLoad"
         @project-loaded="onProjectLoaded"
         @project-load-error="onProjectLoadError"
-        @reveal-complete="isRevealing = false"
+        @reveal-complete="onRevealComplete"
         @close-theme-drawer="themeDrawerOpen = false"
       />
     </div>
@@ -92,7 +92,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onActivated, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../../api/client'
 import DeckEditorWorkspace from '../../components/DeckEditorWorkspace.vue'
@@ -105,18 +105,24 @@ import { useQuota } from '../../composables/useQuota.js'
 import {
   applyProjectSettingsLocal,
   clearGenerateJob,
+  clearPendingReveal,
   consumeShouldRevealDeck,
   grantGenerateResultAccess,
+  isDeckRevealed,
   loadDraft,
   loadGenerateJob,
+  markDeckRevealed,
   markReturnToResult,
   markShouldRevealDeck,
   PENDING_RESULT_PUBLIC_ID,
+  shouldAutoRevealDeck,
 } from '../../composables/useAiCreateDraft.js'
 import {
   copyEvaluationBundleMarkdown,
   downloadEvaluationBundle,
 } from '../../composables/useEvaluationBundle.js'
+
+defineOptions({ name: 'AiGenerateResult' })
 
 const route = useRoute()
 const router = useRouter()
@@ -238,7 +244,7 @@ async function runPendingGeneration() {
     pageLoading.value = false
     pageLoadError.value = ''
     projectTitle.value = created.title?.trim() || ''
-    markShouldRevealDeck()
+    markShouldRevealDeck(created.public_id)
     autoRevealOnLoad.value = true
     isRevealing.value = true
     await router.replace(`/create/generate/result/${created.public_id}`)
@@ -269,6 +275,8 @@ function onProjectLoaded(p) {
   pageLoadError.value = ''
   pageLoading.value = false
   initialProject.value = null
+  footerError.value = false
+  footerMessage.value = ''
   syncFromProject(p)
   if (autoRevealOnLoad.value) {
     isRevealing.value = true
@@ -292,6 +300,8 @@ async function fetchProjectForHeader() {
   pageLoadError.value = ''
   try {
     const p = await api.getProject(id)
+    footerError.value = false
+    footerMessage.value = ''
     syncFromProject(p)
   } catch (e) {
     loadFailed.value = true
@@ -356,14 +366,46 @@ async function onSave() {
 }
 
 function goPreview() {
-  if (project.value) router.push(`/preview/${routePublicId.value}`)
+  if (project.value) {
+    router.push({
+      path: `/preview/${routePublicId.value}`,
+      query: { returnTo: `/create/generate/result/${routePublicId.value}` },
+    })
+  }
 }
 
 function regenerate() {
+  if (!isPendingRoute.value) {
+    markReturnToResult(routePublicId.value)
+  }
   router.push('/create/generate/review')
 }
 
+function onRevealComplete() {
+  if (!isPendingRoute.value) {
+    markDeckRevealed(routePublicId.value)
+  }
+  requestAnimationFrame(() => {
+    isRevealing.value = false
+  })
+}
+
+function applyAutoRevealForProject(pid) {
+  if (isDeckRevealed(pid)) {
+    autoRevealOnLoad.value = false
+    isRevealing.value = false
+    return
+  }
+  if (!autoRevealOnLoad.value) {
+    autoRevealOnLoad.value = shouldAutoRevealDeck(pid)
+  } else {
+    clearPendingReveal(pid)
+  }
+  if (autoRevealOnLoad.value) isRevealing.value = true
+}
+
 function bootstrap() {
+  consumeShouldRevealDeck()
   workspaceError.value = ''
   if (isPendingRoute.value) {
     pageLoading.value = false
@@ -380,16 +422,31 @@ function bootstrap() {
     }
     pageLoading.value = false
     pageLoadError.value = ''
-    if (!autoRevealOnLoad.value) {
-      autoRevealOnLoad.value = consumeShouldRevealDeck()
-    }
-    if (autoRevealOnLoad.value) isRevealing.value = true
+    footerError.value = false
+    footerMessage.value = ''
+    applyAutoRevealForProject(pid)
     return
   }
-  autoRevealOnLoad.value = consumeShouldRevealDeck()
-  if (autoRevealOnLoad.value) isRevealing.value = true
+  applyAutoRevealForProject(pid)
   fetchProjectForHeader()
 }
+
+onActivated(() => {
+  if (isPendingRoute.value) return
+  const pid = routePublicId.value
+  if (loadedProject.value?.public_id === pid) {
+    pageLoading.value = false
+    autoRevealOnLoad.value = false
+    isRevealing.value = false
+    if (!pageLoadError.value) {
+      footerError.value = false
+      footerMessage.value = ''
+    }
+    if (isDeckRevealed(pid) && workspaceRef.value?.reveal?.isRevealing?.value) {
+      workspaceRef.value.reveal.skipReveal()
+    }
+  }
+})
 
 watch(
   routePublicId,

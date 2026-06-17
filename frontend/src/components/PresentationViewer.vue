@@ -46,7 +46,7 @@
           <button
             type="button"
             class="preview-toolbar-btn preview-toolbar-btn-exit"
-            title="退出预览 (Esc)"
+            title="返回上一页 (Esc)"
             @click="exitPreview"
           >
             <span class="material-symbols-outlined text-[18px]">close</span>
@@ -192,7 +192,7 @@
             {{ scrollEffect === 'horizontal' ? '下一页 →' : '下一页' }}
           </button>
           <button
-            v-if="editorPath"
+            v-if="mode === 'preview' && !embedded"
             type="button"
             class="preview-footer-exit"
             @click="exitPreview"
@@ -232,6 +232,7 @@ const props = defineProps({
   error: { type: String, default: '' },
   mode: { type: String, default: 'preview' },
   editorPath: { type: String, default: '' },
+  exitPath: { type: String, default: '' },
   loadingText: { type: String, default: '加载演示…' },
   embedded: { type: Boolean, default: false },
 })
@@ -315,7 +316,7 @@ const scrollModeInfo = computed(() => {
     snap: '滚动后吸附整屏',
   }
   const exitHint =
-    props.mode === 'preview' && props.editorPath && !props.embedded ? ' · Esc 退出预览' : ''
+    props.mode === 'preview' && !props.embedded ? ' · Esc 退出预览' : ''
   return { label: m?.label || '翻页模式', hint: (hints[scrollEffect.value] || m?.desc || '') + exitHint }
 })
 
@@ -530,13 +531,33 @@ function goNext() {
   scrollToVisible(Math.min(slides.value.length - 1, visibleIndex.value + 1))
 }
 
+function sanitizeExitPath(path) {
+  if (!path || typeof path !== 'string') return ''
+  const p = path.trim()
+  if (!p.startsWith('/') || p.startsWith('//')) return ''
+  return p
+}
+
 function exitPreview() {
-  if (!props.editorPath || props.embedded) return
-  router.push(props.editorPath)
+  if (props.embedded) return
+  const explicit = sanitizeExitPath(props.exitPath)
+  if (explicit) {
+    router.push(explicit)
+    return
+  }
+  if (window.history.length > 1) {
+    router.back()
+    return
+  }
+  if (props.editorPath) {
+    router.push(props.editorPath)
+    return
+  }
+  router.push('/dashboard')
 }
 
 function onKey(e) {
-  if (e.key === 'Escape' && props.editorPath && !props.embedded) {
+  if (e.key === 'Escape' && !props.embedded) {
     e.preventDefault()
     exitPreview()
     return

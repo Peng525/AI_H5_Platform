@@ -189,12 +189,24 @@ async def _try_images_generations(
 
 
 async def _try_chat_image(
-    base_url: str, api_key: str, model: str, prompt: str, aspect_ratio: str = "9:16"
+    base_url: str,
+    api_key: str,
+    model: str,
+    prompt: str,
+    aspect_ratio: str = "9:16",
+    reference_image_url: str | None = None,
 ) -> str:
     url = _normalize_openai_base_url(base_url) + "/chat/completions"
+    if reference_image_url:
+        user_content: str | list[dict[str, Any]] = [
+            {"type": "text", "text": prompt},
+            {"type": "image_url", "image_url": {"url": reference_image_url}},
+        ]
+    else:
+        user_content = prompt
     payload: dict[str, Any] = {
         "model": model,
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": [{"role": "user", "content": user_content}],
         "modalities": ["image", "text"],
         "image_config": {"aspect_ratio": aspect_ratio, "image_size": "1K"},
     }
@@ -206,10 +218,22 @@ async def _try_chat_image(
 
 
 async def _generate_on_channel(
-    channel: str, model: str, prompt: str, aspect_ratio: str, size: str
+    channel: str,
+    model: str,
+    prompt: str,
+    aspect_ratio: str,
+    size: str,
+    reference_image_url: str | None = None,
 ) -> str:
     base_url, api_key = _channel_credentials(channel)
     errors: list[str] = []
+    if reference_image_url:
+        try:
+            return await _try_chat_image(
+                base_url, api_key, model, prompt, aspect_ratio, reference_image_url
+            )
+        except LlmError as exc:
+            raise LlmError(f"参考图生图失败，请检查 LLM 是否支持多模态生图 — {exc}") from exc
     for attempt in (
         lambda: _try_images_generations(base_url, api_key, model, prompt, size),
         lambda: _try_chat_image(base_url, api_key, model, prompt, aspect_ratio),
@@ -230,12 +254,19 @@ async def generate_image(
     viewport_width: int | None = None,
     viewport_height: int | None = None,
     viewport_preset_id: str | None = None,
+    use_reference_image: bool = False,
+    reference_image_url: str | None = None,
 ) -> tuple[str, str, str, int, int]:
     """返回 (图片 URL 或 data URL, 通道, 模型, 宽, 高)。"""
     del viewport_preset_id  # 预留日志字段，调用方可写入 GenerationLog
     full_prompt = _build_prompt(prompt, style)
     if not full_prompt:
         raise LlmError("请输入画面描述")
+
+    ref_url: str | None = None
+    if use_reference_image and reference_image_url and reference_image_url.strip():
+        ref_url = reference_image_url.strip()
+        full_prompt += "\n\n在参考图基础上按描述重新生成，保持构图相似度适中。"
 
     if viewport_width and viewport_height:
         aspect_ratio, out_w, out_h = _aspect_for_viewport(viewport_width, viewport_height)
@@ -259,7 +290,9 @@ async def generate_image(
         errors: list[str] = []
         for used in channels:
             try:
-                image = await _generate_on_channel(used, model, full_prompt, aspect_ratio, size)
+                image = await _generate_on_channel(
+                    used, model, full_prompt, aspect_ratio, size, ref_url
+                )
                 return image, used, model, out_w, out_h
             except LlmError as exc:
                 errors.append(f"{used}: {exc}")
@@ -270,5 +303,7 @@ async def generate_image(
         actual_channel = ch
         display_channel = ch
 
-    image = await _generate_on_channel(actual_channel, model, full_prompt, aspect_ratio, size)
+    image = await _generate_on_channel(
+        actual_channel, model, full_prompt, aspect_ratio, size, ref_url
+    )
     return image, display_channel, model, out_w, out_h

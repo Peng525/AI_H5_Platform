@@ -1,15 +1,13 @@
 <template>
   <div class="h-dvh overflow-hidden bg-surface-container-low flex flex-col">
-    <header class="h-14 border-b border-outline-variant bg-white flex items-center px-4 sm:px-6 shrink-0 gap-3">
-      <CreateHomeButton />
+    <header class="h-14 border-b border-outline-variant bg-white flex items-center px-4 sm:px-8 shrink-0 gap-3">
+      <CreatePageHeaderNav>
+        <h1 class="text-base font-semibold truncate min-w-0">提示词编辑器</h1>
+      </CreatePageHeaderNav>
 
-      <h1 class="flex-1 text-base font-semibold truncate min-w-0">提示词编辑器</h1>
+      <div class="flex-1 min-w-0" aria-hidden="true" />
 
-      <BackToResultButton />
-
-      <div class="flex items-center gap-2 shrink-0">
-        <UserMenu />
-      </div>
+      <UserMenu />
     </header>
 
     <div class="lg:hidden flex gap-1 p-2 bg-white border-b border-outline-variant">
@@ -202,8 +200,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import CardSplitModeDialog from '../../components/create/CardSplitModeDialog.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
-import CreateHomeButton from '../../components/create/CreateHomeButton.vue'
-import BackToResultButton from '../../components/create/BackToResultButton.vue'
+import CreatePageHeaderNav from '../../components/create/CreatePageHeaderNav.vue'
 import UserMenu from '../../components/create/UserMenu.vue'
 import { useToast } from '../../composables/useToast.js'
 import { useQuota } from '../../composables/useQuota.js'
@@ -218,6 +215,8 @@ import {
 } from '../../composables/useAiCreateDraft.js'
 import { splitContentIntoPages } from '../../utils/splitContentIntoPages.js'
 import { listThemeOptions } from '../../utils/applyProjectTheme.js'
+
+defineOptions({ name: 'AiGenerateReview' })
 
 const router = useRouter()
 const { success: toastSuccess } = useToast()

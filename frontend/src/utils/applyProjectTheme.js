@@ -1,5 +1,5 @@
 import { getTheme } from '../constants/designThemes.js'
-import { compileStructuredSlide, resolveSlideStructured } from './compileStructuredSlide.js'
+import { compileStructuredSlide, resolveSlideStructured, STRUCTURED_COMPILE_VERSION } from './compileStructuredSlide.js'
 import {
   slideBackgroundToStorage,
   slideBackgroundCSSValue,
@@ -70,6 +70,7 @@ export function applyProjectTheme({ slides, themeId, viewportId }) {
     if (structured) {
       copy.canvas_elements = compileStructuredSlide(structured, viewportId, themeId)
       copy._compiledViewportId = viewportId
+      copy._compileVersion = STRUCTURED_COMPILE_VERSION
     } else if (Array.isArray(copy.canvas_elements) && copy.canvas_elements.length) {
       copy.canvas_elements = remapElementColorsForTheme(copy.canvas_elements, themeId, bgStorage)
     }

@@ -1,5 +1,6 @@
 <template>
   <section
+    ref="sectionRef"
     class="flex-1 bg-surface-container-low overflow-hidden relative select-none"
     @wheel.prevent="onWheelZoom"
   >
@@ -307,6 +308,11 @@ watch(
 const zoomInput = ref(String(DEFAULT_ZOOM))
 const zoomInputRef = ref(null)
 const transitionKey = ref(0)
+const sectionRef = ref(null)
+const containerSize = ref({ width: 800, height: 600 })
+const CHROME_VERTICAL_PAD = 80
+let sectionResizeObserver = null
+
 const canvasRef = ref(null)
 const marqueeRect = ref(null)
 const panMode = ref(false)
@@ -343,14 +349,14 @@ const frameShellClass = computed(() => {
     : 'bg-white shadow-2xl rounded-lg border border-gray-300'
 })
 
-/** 大分辨率自动缩小以适应编辑区 */
+/** 按编辑区容器尺寸 fit 画布 */
 const autoScale = computed(() => {
-  const maxW = 520
-  const maxH = 680
   const w = safeViewport.value.width
   const h = safeViewport.value.height
   if (!w || !h) return 1
-  return Math.min(1, maxW / w, maxH / h)
+  const availW = Math.max(120, containerSize.value.width - 32)
+  const availH = Math.max(120, containerSize.value.height - CHROME_VERTICAL_PAD)
+  return Math.min(1, availW / w, availH / h)
 })
 
 const displayScale = computed(() => {
@@ -554,14 +560,30 @@ function onViewportChange(id) {
   emit('viewport-change', id)
 }
 
+function updateContainerSize() {
+  const el = sectionRef.value
+  if (!el) return
+  containerSize.value = {
+    width: el.clientWidth || 800,
+    height: el.clientHeight || 600,
+  }
+}
+
 onMounted(() => {
   window.addEventListener('keydown', onPanKeyDown)
   window.addEventListener('keyup', onPanKeyUp)
+  updateContainerSize()
+  if (sectionRef.value && typeof ResizeObserver !== 'undefined') {
+    sectionResizeObserver = new ResizeObserver(updateContainerSize)
+    sectionResizeObserver.observe(sectionRef.value)
+  }
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onPanKeyDown)
   window.removeEventListener('keyup', onPanKeyUp)
+  sectionResizeObserver?.disconnect()
+  sectionResizeObserver = null
 })
 
 async function startZoomEdit() {

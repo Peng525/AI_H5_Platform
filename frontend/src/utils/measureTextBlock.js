@@ -44,6 +44,16 @@ function wrapLines(content, maxWidth, ctx) {
   return lines.length ? lines : ['']
 }
 
+/** 截断行数并在末行追加省略号 */
+export function truncateLines(lines, maxLines) {
+  if (!lines?.length || maxLines <= 0) return ['']
+  if (lines.length <= maxLines) return [...lines]
+  const out = lines.slice(0, maxLines)
+  const last = out[maxLines - 1] || ''
+  out[maxLines - 1] = `${last.replace(/\s+$/, '')}…`
+  return out
+}
+
 /**
  * @param {object} opts
  * @param {string} opts.content

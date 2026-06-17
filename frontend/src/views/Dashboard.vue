@@ -77,7 +77,7 @@
         <article
           v-for="p in projects"
           :key="p.id"
-          class="bg-white rounded-xl border overflow-hidden shadow-card transition group relative"
+          class="bg-white rounded-xl border shadow-card transition group relative"
           :class="[
             selectMode && selectedIds.has(p.public_id)
               ? 'border-primary ring-2 ring-primary/30'
@@ -156,6 +156,7 @@ import ConfirmDialog from '../components/ConfirmDialog.vue'
 import PageLoading from '../components/PageLoading.vue'
 import ProjectCoverThumb from '../components/ProjectCoverThumb.vue'
 import { usePptImport } from '../composables/usePptImport'
+import { openProjectInResult } from '../composables/useAiCreateDraft.js'
 import { formatRelativeTime } from '../utils/formatRelativeTime'
 
 const projects = ref([])
@@ -211,12 +212,13 @@ function closeMenus() {
 
 function goEdit(id) {
   closeMenus()
-  router.push(`/editor/${id}`)
+  const path = openProjectInResult(id)
+  if (path) router.push(path)
 }
 
 function goPreview(id) {
   closeMenus()
-  router.push(`/preview/${id}`)
+  router.push({ path: `/preview/${id}`, query: { returnTo: '/dashboard' } })
 }
 
 function onDocumentClick() {
@@ -273,7 +275,8 @@ function onCardClick(project) {
     toggleSelect(project.public_id)
     return
   }
-  router.push(`/editor/${project.public_id}`)
+  const path = openProjectInResult(project.public_id)
+  if (path) router.push(path)
 }
 
 function askRemove(project) {

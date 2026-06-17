@@ -29,6 +29,8 @@ async def generate_slide_image(
             body.viewport_width,
             body.viewport_height,
             body.viewport_preset_id,
+            body.use_reference_image,
+            body.reference_image_url,
         )
     except LlmError as exc:
         await _log(db, project_id, body.channel or "auto", False, str(exc))
@@ -65,6 +67,8 @@ async def generate_standalone_image(
             body.viewport_width,
             body.viewport_height,
             body.viewport_preset_id,
+            body.use_reference_image,
+            body.reference_image_url,
         )
     except LlmError as exc:
         await _log(db, None, body.channel or "auto", False, str(exc))

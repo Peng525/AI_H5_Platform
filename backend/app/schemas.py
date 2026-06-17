@@ -493,6 +493,8 @@ class GenerateImageRequest(BaseModel):
     viewport_preset_id: str | None = Field(None, description="生图分辨率预设 id")
     viewport_width: int | None = Field(None, description="内容区宽度")
     viewport_height: int | None = Field(None, description="内容区高度")
+    use_reference_image: bool = Field(False, description="是否将 reference_image_url 作为参考图输入")
+    reference_image_url: str | None = Field(None, description="参考图 URL 或 data URL")
 
 
 class GenerateImageResponse(BaseModel):

@@ -442,8 +442,9 @@ export function useSlideCanvas(projectIdRef, slideIdRef, viewportIdRef = null) {
     const sid = slideIdRef.value
     if (!pid || !sid) return
     clearTimeout(saveTimer)
+    const snapshot = JSON.parse(JSON.stringify(elements.value))
     saveTimer = setTimeout(() => {
-      api.saveSlideCanvas(String(pid), sid, elements.value).catch((e) => {
+      api.saveSlideCanvas(String(pid), sid, snapshot).catch((e) => {
         console.warn('画布同步服务器失败', e)
       })
     }, 400)
@@ -680,7 +681,10 @@ export function useSlideCanvas(projectIdRef, slideIdRef, viewportIdRef = null) {
     }
   }
 
-  watch([projectIdRef, slideIdRef], () => loadElements(), { immediate: true })
+  watch([projectIdRef, slideIdRef], () => {
+    clearTimeout(saveTimer)
+    loadElements()
+  }, { immediate: true })
 
   function addImageFromAi(src, fit = 'width', viewport = { width: 375, height: 812 }, meta = {}) {
     const layout = computeImageFitLayout(fit, viewport, meta)

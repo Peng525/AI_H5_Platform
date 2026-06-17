@@ -19,11 +19,12 @@
 |------|------|------|
 | 1 | `/create/generate` | **Gamma 单页两态**：空态单行输入 + 示例（deck）或 **三胶囊 + 分割线 + 3 张生图模板**（image）；有输入后隐藏示例/模板，居中 **「编辑提示词」** |
 | 2 | `/create/generate/review` | 提示编辑器：文本量、内容模式、受众、语气、扩写与附加说明 |
-| 完成 | `/editor/:id` | 生成成功后进入三栏编辑器 |
+| 完成 | `/create/generate/result/:publicId` | 生成成功后进入**生成结果页**（紧凑卡片纵览、内联编辑、staged reveal） |
 
 **图片类型** 在生成页选「生成图片」→ 选模板或填写提示词 →「编辑提示词」进入 `/create/generate/image`；调用 `POST /api/v1/生图/独立`，**不创建项目、不进编辑器**。
 
-> `/create/generate/prompt` 已合并至 `/create/generate`，旧链接自动重定向。
+> `/create/generate/prompt` 已合并至 `/create/generate`，旧链接自动重定向。  
+> 用户端从工作台、模板库、PPT 导入等打开项目时，默认进入**生成结果页**而非 Studio 三栏编辑器（管理端模板/版式编辑仍用 `/editor`）。
 
 ## 生成入口两态（`/create/generate`）
 
@@ -122,7 +123,14 @@ Content-Type: application/json
 
 `content_mode: "per_page"` 时 `page_contents` 长度须等于 `page_count`。
 
-响应：`ProjectOut`（含 `slides` 与 `settings`），前端写入 localStorage 后跳转编辑器。
+响应：`ProjectOut`（含 `slides` 与 `settings`）。每页 `structured_json` 存语义模板；`canvas_elements` 为空，由前端 `compileStructuredSlide` 排版。  
+生成过程中会为 **cover** 与 **split_lr 右栏** 根据 `image_prompt` 调用 AI 配图（失败则 picsum 占位）；`settings.generationMeta.images_generated` 记录张数。
+
+### 结构化幻灯片与排版
+
+- AI 只输出 `template` + `modules` / `headline` / `image_prompt`，详见 [`幻灯片模板规范.md`](./幻灯片模板规范.md)
+- 后端 [`deck_generation_service.py`](../backend/app/services/deck_generation_service.py) 解析后 `_enrich_slide_images`，再 `seed_project_slides`
+- 前端 [`compileStructuredSlide.js`](../frontend/src/utils/compileStructuredSlide.js)（版本 3）将 structured 转为 `canvas_elements`；历史项目因 `_compileVersion` 过期自动重编译
 
 ### 相关实现
 
@@ -148,14 +156,14 @@ Content-Type: application/json
 | 工作台「新建演示」 | `/create/generate` |
 | 工作台「首页」 | `/dashboard`（项目列表） |
 | 工作台「模板库」 | `/templates` |
-| 工作台「导入 PPT」 | 直接上传 `.pptx` → 编辑器 |
+| 工作台「导入 PPT」 | 直接上传 `.pptx` → **生成结果页** |
 
 ## 冒烟检查
 
 完整用例见 **[`生成页测试用例.md`](生成页测试用例.md)**；组件逻辑见 **[`生成页组件与开发逻辑.md`](生成页组件与开发逻辑.md)**。
 
 1. 登录后进入 `/create/generate`：渐变背景、Tab（默认演示文稿）；空态无底部按钮
-2. 演示文稿：输入或选示例 →「编辑提示词」→ 提示编辑器 → 生成 → 编辑器页数与背景正确
+2. 演示文稿：输入或选示例 →「编辑提示词」→ 提示编辑器 → 生成 → **结果页**页数、背景与 cover/split_lr 场景图正确
 3. 生成图片：选类型 → 选模板或输入 →「编辑提示词」→ 两栏图片页 → 生成 → 裁切、复制可用
 4. 访问 `/create/generate/prompt` 自动回到 `/create/generate`
 5. 工作台侧栏可正常进入首页与模板库

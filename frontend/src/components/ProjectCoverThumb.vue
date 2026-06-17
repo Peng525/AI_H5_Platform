@@ -5,6 +5,7 @@
       class="w-full h-full flex items-center justify-center transition-transform duration-500 group-hover:scale-[1.03]"
     >
       <SlideCanvasThumb
+        fill-parent
         :slide="coverSlide"
         :viewport="viewport"
         :project-id="project.public_id"

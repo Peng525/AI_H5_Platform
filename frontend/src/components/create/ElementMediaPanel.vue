@@ -18,11 +18,6 @@
         <span v-else class="text-xs text-on-surface-variant">无图片</span>
       </div>
 
-      <div v-if="promptText" class="space-y-1">
-        <label class="text-xs font-medium text-on-surface-variant">Prompt</label>
-        <p class="text-xs text-on-surface bg-surface-container-low rounded-lg p-2 leading-relaxed">{{ promptText }}</p>
-      </div>
-
       <div class="space-y-2">
         <label class="text-xs font-medium text-on-surface-variant">适应方式</label>
         <div class="flex flex-wrap gap-1.5">
@@ -48,11 +43,32 @@
           <span class="material-symbols-outlined text-[18px]">crop</span>
           裁切图片
         </button>
+      </div>
+
+      <div class="space-y-2">
+        <label for="regenerate-prompt" class="text-xs font-medium text-on-surface-variant">提示词</label>
+        <textarea
+          id="regenerate-prompt"
+          v-model="regeneratePrompt"
+          rows="3"
+          class="w-full text-xs text-on-surface bg-surface-container-low rounded-lg p-2 leading-relaxed border border-outline-variant/60 resize-y focus:outline-none focus:border-primary"
+          placeholder="描述你想生成的画面…"
+          :disabled="imageLoading"
+        />
+        <label class="flex items-start gap-2 cursor-pointer select-none">
+          <input
+            v-model="useReferenceImage"
+            type="checkbox"
+            class="mt-0.5 rounded border-outline-variant text-primary focus:ring-primary"
+            :disabled="imageLoading || !hasReferenceImage"
+          />
+          <span class="text-xs text-on-surface-variant leading-snug">将此图作为参考图</span>
+        </label>
         <button
           type="button"
           class="w-full py-2 text-sm font-medium rounded-lg bg-primary text-on-primary inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
-          :disabled="imageLoading"
-          @click="$emit('regenerate-image')"
+          :disabled="imageLoading || !regeneratePrompt.trim()"
+          @click="submitRegenerate"
         >
           <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
           {{ imageLoading ? '生成中…' : 'AI 重新生成' }}
@@ -67,7 +83,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps({
   selectedElement: { type: Object, required: true },
@@ -76,7 +92,7 @@ const props = defineProps({
   quotaTotal: { type: Number, default: null },
 })
 
-defineEmits(['close', 'image-fit', 'image-crop', 'regenerate-image'])
+const emit = defineEmits(['close', 'image-fit', 'image-crop', 'regenerate-image'])
 
 const fitModes = [
   { id: 'width', label: '适应宽' },
@@ -84,14 +100,31 @@ const fitModes = [
   { id: 'original', label: '原图' },
 ]
 
+const regeneratePrompt = ref('')
+const useReferenceImage = ref(true)
+
 const imageUrl = computed(() => {
   const c = props.selectedElement?.content
-  return typeof c === 'string' && c.startsWith('http') ? c : ''
+  if (typeof c !== 'string' || !c) return ''
+  if (c.startsWith('http') || c.startsWith('data:image')) return c
+  return ''
 })
 
-const promptText = computed(() => {
-  return props.selectedElement?.style?.imagePrompt || props.selectedElement?.meta?.prompt || ''
-})
+const hasReferenceImage = computed(() => Boolean(imageUrl.value))
+
+function defaultPromptForElement(el) {
+  if (!el) return ''
+  return el.style?.imagePrompt || el.meta?.prompt || ''
+}
+
+watch(
+  () => props.selectedElement?.id,
+  () => {
+    regeneratePrompt.value = defaultPromptForElement(props.selectedElement)
+    useReferenceImage.value = Boolean(imageUrl.value)
+  },
+  { immediate: true },
+)
 
 const activeFit = computed(() => {
   const el = props.selectedElement
@@ -100,4 +133,13 @@ const activeFit = computed(() => {
   if ((el.zIndex ?? 10) === 0) return 'fill'
   return 'width'
 })
+
+function submitRegenerate() {
+  const prompt = regeneratePrompt.value.trim()
+  if (!prompt) return
+  emit('regenerate-image', {
+    prompt,
+    useReferenceImage: useReferenceImage.value && hasReferenceImage.value,
+  })
+}
 </script>

@@ -4,7 +4,7 @@
 
     <button
       type="button"
-      class="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary shrink-0 whitespace-nowrap ml-2.5"
+      class="px-2.5 py-1.5 rounded-lg border border-outline-variant bg-white text-sm font-medium text-on-surface-variant hover:border-primary/40 hover:text-primary inline-flex items-center gap-1 shrink-0 whitespace-nowrap transition-colors"
       @click="$emit('back-to-review')"
     >
       <span class="material-symbols-outlined text-[14px]">arrow_back</span>

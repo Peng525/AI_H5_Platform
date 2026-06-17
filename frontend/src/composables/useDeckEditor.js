@@ -317,15 +317,14 @@ async function applyProjectPayload(p) {
   }
   current.value = p.slides?.[0] || null
   showDialoguePreview.value = !!current.value?.chat_script?.enabled
+  if (layoutMode === 'result') {
+    normalizeResultViewport()
+  }
   const vp = settings.value.viewportId || DEFAULT_WEB_VIEWPORT_ID
   const themeId = settings.value.themeId || 'zjy-minimal'
   const slideList = p.slides || []
-  for (let i = 0; i < slideList.length; i++) {
-    const s = slideList[i]
-    const compileNow = layoutMode !== 'result' || i === 0
-    if (compileNow && shouldCompileSlide(s, vp)) {
-      s.canvas_elements = compileSlideIfNeeded(s, vp, themeId)
-    }
+  for (const s of slideList) {
+    ensureSlideCompiled(s, vp, themeId)
   }
   loadElements(current.value?.canvas_elements)
   if (layoutMode !== 'result' && current.value && !elements.value.length) {
@@ -509,7 +508,7 @@ async function generateSlideAfter(afterSlideId, { prompt, templateHint, language
     toastError('版式编辑不支持 AI 生成')
     return null
   }
-  saveElements()
+  await flushCanvasSave()
   slideGenerating.value = true
   try {
     const slide = await api.generateAiSlide(apiProjectRef(), {
@@ -1034,20 +1033,31 @@ function onImageLayout(mode) {
   if (patch) updateElement(id, patch)
 }
 
-async function onRegenerateSelectedImage() {
+async function onRegenerateSelectedImage({ prompt, useReferenceImage } = {}) {
   const id = selectedId.value
   if (!id) return
   const el = elements.value.find((e) => e.id === id)
   if (!el || el.type !== 'image') return
-  const prompt =
+  const trimmed =
+    (prompt || '').trim() ||
     el.style?.imagePrompt ||
     el.meta?.prompt ||
-    'Professional presentation illustration, clean modern style'
+    ''
+  if (!trimmed) {
+    toastError('请输入画面描述')
+    return
+  }
+  const refUrl =
+    useReferenceImage && typeof el.content === 'string' && el.content.trim()
+      ? el.content.trim()
+      : undefined
   imageLoading.value = true
   try {
     const vp = viewport.value
     const result = await api.generateImage(apiProjectRef(), {
-      prompt,
+      prompt: trimmed,
+      use_reference_image: Boolean(refUrl),
+      reference_image_url: refUrl,
       fit_mode: el.fitIntent || 'width',
       viewport_preset_id: settings.value.viewportId,
       viewport_width: vp?.width,
@@ -1055,7 +1065,7 @@ async function onRegenerateSelectedImage() {
     })
     updateElement(id, {
       content: result.image_url,
-      style: { ...(el.style || {}), imagePrompt: prompt },
+      style: { ...(el.style || {}), imagePrompt: trimmed },
     })
     await refreshQuota()
     toastSuccess('图片已更新')

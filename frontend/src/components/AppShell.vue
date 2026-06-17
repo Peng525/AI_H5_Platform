@@ -188,7 +188,10 @@ function openLogout() {
 
 async function goPreview() {
   await flushCanvasSave()
-  router.push(`/preview/${props.projectId}`)
+  router.push({
+    path: `/preview/${props.projectId}`,
+    query: { returnTo: route.fullPath },
+  })
 }
 
 function onLogoutConfirm() {

@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api/client'
+import { openProjectInResult } from './useAiCreateDraft.js'
 
 export function usePptImport() {
   const router = useRouter()
@@ -27,7 +28,8 @@ export function usePptImport() {
       const fd = new FormData()
       fd.append('file', file)
       const project = await api.importProjectPptx(fd)
-      router.push(`/editor/${project.public_id}`)
+      const path = openProjectInResult(project.public_id)
+      if (path) router.push(path)
     } catch (err) {
       importError.value = err.message || '导入失败'
     } finally {

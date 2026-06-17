@@ -7,7 +7,8 @@
     :loading="loading"
     :error="error"
     mode="preview"
-    :editor-path="`/editor/${projectId}`"
+    :editor-path="editorPath"
+    :exit-path="exitPath"
   />
 </template>
 
@@ -20,6 +21,7 @@ import RevealDeckViewer from '../components/RevealDeckViewer.vue'
 import { DEFAULT_WEB_VIEWPORT_ID } from '../constants/editorPresets.js'
 import { compileSlideIfNeeded, shouldCompileSlide } from '../utils/compileStructuredSlide.js'
 import { shouldUseRevealPreview } from '../utils/revealAdapter.js'
+import { openProjectInResult } from '../composables/useAiCreateDraft.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -29,11 +31,24 @@ const error = ref('')
 const projectId = computed(() => String(route.params.publicId || ''))
 const useReveal = computed(() => shouldUseRevealPreview(route.query, project.value?.settings))
 
+const exitPath = computed(() => {
+  const raw = route.query.returnTo
+  const p = typeof raw === 'string' ? raw.trim() : ''
+  if (!p.startsWith('/') || p.startsWith('//')) return ''
+  return p
+})
+
+const editorPath = computed(() => {
+  const id = projectId.value
+  return id ? `/create/generate/result/${id}` : ''
+})
+
 function exitReveal() {
-  router.replace({ path: `/preview/${projectId.value}` })
+  router.replace({ path: `/preview/${projectId.value}`, query: route.query })
 }
 
 onMounted(async () => {
+  openProjectInResult(projectId.value)
   try {
     project.value = await api.getProject(projectId.value)
     const vp = project.value.settings?.viewportId || DEFAULT_WEB_VIEWPORT_ID

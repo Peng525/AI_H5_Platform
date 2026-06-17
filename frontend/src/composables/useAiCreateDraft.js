@@ -2,6 +2,8 @@ const STORAGE_KEY = 'ai_create_draft'
 const LAST_RESULT_KEY = 'ai_last_result_public_id'
 const GENERATE_JOB_KEY = 'ai_generate_job'
 const SHOULD_REVEAL_KEY = 'ai_should_reveal'
+const PENDING_REVEAL_KEY = 'ai_pending_reveal_public_id'
+const REVEALED_DECKS_KEY = 'ai_revealed_public_ids'
 const RETURN_TO_RESULT_KEY = 'ai_return_to_result'
 
 /** 结果页 pending 路由占位 publicId */
@@ -107,12 +109,9 @@ export function getReturnToResultPublicId() {
 }
 
 export function getReturnToResultPath() {
-  const publicId = getReturnToResultPublicId()
+  const publicId = getReturnToResultPublicId() || getLastGenerateResultPublicId()
   if (!publicId) return null
-  if (!canAccessGenerateResult(publicId)) {
-    clearReturnToResult()
-    return null
-  }
+  if (!canAccessGenerateResult(publicId)) return null
   return `/create/generate/result/${publicId}`
 }
 
@@ -145,14 +144,94 @@ export function clearGenerateJob() {
   sessionStorage.removeItem(GENERATE_JOB_KEY)
 }
 
-export function markShouldRevealDeck() {
+function normalizePublicId(publicId) {
+  const id = String(publicId || '').trim()
+  if (!id || id === PENDING_RESULT_PUBLIC_ID) return ''
+  return id
+}
+
+function loadRevealedDeckIds() {
   try {
-    sessionStorage.setItem(SHOULD_REVEAL_KEY, '1')
+    const raw = sessionStorage.getItem(REVEALED_DECKS_KEY)
+    if (!raw) return new Set()
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return new Set()
+    return new Set(parsed.map((id) => String(id)).filter(Boolean))
+  } catch {
+    return new Set()
+  }
+}
+
+function saveRevealedDeckIds(set) {
+  try {
+    sessionStorage.setItem(REVEALED_DECKS_KEY, JSON.stringify([...set]))
   } catch {
     /* ignore */
   }
 }
 
+export function isDeckRevealed(publicId) {
+  const id = normalizePublicId(publicId)
+  if (!id) return false
+  return loadRevealedDeckIds().has(id)
+}
+
+export function markDeckRevealed(publicId) {
+  const id = normalizePublicId(publicId)
+  if (!id) return
+  const set = loadRevealedDeckIds()
+  set.add(id)
+  saveRevealedDeckIds(set)
+  try {
+    const pending = sessionStorage.getItem(PENDING_REVEAL_KEY)
+    if (pending === id) {
+      sessionStorage.removeItem(PENDING_REVEAL_KEY)
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+export function markShouldRevealDeck(publicId) {
+  const id = normalizePublicId(publicId)
+  if (!id) return
+  try {
+    sessionStorage.setItem(PENDING_REVEAL_KEY, id)
+    sessionStorage.removeItem(SHOULD_REVEAL_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearPendingReveal(publicId) {
+  const id = normalizePublicId(publicId)
+  if (!id) return
+  try {
+    if (sessionStorage.getItem(PENDING_REVEAL_KEY) === id) {
+      sessionStorage.removeItem(PENDING_REVEAL_KEY)
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+/** 是否应对该项目播放首次 reveal；命中时清除 pending 标记 */
+export function shouldAutoRevealDeck(publicId) {
+  const id = normalizePublicId(publicId)
+  if (!id || isDeckRevealed(id)) return false
+  try {
+    const pending = sessionStorage.getItem(PENDING_REVEAL_KEY)
+    if (pending === id) {
+      sessionStorage.removeItem(PENDING_REVEAL_KEY)
+      return true
+    }
+  } catch {
+    /* ignore */
+  }
+  return false
+}
+
+/** 迁移旧版全局 ai_should_reveal 标志，避免存量会话误触发 */
 export function consumeShouldRevealDeck() {
   try {
     const v = sessionStorage.getItem(SHOULD_REVEAL_KEY)
@@ -169,6 +248,8 @@ export function canAccessGenerateResult(publicId) {
   if (id === PENDING_RESULT_PUBLIC_ID) {
     return !!loadGenerateJob()
   }
+  const returnId = getReturnToResultPublicId()
+  if (returnId && String(returnId) === id) return true
   const allowed = getLastGenerateResultPublicId()
   if (!allowed) return false
   return String(allowed) === id
@@ -182,6 +263,15 @@ export function grantGenerateResultAccess(publicId) {
   } catch {
     /* ignore */
   }
+}
+
+/** 从工作台/模板等打开已有项目：授予结果页访问并跳过 reveal */
+export function openProjectInResult(publicId) {
+  const id = String(publicId || '').trim()
+  if (!id || id === PENDING_RESULT_PUBLIC_ID) return null
+  grantGenerateResultAccess(id)
+  markDeckRevealed(id)
+  return `/create/generate/result/${id}`
 }
 
 export function applyProjectSettingsLocal(publicId, settings) {

@@ -1,8 +1,7 @@
 <template>
   <header class="h-14 border-b border-outline-variant/60 bg-white/80 backdrop-blur flex items-center justify-between px-4 sm:px-8 shrink-0 gap-3">
     <!-- entry: 左上导航 -->
-    <div v-if="variant === 'entry'" class="flex items-center gap-2 shrink-0 min-w-0">
-      <CreateHomeButton />
+    <CreatePageHeaderNav v-if="variant === 'entry'">
       <router-link
         to="/dashboard"
         class="px-2.5 py-1 rounded-lg text-sm transition-colors whitespace-nowrap"
@@ -10,8 +9,7 @@
       >
         我的工作台
       </router-link>
-      <BackToResultButton />
-    </div>
+    </CreatePageHeaderNav>
 
     <!-- step: 返回 -->
     <div v-else class="flex items-center gap-2 min-w-0 shrink-0">
@@ -44,16 +42,16 @@
 
     <div v-else-if="variant === 'step'" class="flex-1 hidden sm:block" />
 
-    <!-- 右上用户菜单（entry / step 共用） -->
-    <UserMenu v-if="variant === 'entry' || variant === 'step'" />
+    <!-- entry: 右上用户菜单 -->
+    <UserMenu v-if="variant === 'entry'" />
+    <UserMenu v-else-if="variant === 'step'" />
     <div v-else class="w-8 shrink-0" />
   </header>
 </template>
 
 <script setup>
 import { useRoute } from 'vue-router'
-import CreateHomeButton from './CreateHomeButton.vue'
-import BackToResultButton from './BackToResultButton.vue'
+import CreatePageHeaderNav from './CreatePageHeaderNav.vue'
 import UserMenu from './UserMenu.vue'
 
 defineProps({

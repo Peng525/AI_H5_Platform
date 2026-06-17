@@ -1,4 +1,5 @@
 """AI 全量演示生成。"""
+import hashlib
 import json
 import logging
 import time
@@ -10,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import GenerationLog, Project, Slide, User
 from app.schemas import AiDeckGenerateRequest, AiSlideGenerateRequest
 from app.services.deck_generator import new_public_id
+from app.services.llm.image_provider import generate_image
 from app.services.llm.provider import LlmError, chat_completion, extract_json
 from app.services.project_seed_service import reload_project, seed_project_slides
 from app.services.prompt_template_service import render_template
@@ -58,6 +60,16 @@ VIEWPORT_MAP = {
     "mobile": "mobile-375",
 }
 
+VIEWPORT_SIZES = {
+    "web-wide-1024": (1024, 401),
+    "web-1280": (1280, 720),
+    "web-1920": (1920, 1080),
+    "web-1024": (1024, 768),
+    "mobile-375": (375, 812),
+    "mobile-390": (390, 844),
+    "mobile-360": (360, 780),
+}
+
 TEXT_DENSITY_STYLE = {
     "简约": "简洁明了，每页要点极少",
     "精炼": "精炼专业，重点突出",
@@ -93,7 +105,7 @@ def _normalize_modules(raw: Any) -> list[dict]:
         mod = {
             "icon": str(m.get("icon") or "circle").strip()[:32],
             "title": str(m.get("title") or "").strip()[:120],
-            "body": str(m.get("body") or "").strip()[:800],
+            "body": str(m.get("body") or "").strip()[:120],
             "emphasis": str(m.get("emphasis") or "").strip()[:120],
             "stat": str(m.get("stat") or "").strip()[:32],
             "desc": str(m.get("desc") or "").strip()[:200],
@@ -101,7 +113,10 @@ def _normalize_modules(raw: Any) -> list[dict]:
             "author": str(m.get("author") or "").strip()[:120],
             "contact": str(m.get("contact") or "").strip()[:200],
             "role": str(m.get("role") or "").strip()[:32],
+            "image_prompt": str(m.get("image_prompt") or "").strip()[:120],
         }
+        if m.get("image_url"):
+            mod["image_url"] = str(m.get("image_url")).strip()[:4096]
         out.append({k: v for k, v in mod.items() if v})
     return out
 
@@ -126,6 +141,10 @@ def _extract_structured_slide(s: dict) -> dict:
         structured["author"] = str(s.get("author"))[:120]
     if s.get("contact"):
         structured["contact"] = str(s.get("contact"))[:200]
+    if s.get("image_prompt"):
+        structured["image_prompt"] = str(s.get("image_prompt"))[:120]
+    if s.get("image_url"):
+        structured["image_url"] = str(s.get("image_url"))[:4096]
     return structured
 
 
@@ -140,6 +159,15 @@ def _validate_slide_structure(slides: list[dict]) -> list[str]:
             s["structured"] = st
         modules = st.get("modules") or []
         min_m, max_m = TEMPLATE_MODULE_RULES.get(template, (0, 99))
+        if template == "grid_2x2":
+            while len(modules) < 4:
+                modules.append({
+                    "icon": "circle",
+                    "title": "模块",
+                    "body": "内容",
+                })
+            st["modules"] = modules[:4]
+            s["structured"] = st
         if template in ("grid_2x2", "cards_row", "split_lr", "steps", "stat_hero"):
             if len(modules) < min_m:
                 warnings.append(f"slide_{i + 1}:modules_underflow")
@@ -166,11 +194,108 @@ def _llm_slides_to_seed(slides: list[dict], bg: str) -> list[dict]:
                 "speakerNotes": str(s.get("speakerNotes", s.get("speaker_notes", "")))[:8000],
                 "animation": str(s.get("animation", "fade"))[:32],
                 "canvas_background": bg,
-                "canvas_elements": s.get("canvas_elements") if isinstance(s.get("canvas_elements"), list) else [],
+                "canvas_elements": [],
                 "structured": structured,
             }
         )
     return out
+
+
+def _picsum_fallback(prompt: str, width: int, height: int) -> str:
+    seed = hashlib.md5(prompt.encode("utf-8")).hexdigest()[:12]
+    return f"https://picsum.photos/seed/{seed}/{width}/{height}"
+
+
+def _collect_image_jobs(slides_seed: list[dict]) -> list[tuple[int, str, str]]:
+    jobs: list[tuple[int, str, str]] = []
+    for i, slide in enumerate(slides_seed):
+        st = slide.get("structured") if isinstance(slide.get("structured"), dict) else {}
+        template = st.get("template") or ""
+        if template == "cover":
+            prompt = str(st.get("image_prompt") or st.get("title") or "").strip()
+            if prompt:
+                jobs.append((i, "cover", prompt))
+        elif template == "split_lr":
+            modules = st.get("modules") or []
+            if len(modules) < 2:
+                continue
+            right = modules[1]
+            role = str(right.get("role") or "").strip()
+            if role == "chart_placeholder" and not right.get("image_prompt"):
+                continue
+            prompt = str(
+                right.get("image_prompt") or right.get("title") or st.get("title") or ""
+            ).strip()
+            if prompt:
+                jobs.append((i, "split_right", prompt))
+    return jobs
+
+
+async def _enrich_slide_images(
+    slides_seed: list[dict],
+    viewport_id: str,
+    tier: str,
+    channel: str | None,
+    page_count: int,
+) -> int:
+    vp_w, vp_h = VIEWPORT_SIZES.get(viewport_id, VIEWPORT_SIZES["web-wide-1024"])
+    cover_img_w = max(200, round(vp_w * 0.38))
+    cover_img_h = vp_h
+    split_img_w = max(200, round(vp_w * 0.48))
+    split_img_h = max(200, round(vp_h * 0.75))
+
+    jobs = _collect_image_jobs(slides_seed)
+    max_images = max(1, min(len(jobs), page_count // 2 + 1))
+    jobs = jobs[:max_images]
+
+    generated = 0
+    for slide_idx, slot, prompt in jobs:
+        st = slides_seed[slide_idx]["structured"]
+        try:
+            if slot == "cover":
+                url, _, _, _, _ = await generate_image(
+                    prompt,
+                    channel=channel,
+                    tier=tier,
+                    viewport_width=cover_img_w,
+                    viewport_height=cover_img_h,
+                    viewport_preset_id=viewport_id,
+                )
+                st["image_url"] = url
+                generated += 1
+            elif slot == "split_right":
+                url, _, _, _, _ = await generate_image(
+                    prompt,
+                    channel=channel,
+                    tier=tier,
+                    viewport_width=split_img_w,
+                    viewport_height=split_img_h,
+                    viewport_preset_id=viewport_id,
+                )
+                modules = st.setdefault("modules", [])
+                while len(modules) < 2:
+                    modules.append({})
+                modules[1]["image_url"] = url
+                if not modules[1].get("role"):
+                    modules[1]["role"] = "scene_image"
+                generated += 1
+        except Exception as exc:
+            logger.warning(
+                "deck_image_enrich failed slide=%s slot=%s err=%s",
+                slide_idx,
+                slot,
+                exc,
+            )
+            if slot == "cover":
+                st["image_url"] = _picsum_fallback(prompt, cover_img_w, cover_img_h)
+            elif slot == "split_right":
+                modules = st.setdefault("modules", [])
+                while len(modules) < 2:
+                    modules.append({})
+                modules[1]["image_url"] = _picsum_fallback(prompt, split_img_w, split_img_h)
+                if not modules[1].get("role"):
+                    modules[1]["role"] = "scene_image"
+    return generated
 
 
 def _build_topic(body: AiDeckGenerateRequest) -> str:
@@ -304,7 +429,18 @@ async def generate_deck_from_ai(
         }
         slides_seed = _llm_slides_to_seed(slides_raw, bg)
         struct_warnings = _validate_slide_structure(slides_seed)
+        images_generated = await _enrich_slide_images(
+            slides_seed,
+            viewport_id,
+            tier,
+            body.channel,
+            body.page_count,
+        )
+        if images_generated:
+            template_settings["generationMeta"]["images_generated"] = images_generated
         log_msg = f"AI 全量生成成功 · {len(slides_seed)} 页"
+        if images_generated:
+            log_msg += f" · 配图 {images_generated} 张"
         if struct_warnings:
             log_msg += f" · 结构提示: {', '.join(struct_warnings[:5])}"
 
@@ -371,7 +507,7 @@ TEMPLATE_HINT_INSTRUCTIONS = {
     "magic": "自动选择最合适的 template（cover/section/split_lr/grid_2x2/cards_row 等）",
     "text": "优先 section 或 cards_row，以文字内容为主",
     "split": "必须使用 split_lr template，左右分栏",
-    "image": "优先 split_lr，一侧为 chart_placeholder 或视觉区域",
+    "image": "优先 split_lr，一侧为 scene_image 场景配图",
     "grid": "必须使用 grid_2x2 template，四宫格卡片",
 }
 

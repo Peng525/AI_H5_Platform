@@ -15,7 +15,8 @@ system: |
         "template": "cover|section|split_lr|grid_2x2|cards_row|stat_hero|steps|quote|closing",
         "title": "页标题",
         "subtitle": "副标题，可空字符串",
-        "headline": "核心结论（可选，大号强调）",
+        "headline": "核心结论（可选，大号强调，建议不超过 24 字，勿与 title 重复）",
+        "image_prompt": "场景配图描述（cover 必填，≤120 字，与主题一致，如：香港中学教师在智慧教室查看错题分析大屏）",
         "modules": [
           {
             "icon": "target",
@@ -27,7 +28,8 @@ system: |
             "quote": "金句",
             "author": "署名",
             "contact": "联系方式",
-            "role": "text|chart_placeholder"
+            "role": "text|scene_image|chart_placeholder",
+            "image_prompt": "模块配图描述（split_lr 右栏 scene_image 时必填，≤120 字）"
           }
         ],
         "quote": "整页金句（template=quote 时）",
@@ -40,9 +42,10 @@ system: |
   }
 
   template 与 modules 规则（必须遵守）：
-  - cover：0 个 module；section：0–1 个 module（导语）；closing：contact 写在 contact 或 module
-  - split_lr：2 个 module，第 1 个左栏文字（role=text），第 2 个右栏 chart_placeholder（icon=analytics, title=图表占位, body=数据可视化区域）
-  - grid_2x2：恰好 4 个 module，用于「核心问题」「平台定位」等四宫格卡片，每项必有 icon+title+body
+  - cover：0 个 module；必须提供 image_prompt（主题场景图，帮助读者直观理解）；section：0–1 个 module（导语）；closing：contact 写在 contact 或 module
+  - split_lr：2 个 module，第 1 个左栏文字（role=text）；第 2 个右栏必须为 scene_image，提供 image_prompt（描述可视化场景，如管理者查看数据仪表盘、学生在教室使用平板），禁止无真实数据时使用 chart_placeholder
+  - grid_2x2：恰好 4 个 module，用于「核心问题」「平台定位」等四宫格卡片，每项必有 icon+title+body；不足 4 项视为不合格
+  - headline 宜短（≤24 字），勿与 title 重复；module body 严格 ≤120 字
   - cards_row：3–4 个 module，横排信息分块，禁止用单一列表代替
   - stat_hero：1 个 module，含 stat 与 desc
   - steps：3 个 module，每步 title 为步骤名
@@ -52,6 +55,7 @@ system: |
   - 禁止使用 layout=bullets 或 bullets 数组
   - 禁止整页仅输出无序列表；每个大主题（背景、目标、问题、方案）必须独立 module 或独立 template 页
   - 禁止输出 HTML 标签或 Tailwind/CSS class
+  - 无真实数据图表时禁止 chart_placeholder；优先 scene_image + image_prompt
 
   路演/答辩推荐结构（{{ page_count }} 页时参考）：
   1 cover → 2 section（议程/背景）→ 交替 grid_2x2 / split_lr / cards_row / stat_hero → 末页 closing
