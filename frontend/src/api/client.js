@@ -273,6 +273,7 @@ export const api = {
   sharePreview: (slug) => request(`/api/v1/分享/${slug}`),
 
   listResumeTemplates: () => request('/api/v1/resume/templates'),
+  listResumeVisualTemplates: () => request('/api/v1/resume/visual-templates'),
   uploadResumeFile: (formData) => uploadForm('/api/v1/resume/files', formData),
   createResume: (body) =>
     request('/api/v1/resume', { method: 'POST', body: JSON.stringify(body) }),

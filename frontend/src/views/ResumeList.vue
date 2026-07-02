@@ -7,7 +7,7 @@
         <span v-if="items.length" class="text-xs text-on-surface-variant">（{{ items.length }}/5）</span>
       </div>
       <router-link
-        to="/create/generate?tab=resume"
+        to="/create/generate?tab=resume-optimize"
         class="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-primary text-on-primary text-sm"
       >
         <span class="material-symbols-outlined text-[16px]">add</span>
@@ -19,7 +19,10 @@
     <p v-else-if="error" class="text-sm text-red-600">{{ error }}</p>
     <div v-else-if="!items.length" class="text-center py-16 border border-dashed rounded-xl">
       <p class="text-on-surface-variant text-sm">暂无简历，最多保存 5 份</p>
-      <router-link to="/create/generate?tab=resume" class="text-primary text-sm mt-2 inline-block">去生成 →</router-link>
+      <div class="flex flex-wrap justify-center gap-3 mt-3 text-sm">
+        <router-link to="/create/generate?tab=resume-edit" class="text-primary">从模板编辑 →</router-link>
+        <router-link to="/create/generate?tab=resume-optimize" class="text-primary">AI 优化生成 →</router-link>
+      </div>
     </div>
     <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       <ResumeThumbCard

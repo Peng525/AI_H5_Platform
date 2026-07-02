@@ -21,6 +21,11 @@ from app.services.quota import QuotaExceeded, check_and_consume
 from app.services.resume import file_storage
 from app.services.resume.file_storage import delete_file
 from app.services.resume.thumbnail_service import refresh_profile_thumbnail
+from app.services.resume.visual_compiler import (
+    TEMPLATE_CLASSIC_BLUE,
+    compile_visual_document,
+    normalize_structured,
+)
 
 RESUME_TEMPLATES = [
     {
@@ -42,6 +47,16 @@ RESUME_TEMPLATES = [
         "prompt_hint": "目标岗位：产品经理\n优化方向：STAR 法则描述需求落地与数据结果",
     },
 ]
+
+VISUAL_TEMPLATES = [
+    {
+        "id": TEMPLATE_CLASSIC_BLUE,
+        "title": "蓝白经典",
+        "description": "分区蓝条标题，含基本信息、求职意向与技能进度条",
+    },
+]
+
+ALLOWED_VISUAL_TEMPLATE_IDS = {t["id"] for t in VISUAL_TEMPLATES}
 
 FORBIDDEN_PATTERNS = [
     r"制作.*炸弹",
@@ -70,12 +85,7 @@ def _check_content(text: str) -> None:
 
 
 def _default_structured() -> dict[str, Any]:
-    return {
-        "basics": {"name": "", "email": "", "phone": "", "summary": ""},
-        "experience": [],
-        "education": [],
-        "skills": [],
-    }
+    return normalize_structured({})
 
 
 async def count_user_profiles(db: AsyncSession, user_id: int) -> int:
@@ -116,12 +126,20 @@ async def create_profile(
     title: str | None = None,
     prompt: str | None = None,
     file_id: int | None = None,
+    template_id: str | None = None,
 ) -> ResumeProfile:
     count = await count_user_profiles(db, user.id)
     if count >= settings.resume_max_per_user:
         raise ResumeLimitExceeded(f"Maximum {settings.resume_max_per_user} resumes per user")
     if prompt:
         _check_content(prompt)
+    if template_id and template_id not in ALLOWED_VISUAL_TEMPLATE_IDS:
+        raise ValueError(f"Unknown visual template: {template_id}")
+    is_blank_edit = (
+        bool(template_id)
+        and not (prompt and prompt.strip())
+        and not file_id
+    )
     profile = ResumeProfile(
         public_id=new_public_id(),
         user_id=user.id,
@@ -146,6 +164,13 @@ async def create_profile(
         fr = await db.get(ResumeFile, file_id)
         if not fr or fr.user_id != user.id:
             raise ResumeNotFoundError("File not found")
+    if is_blank_edit:
+        structured = _default_structured()
+        visual = compile_visual_document(structured, template_id=template_id)
+        ver = _write_version(profile, structured, visual, version_no=1)
+        db.add(ver)
+        profile.status = "draft"
+        refresh_profile_thumbnail(profile, structured, visual)
     await db.flush()
     return profile
 
@@ -250,16 +275,12 @@ async def run_generate(
     try:
         structured_in = await _parse_structured(source_text, tier)
         diagnosis = await _diagnose(structured_in, source_text, tier)
-        structured_out = await _generate_resume(structured_in, diagnosis, source_text, tier)
+        structured_out = normalize_structured(await _generate_resume(structured_in, diagnosis, source_text, tier))
         advice, next_steps = await _sidecar_from_llm(structured_out, diagnosis, tier)
 
+        prev_visual = _latest_visual(profile) if profile.versions else {}
         version_no = max((v.version_no for v in profile.versions), default=0) + 1
-        ver = ResumeVersion(
-            profile_id=profile.id,
-            version_no=version_no,
-            structured_json=json.dumps(structured_out, ensure_ascii=False),
-            source_file_id=file_id,
-        )
+        ver = _write_version(profile, structured_out, prev_visual, version_no=version_no, source_file_id=file_id)
         db.add(ver)
 
         db.add(
@@ -284,7 +305,8 @@ async def run_generate(
             profile.sidecar.next_steps_json = json.dumps(next_steps, ensure_ascii=False)
         profile.status = "ready"
         profile.updated_at = datetime.now(timezone.utc)
-        refresh_profile_thumbnail(profile, structured_out)
+        visual_doc = compile_visual_document(structured_out, prev_visual)
+        refresh_profile_thumbnail(profile, structured_out, visual_doc)
         await check_and_consume(db, user.id, tier)
         await _log_generation(db, user.id, True, f"generate {public_id} v{version_no}")
         await db.commit()
@@ -330,18 +352,15 @@ async def run_optimize(db: AsyncSession, user: User, public_id: str, prompt: str
                 structured_out = structured
         except Exception:
             structured_out = structured
+        structured_out = normalize_structured(structured_out)
 
         diagnosis = raw if isinstance(raw, str) else json.dumps(structured_out, ensure_ascii=False)
         advice, next_steps = await _sidecar_from_llm(structured_out, diagnosis, tier)
 
+        prev_visual = _latest_visual(profile)
         version_no = max((v.version_no for v in profile.versions), default=0) + 1
-        db.add(
-            ResumeVersion(
-                profile_id=profile.id,
-                version_no=version_no,
-                structured_json=json.dumps(structured_out, ensure_ascii=False),
-            )
-        )
+        ver = _write_version(profile, structured_out, prev_visual, version_no=version_no)
+        db.add(ver)
         db.add(
             ResumeMessage(
                 profile_id=profile.id,
@@ -354,7 +373,8 @@ async def run_optimize(db: AsyncSession, user: User, public_id: str, prompt: str
             profile.sidecar.advice_json = json.dumps(advice, ensure_ascii=False)
             profile.sidecar.next_steps_json = json.dumps(next_steps, ensure_ascii=False)
         profile.updated_at = datetime.now(timezone.utc)
-        refresh_profile_thumbnail(profile, structured_out)
+        visual_doc = compile_visual_document(structured_out, prev_visual)
+        refresh_profile_thumbnail(profile, structured_out, visual_doc)
         await check_and_consume(db, user.id, tier)
         await _log_generation(db, user.id, True, f"optimize {public_id} v{version_no}", model=model or "")
         await db.commit()
@@ -368,13 +388,59 @@ async def run_optimize(db: AsyncSession, user: User, public_id: str, prompt: str
         raise
 
 
+def _latest_visual(profile: ResumeProfile) -> dict[str, Any]:
+    if not profile.versions:
+        return compile_visual_document(_default_structured())
+    ver = max(profile.versions, key=lambda v: v.version_no)
+    structured = _latest_structured(profile)
+    if ver.visual_document_json:
+        try:
+            existing = json.loads(ver.visual_document_json)
+            if isinstance(existing, dict):
+                return compile_visual_document(structured, existing)
+        except json.JSONDecodeError:
+            pass
+    return compile_visual_document(structured)
+
+
+def _write_version(
+    profile: ResumeProfile,
+    structured: dict[str, Any],
+    visual: dict[str, Any],
+    *,
+    version_no: int | None = None,
+    source_file_id: int | None = None,
+) -> ResumeVersion:
+    structured_norm = normalize_structured(structured)
+    visual_doc = compile_visual_document(structured_norm, visual)
+    payload = json.dumps(structured_norm, ensure_ascii=False)
+    visual_payload = json.dumps(visual_doc, ensure_ascii=False)
+    if version_no is None:
+        version_no = max((v.version_no for v in profile.versions), default=0) + 1
+    ver = ResumeVersion(
+        profile_id=profile.id,
+        version_no=version_no,
+        structured_json=payload,
+        visual_document_json=visual_payload,
+        source_file_id=source_file_id,
+    )
+    db_ver = max(profile.versions, key=lambda v: v.version_no, default=None)
+    if db_ver and version_no == db_ver.version_no:
+        db_ver.structured_json = payload
+        db_ver.visual_document_json = visual_payload
+        if source_file_id is not None:
+            db_ver.source_file_id = source_file_id
+        return db_ver
+    return ver
+
+
 def _latest_structured(profile: ResumeProfile) -> dict[str, Any]:
     if not profile.versions:
         return _default_structured()
     ver = max(profile.versions, key=lambda v: v.version_no)
     try:
         data = json.loads(ver.structured_json or "{}")
-        return data if isinstance(data, dict) else _default_structured()
+        return normalize_structured(data if isinstance(data, dict) else {})
     except json.JSONDecodeError:
         return _default_structured()
 
@@ -399,6 +465,7 @@ def _profile_payload(profile: ResumeProfile) -> dict[str, Any]:
         "status": profile.status,
         "version_no": ver.version_no if ver else 0,
         "structured": _latest_structured(profile),
+        "visual_document": _latest_visual(profile),
         "sidecar": {"advice": advice, "next_steps": next_steps},
         "updated_at": profile.updated_at.isoformat() if profile.updated_at else None,
     }
@@ -411,24 +478,20 @@ async def save_profile(
     *,
     title: str | None = None,
     structured: dict[str, Any] | None = None,
+    visual_document: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     profile = await get_owned_profile(db, user_id, public_id)
     if title:
         profile.title = title.strip()[:255]
-    if structured is not None:
+    if structured is not None or visual_document is not None:
         ver = max(profile.versions, key=lambda v: v.version_no, default=None)
-        payload = json.dumps(structured, ensure_ascii=False)
+        cur_structured = normalize_structured(_latest_structured(profile) if structured is None else structured)
+        cur_visual = visual_document if visual_document is not None else _latest_visual(profile)
         if ver:
-            ver.structured_json = payload
+            _write_version(profile, cur_structured, cur_visual, version_no=ver.version_no)
         else:
-            db.add(
-                ResumeVersion(
-                    profile_id=profile.id,
-                    version_no=1,
-                    structured_json=payload,
-                )
-            )
-        refresh_profile_thumbnail(profile, structured)
+            db.add(_write_version(profile, cur_structured, cur_visual, version_no=1))
+        refresh_profile_thumbnail(profile, cur_structured, compile_visual_document(cur_structured, cur_visual))
     profile.updated_at = datetime.now(timezone.utc)
     await db.commit()
     profile = await get_owned_profile(db, user_id, public_id)

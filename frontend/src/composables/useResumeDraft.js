@@ -1,17 +1,21 @@
 const DRAFT_KEY = 'ai_resume_draft'
 
 const DEFAULT_DRAFT = {
+  tab: 'resume-optimize',
   prompt: '',
   fileId: null,
   fileName: '',
-  selectedTemplateId: '',
+  selectedPromptTemplateId: '',
+  selectedVisualTemplateId: '',
 }
 
 export function loadResumeDraft() {
   try {
     const raw = sessionStorage.getItem(DRAFT_KEY)
     if (!raw) return { ...DEFAULT_DRAFT }
-    return { ...DEFAULT_DRAFT, ...JSON.parse(raw) }
+    const parsed = JSON.parse(raw)
+    const tab = parsed.tab === 'resume' ? 'resume-optimize' : (parsed.tab || DEFAULT_DRAFT.tab)
+    return { ...DEFAULT_DRAFT, ...parsed, tab }
   } catch {
     return { ...DEFAULT_DRAFT }
   }
@@ -25,4 +29,10 @@ export function saveResumeDraft(partial) {
 
 export function clearResumeDraft() {
   sessionStorage.removeItem(DRAFT_KEY)
+}
+
+export function resolveResumeTab(tab) {
+  if (tab === 'resume-edit' || tab === 'resume-optimize') return tab
+  if (tab === 'resume') return 'resume-optimize'
+  return null
 }

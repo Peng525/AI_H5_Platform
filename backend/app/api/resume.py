@@ -16,10 +16,12 @@ from app.services.resume.export_service import export_docx_bytes, export_pdf_byt
 from app.services.resume.thumbnail_service import read_thumbnail
 from app.services.resume.resume_service import (
     RESUME_TEMPLATES,
+    VISUAL_TEMPLATES,
     ContentPolicyError,
     ResumeLimitExceeded,
     ResumeNotFoundError,
     _latest_structured,
+    _latest_visual,
     _profile_payload,
     create_profile,
     delete_profile,
@@ -38,6 +40,7 @@ class CreateResumeBody(BaseModel):
     title: str | None = None
     prompt: str | None = None
     file_id: int | None = None
+    template_id: str | None = None
 
 
 class GenerateBody(BaseModel):
@@ -52,6 +55,7 @@ class OptimizeBody(BaseModel):
 class UpdateResumeBody(BaseModel):
     title: str | None = None
     structured: dict | None = None
+    visual_document: dict | None = None
 
 
 def _quota_http(exc: QuotaExceeded):
@@ -61,6 +65,11 @@ def _quota_http(exc: QuotaExceeded):
 @router.get("/templates")
 async def list_templates():
     return {"items": RESUME_TEMPLATES}
+
+
+@router.get("/visual-templates")
+async def list_visual_templates():
+    return {"items": VISUAL_TEMPLATES}
 
 
 @router.post("/files")
@@ -96,6 +105,7 @@ async def create_resume(
             title=body.title,
             prompt=body.prompt,
             file_id=body.file_id,
+            template_id=body.template_id,
         )
         await db.commit()
         await db.refresh(profile)
@@ -104,6 +114,8 @@ async def create_resume(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ContentPolicyError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("")
@@ -231,6 +243,7 @@ async def update_resume(
             public_id,
             title=body.title,
             structured=body.structured,
+            visual_document=body.visual_document,
         )
     except ResumeNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -248,15 +261,16 @@ async def export_resume(
     except ResumeNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     structured = _latest_structured(profile)
+    visual = _latest_visual(profile)
     fmt = (format or "pdf").lower()
     if fmt == "docx":
-        data = export_docx_bytes(structured)
+        data = export_docx_bytes(structured, visual)
         return Response(
             data,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             headers={"Content-Disposition": f'attachment; filename="{profile.title}.docx"'},
         )
-    data = export_pdf_bytes(structured)
+    data = export_pdf_bytes(structured, visual)
     return Response(
         data,
         media_type="application/pdf",

@@ -183,6 +183,12 @@ async def _migrate_sqlite_columns(conn) -> None:
             sync_conn.execute(text("ALTER TABLE generation_logs ADD COLUMN model VARCHAR(64) DEFAULT ''"))
         if gen_names and "duration_ms" not in gen_names:
             sync_conn.execute(text("ALTER TABLE generation_logs ADD COLUMN duration_ms INTEGER"))
+
+        rv_cols = sync_conn.execute(text("PRAGMA table_info(resume_versions)")).fetchall()
+        rv_names = {row[1] for row in rv_cols}
+        if rv_names and "visual_document_json" not in rv_names:
+            sync_conn.execute(text("ALTER TABLE resume_versions ADD COLUMN visual_document_json TEXT"))
+
         orphan = sync_conn.execute(text("SELECT id FROM projects WHERE user_id IS NULL")).fetchall()
         if orphan:
             from app.config import settings

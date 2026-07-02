@@ -27,11 +27,10 @@ export function themePaletteColors(themeId = 'zjy-minimal') {
 export const FONT_SIZES = [10, 11, 12, 14, 16, 17, 18, 20, 22, 24, 26, 28, 32, 36, 40, 48, 52]
 
 export const LINE_HEIGHTS = [
-  { label: '1.0', value: 1 },
-  { label: '1.15', value: 1.15 },
+  { label: '间距', value: 1 },
+  { label: '1.25', value: 1.25 },
   { label: '1.5', value: 1.5 },
-  { label: '1.75', value: 1.75 },
-  { label: '2.0', value: 2 },
+  { label: '2', value: 2 },
 ]
 
 export const LETTER_SPACINGS = [

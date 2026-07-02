@@ -9,8 +9,7 @@ from typing import Any
 from PIL import Image, ImageDraw, ImageFont
 
 from app.config import settings
-from app.models import ResumeProfile
-from app.services.resume.file_storage import delete_file
+from app.services.resume.visual_compiler import normalize_structured
 
 WIDTH = 360
 HEIGHT = 480
@@ -71,66 +70,51 @@ def _draw_wrapped(
     return y
 
 
-def render_thumbnail_png(structured: dict[str, Any]) -> bytes:
+def render_thumbnail_png(structured: dict[str, Any], visual: dict[str, Any] | None = None) -> bytes:
+    data = normalize_structured(structured)
     img = Image.new("RGB", (WIDTH, HEIGHT), BG)
     draw = ImageDraw.Draw(img)
     draw.rectangle([0, 0, WIDTH, 4], fill=ACCENT)
 
-    basics = structured.get("basics") or {}
+    basics = data.get("basics") or {}
+    title_font = _load_font(16)
+    body_font = _load_font(11)
+    small_font = _load_font(10)
+
+    y = MARGIN
+    draw.text((MARGIN, y), "个人简历", font=title_font, fill=TITLE_COLOR)
+    y += 24
+    draw.rectangle([MARGIN, y, WIDTH - MARGIN, y + 16], fill=ACCENT)
+    draw.text((MARGIN + 6, y + 2), "基本信息", font=small_font, fill=(255, 255, 255))
+    y += 24
+
     name = str(basics.get("name") or "我的简历").strip()
-    title_font = _load_font(22)
-    body_font = _load_font(14)
-    small_font = _load_font(12)
-
-    y = MARGIN + 8
-    draw.text((MARGIN, y), name[:24], font=title_font, fill=TITLE_COLOR)
-    y += 32
-
+    draw.text((MARGIN, y), name[:20], font=body_font, fill=TITLE_COLOR)
+    y += 18
     contact = " · ".join(filter(None, [basics.get("phone"), basics.get("email")]))
     if contact:
-        draw.text((MARGIN, y), contact[:40], font=small_font, fill=BODY_COLOR)
+        draw.text((MARGIN, y), contact[:38], font=small_font, fill=BODY_COLOR)
+        y += 18
+
+    if y < HEIGHT - 60:
+        draw.rectangle([MARGIN, y, WIDTH - MARGIN, y + 16], fill=ACCENT)
+        draw.text((MARGIN + 6, y + 2), "工作经历", font=small_font, fill=(255, 255, 255))
         y += 22
-
-    draw.line([(MARGIN, y), (WIDTH - MARGIN, y)], fill=LINE_COLOR, width=1)
-    y += 16
-
-    summary = str(basics.get("summary") or "").strip()
-    if summary:
-        y = _draw_wrapped(draw, MARGIN, y, summary[:300], body_font, BODY_COLOR, 28, 18)
-
-    experience = structured.get("experience") or []
-    if experience and y < HEIGHT - 80:
-        y += 8
-        draw.text((MARGIN, y), "工作经历", font=body_font, fill=TITLE_COLOR)
-        y += 20
-        for item in experience[:3]:
-            if not isinstance(item, dict) or y > HEIGHT - MARGIN - 20:
+        for item in (data.get("experience") or [])[:2]:
+            if not isinstance(item, dict) or y > HEIGHT - MARGIN - 16:
                 break
-            header = " — ".join(filter(None, [item.get("company"), item.get("title")]))
+            header = " | ".join(filter(None, [item.get("period"), item.get("company")]))
             if header:
-                draw.text((MARGIN, y), header[:35], font=small_font, fill=TITLE_COLOR)
-                y += 18
-            for bullet in (item.get("bullets") or [])[:2]:
-                if y > HEIGHT - MARGIN - 10:
-                    break
-                y = _draw_wrapped(
-                    draw,
-                    MARGIN + 8,
-                    y,
-                    f"• {bullet}"[:80],
-                    small_font,
-                    BODY_COLOR,
-                    30,
-                    16,
-                )
+                draw.text((MARGIN, y), header[:36], font=small_font, fill=TITLE_COLOR)
+                y += 16
 
     buf = io.BytesIO()
     img.save(buf, format="PNG", optimize=True)
     return buf.getvalue()
 
 
-def save_thumbnail(user_id: int, public_id: str, structured: dict[str, Any]) -> str:
-    data = render_thumbnail_png(structured)
+def save_thumbnail(user_id: int, public_id: str, structured: dict[str, Any], visual: dict[str, Any] | None = None) -> str:
+    data = render_thumbnail_png(structured, visual)
     rel = f"{user_id}/thumbnails/{public_id}.png"
     path = _data_root() / rel
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -145,8 +129,12 @@ def read_thumbnail(rel_path: str) -> bytes:
     return path.read_bytes()
 
 
-def refresh_profile_thumbnail(profile: ResumeProfile, structured: dict[str, Any]) -> None:
+def refresh_profile_thumbnail(
+    profile: ResumeProfile,
+    structured: dict[str, Any],
+    visual: dict[str, Any] | None = None,
+) -> None:
     old = profile.thumbnail_path
-    profile.thumbnail_path = save_thumbnail(profile.user_id, profile.public_id, structured)
+    profile.thumbnail_path = save_thumbnail(profile.user_id, profile.public_id, structured, visual)
     if old and old != profile.thumbnail_path:
         delete_file(old)

@@ -3,8 +3,11 @@
     <button
       ref="btnRef"
       type="button"
-      class="flex flex-col items-center gap-0.5 p-1 rounded hover:bg-surface-container"
-      :class="open ? 'bg-surface-container-high ring-1 ring-primary/30' : ''"
+      class="rounded hover:bg-surface-container shrink-0"
+      :class="[
+        compact ? 'flex items-center gap-0.5 p-1' : 'flex flex-col items-center gap-0.5 p-1',
+        open ? 'bg-surface-container-high ring-1 ring-primary/30' : '',
+      ]"
       :title="label"
       @mousedown.stop
       @click.stop="toggleOpen"
@@ -95,6 +98,8 @@ const props = defineProps({
   modelValue: { type: String, default: '#000000' },
   label: { type: String, default: '字体颜色' },
   icon: { type: String, default: 'format_color_text' },
+  /** 工具栏单行模式：图标与色条横向排列 */
+  compact: { type: Boolean, default: false },
   /** 画布上下文变化时自动关闭（如切换视口 / 页面 / 选中元素） */
   contextKey: { type: String, default: '' },
 })

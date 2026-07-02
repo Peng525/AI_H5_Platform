@@ -213,6 +213,7 @@ class ResumeVersion(Base):
     profile_id: Mapped[int] = mapped_column(ForeignKey("resume_profiles.id"), index=True)
     version_no: Mapped[int] = mapped_column(Integer, default=1)
     structured_json: Mapped[str] = mapped_column(Text, default="{}")
+    visual_document_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_file_id: Mapped[int | None] = mapped_column(ForeignKey("resume_files.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

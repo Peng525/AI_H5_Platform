@@ -8,6 +8,7 @@
           @blur="saveTitle"
         />
       </CreatePageHeaderNav>
+      <span class="text-xs text-on-surface-variant hidden sm:inline">{{ templateLabel }}</span>
       <button type="button" class="text-sm px-3 py-1.5 rounded-lg border border-outline-variant" @click="saveResume">
         保存
       </button>
@@ -25,25 +26,46 @@
 
     <p v-if="error" class="shrink-0 px-4 py-2 bg-red-50 text-red-700 text-sm">{{ error }}</p>
 
-    <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[320px_1fr_280px]">
-      <ResumeChatPanel :messages="messages" :generating="generating" @submit="onOptimize" />
-      <ResumePreviewPanel :structured="structured" />
-      <ResumeAdviceSidebar :advice="advice" :next-steps="nextSteps" :generating="generating" />
+    <div class="flex-1 min-h-0 grid grid-cols-1" :class="workspaceGridClass">
+      <ResumeChatAside
+        :messages="messages"
+        :generating="generating"
+        :collapsed="chatCollapsed"
+        @update:collapsed="onChatCollapsed"
+        @submit="onOptimize"
+      />
+      <ResumeEditorPanel
+        ref="editorRef"
+        :structured="structured"
+        :visual-document="visualDocument"
+        :public-id="publicId"
+        @update:structured="structured = $event"
+        @update:visual-document="visualDocument = $event"
+      />
+      <ResumeAdviceSidebar
+        v-if="mode === 'optimize'"
+        :advice="advice"
+        :next-steps="nextSteps"
+        :generating="generating"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import CreatePageHeaderNav from '../../components/create/CreatePageHeaderNav.vue'
 import UserMenu from '../../components/create/UserMenu.vue'
 import ResumeAdviceSidebar from '../../components/resume/ResumeAdviceSidebar.vue'
-import ResumeChatPanel from '../../components/resume/ResumeChatPanel.vue'
-import ResumePreviewPanel from '../../components/resume/ResumePreviewPanel.vue'
+import ResumeChatAside from '../../components/resume/ResumeChatAside.vue'
+import ResumeEditorPanel from '../../components/resume/ResumeEditorPanel.vue'
 import { api } from '../../api/client.js'
+import { defaultStructured, defaultVisualDocument } from '../../utils/resumeBind.js'
 import { isQuotaExceeded } from '../../composables/useResumeErrors.js'
 import { useToast } from '../../composables/useToast.js'
+
+const CHAT_COLLAPSED_KEY = 'resume_chat_collapsed'
 
 const route = useRoute()
 const router = useRouter()
@@ -51,20 +73,47 @@ const toast = useToast()
 
 const publicId = ref(route.params.publicId)
 const title = ref('我的简历')
-const structured = ref({})
+const structured = ref(defaultStructured())
+const visualDocument = ref(defaultVisualDocument())
 const messages = ref([])
 const advice = ref({})
 const nextSteps = ref([])
 const generating = ref(false)
 const error = ref('')
 const exportOpen = ref(false)
+const editorRef = ref(null)
+const chatCollapsed = ref(false)
+
+const mode = computed(() => (route.query.mode === 'edit' ? 'edit' : 'optimize'))
+
+const templateLabel = computed(() => visualDocument.value?.template_id || 'classic-blue')
+
+const workspaceGridClass = computed(() => {
+  if (mode.value === 'optimize') {
+    return 'lg:grid-cols-[320px_1fr_280px]'
+  }
+  if (chatCollapsed.value) {
+    return 'lg:grid-cols-[3rem_1fr]'
+  }
+  return 'lg:grid-cols-[320px_1fr]'
+})
+
+function onChatCollapsed(val) {
+  chatCollapsed.value = val
+  try {
+    sessionStorage.setItem(CHAT_COLLAPSED_KEY, val ? '1' : '0')
+  } catch {
+    /* ignore */
+  }
+}
 
 async function load() {
   error.value = ''
   try {
     const data = await api.getResume(publicId.value)
     title.value = data.title || '我的简历'
-    structured.value = data.structured || {}
+    structured.value = { ...defaultStructured(), ...(data.structured || {}) }
+    visualDocument.value = { ...defaultVisualDocument(), ...(data.visual_document || {}) }
     advice.value = data.sidecar?.advice || {}
     nextSteps.value = data.sidecar?.next_steps || []
     const msgRes = await api.getResumeMessages(publicId.value)
@@ -84,7 +133,11 @@ async function saveTitle() {
 
 async function saveResume() {
   try {
-    await api.updateResume(publicId.value, { title: title.value, structured: structured.value })
+    await api.updateResume(publicId.value, {
+      title: title.value,
+      structured: structured.value,
+      visual_document: visualDocument.value,
+    })
     toast.show('已保存', { type: 'success' })
   } catch (e) {
     toast.show(e.message || '保存失败', { type: 'error' })
@@ -97,7 +150,8 @@ async function onOptimize(prompt) {
   messages.value = [...messages.value, { role: 'user', content: prompt }]
   try {
     const data = await api.optimizeResume(publicId.value, { prompt })
-    structured.value = data.structured || {}
+    structured.value = { ...defaultStructured(), ...(data.structured || {}) }
+    visualDocument.value = { ...defaultVisualDocument(), ...(data.visual_document || {}) }
     advice.value = data.sidecar?.advice || {}
     nextSteps.value = data.sidecar?.next_steps || []
     const msgRes = await api.getResumeMessages(publicId.value)
@@ -123,5 +177,12 @@ async function doExport(format) {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  try {
+    chatCollapsed.value = sessionStorage.getItem(CHAT_COLLAPSED_KEY) === '1'
+  } catch {
+    /* ignore */
+  }
+  load()
+})
 </script>

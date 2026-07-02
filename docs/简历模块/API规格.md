@@ -9,6 +9,11 @@ Auth: `Authorization: Bearer <jwt>`（除 templates 可匿名）
 
 Response: `{ "items": [{ "id", "title", "description", "prompt_hint" }] }`
 
+### GET `/visual-templates`
+
+Visual layout templates for resume-edit tab.  
+Response: `{ "items": [{ "id", "title", "description" }] }`
+
 ### POST `/files`
 
 Multipart: `file`  
@@ -17,7 +22,13 @@ Errors: 413 file too large
 
 ### POST `/`
 
-Create profile. Body: `{ "title?", "prompt?", "file_id?" }`  
+Create profile. Body: `{ "title?", "prompt?", "file_id?", "template_id?" }`  
+
+| 场景 | 行为 |
+|------|------|
+| 仅 `template_id`（RS3 编辑 Tab） | 创建空白版本 + compile visual；**不扣配额** |
+| `prompt` / `file_id` | 与 V1 相同；前端随后调 `generate` |
+
 Response: `{ "public_id", "title", ... }`  
 Errors: 409 max 5 resumes
 
@@ -36,7 +47,8 @@ Quota: **1 on success**
 
 ### GET `/{public_id}`
 
-Detail + current version + sidecar summary.
+Detail + current version + sidecar summary.  
+Response includes `structured` and `visual_document` (`template_id`, `photo_file_id`, `styles`).
 
 ### GET `/{public_id}/messages`
 
@@ -44,11 +56,11 @@ Chat history: `{ "items": [{ "id", "role", "content", "message_type", "created_a
 
 ### PUT `/{public_id}`
 
-Body: `{ "title?", "structured?" }` — save manual edits.
+Body: `{ "title?", "structured?", "visual_document?" }` — save manual edits (no quota).
 
 ### GET `/{public_id}/export?format=pdf|docx`
 
-File download.
+Template-aware file download (classic-blue layout).
 
 ### GET `/`
 

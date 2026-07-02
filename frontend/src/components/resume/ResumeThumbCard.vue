@@ -1,7 +1,7 @@
 <template>
   <div class="relative group bg-white rounded-xl border shadow-card overflow-hidden hover:border-primary/40 transition">
     <router-link
-      :to="`/create/generate/resume/${item.public_id}`"
+      :to="`/create/generate/resume/${item.public_id}?mode=optimize`"
       class="block"
     >
       <div class="aspect-[3/4] bg-surface-container-low flex items-center justify-center overflow-hidden">
