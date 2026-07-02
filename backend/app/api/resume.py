@@ -1,8 +1,6 @@
 """Resume module API — English paths only."""
 from __future__ import annotations
 
-import json
-
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
@@ -11,10 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.deps.auth import get_current_user
-from app.models import ResumeProfile, ResumeVersion, User
+from app.models import ResumeProfile, User
 from app.services.quota import QuotaExceeded
 from app.services.resume import file_storage
 from app.services.resume.export_service import export_docx_bytes, export_pdf_bytes
+from app.services.resume.thumbnail_service import read_thumbnail
 from app.services.resume.resume_service import (
     RESUME_TEMPLATES,
     ContentPolicyError,
@@ -23,10 +22,12 @@ from app.services.resume.resume_service import (
     _latest_structured,
     _profile_payload,
     create_profile,
+    delete_profile,
     get_owned_profile,
     list_item_payload,
     run_generate,
     run_optimize,
+    save_profile,
     save_uploaded_file,
 )
 
@@ -197,6 +198,25 @@ async def optimize_resume(
         raise HTTPException(status_code=502, detail=f"Optimize failed: {exc}") from exc
 
 
+@router.get("/{public_id}/thumbnail")
+async def get_resume_thumbnail(
+    public_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        profile = await get_owned_profile(db, user.id, public_id)
+    except ResumeNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if not profile.thumbnail_path:
+        raise HTTPException(status_code=404, detail="Thumbnail not found")
+    try:
+        data = read_thumbnail(profile.thumbnail_path)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Thumbnail not found") from exc
+    return Response(data, media_type="image/png")
+
+
 @router.put("/{public_id}")
 async def update_resume(
     public_id: str,
@@ -205,26 +225,15 @@ async def update_resume(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        profile = await get_owned_profile(db, user.id, public_id)
+        return await save_profile(
+            db,
+            user.id,
+            public_id,
+            title=body.title,
+            structured=body.structured,
+        )
     except ResumeNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    if body.title:
-        profile.title = body.title.strip()[:255]
-    if body.structured is not None:
-        ver = max(profile.versions, key=lambda v: v.version_no, default=None)
-        if ver:
-            ver.structured_json = json.dumps(body.structured, ensure_ascii=False)
-        else:
-            db.add(
-                ResumeVersion(
-                    profile_id=profile.id,
-                    version_no=1,
-                    structured_json=json.dumps(body.structured, ensure_ascii=False),
-                )
-            )
-    await db.commit()
-    profile = await get_owned_profile(db, user.id, public_id)
-    return _profile_payload(profile)
 
 
 @router.get("/{public_id}/export")
@@ -262,9 +271,8 @@ async def delete_resume(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        profile = await get_owned_profile(db, user.id, public_id)
+        await delete_profile(db, user.id, public_id)
+        await db.commit()
     except ResumeNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    await db.delete(profile)
-    await db.commit()
     return {"ok": True}

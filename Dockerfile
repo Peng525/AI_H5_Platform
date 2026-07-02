@@ -27,7 +27,7 @@ ENV TZ=Asia/Shanghai \
     PIP_RETRIES=8
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc libffi-dev \
+    && apt-get install -y --no-install-recommends gcc libffi-dev fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.txt ./backend/requirements.txt

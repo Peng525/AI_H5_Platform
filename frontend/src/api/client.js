@@ -25,10 +25,22 @@ async function parseResponseBody(res) {
     return JSON.parse(text)
   } catch {
     if (!res.ok) {
-      throw new Error(text.slice(0, 300) || `请求失败 (${res.status})`)
+      const err = new Error(text.slice(0, 300) || `请求失败 (${res.status})`)
+      err.status = res.status
+      throw err
     }
     return {}
   }
+}
+
+function buildApiError(res, data) {
+  let detail = data.detail ?? data.message
+  if (Array.isArray(detail)) {
+    detail = detail.map((d) => d.msg || JSON.stringify(d)).join('；')
+  }
+  const err = new Error(detail || `请求失败 (${res.status})`)
+  err.status = res.status
+  return err
 }
 
 async function request(path, options = {}) {
@@ -47,11 +59,7 @@ async function request(path, options = {}) {
     throw new Error('登录已过期，请重新登录')
   }
   if (!res.ok) {
-    let detail = data.detail ?? data.message
-    if (Array.isArray(detail)) {
-      detail = detail.map((d) => d.msg || JSON.stringify(d)).join('；')
-    }
-    throw new Error(detail || `请求失败 (${res.status})`)
+    throw buildApiError(res, data)
   }
   return data
 }
@@ -69,11 +77,7 @@ async function uploadForm(path, formData) {
     throw new Error('登录已过期，请重新登录')
   }
   if (!res.ok) {
-    let detail = data.detail ?? data.message
-    if (Array.isArray(detail)) {
-      detail = detail.map((d) => d.msg || JSON.stringify(d)).join('；')
-    }
-    throw new Error(detail || `请求失败 (${res.status})`)
+    throw buildApiError(res, data)
   }
   return data
 }
@@ -299,8 +303,8 @@ export const api = {
       { headers: { ...authHeaders() } },
     )
     if (!res.ok) {
-      const data = await parseResponseBody(res)
-      throw new Error(data.detail || `导出失败 (${res.status})`)
+      const data = await parseResponseBody(res).catch(() => ({}))
+      throw buildApiError(res, data)
     }
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
@@ -309,5 +313,21 @@ export const api = {
     a.download = `resume.${format === 'docx' ? 'docx' : 'pdf'}`
     a.click()
     URL.revokeObjectURL(url)
+  },
+  fetchResumeThumbnail: async (publicId) => {
+    const { authHeaders } = useAuth()
+    const res = await fetch(
+      `/api/v1/resume/${encodeURIComponent(publicId)}/thumbnail`,
+      { headers: { ...authHeaders() } },
+    )
+    if (res.status === 401) {
+      redirectToLogin()
+      throw new Error('登录已过期，请重新登录')
+    }
+    if (!res.ok) {
+      throw new Error(`缩略图加载失败 (${res.status})`)
+    }
+    const blob = await res.blob()
+    return URL.createObjectURL(blob)
   },
 }

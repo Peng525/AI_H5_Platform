@@ -19,6 +19,8 @@ from app.services.ocr.paddle_provider import extract_text_from_file
 from app.services.prompt_template_service import render_template
 from app.services.quota import QuotaExceeded, check_and_consume
 from app.services.resume import file_storage
+from app.services.resume.file_storage import delete_file
+from app.services.resume.thumbnail_service import refresh_profile_thumbnail
 
 RESUME_TEMPLATES = [
     {
@@ -282,6 +284,7 @@ async def run_generate(
             profile.sidecar.next_steps_json = json.dumps(next_steps, ensure_ascii=False)
         profile.status = "ready"
         profile.updated_at = datetime.now(timezone.utc)
+        refresh_profile_thumbnail(profile, structured_out)
         await check_and_consume(db, user.id, tier)
         await _log_generation(db, user.id, True, f"generate {public_id} v{version_no}")
         await db.commit()
@@ -351,6 +354,7 @@ async def run_optimize(db: AsyncSession, user: User, public_id: str, prompt: str
             profile.sidecar.advice_json = json.dumps(advice, ensure_ascii=False)
             profile.sidecar.next_steps_json = json.dumps(next_steps, ensure_ascii=False)
         profile.updated_at = datetime.now(timezone.utc)
+        refresh_profile_thumbnail(profile, structured_out)
         await check_and_consume(db, user.id, tier)
         await _log_generation(db, user.id, True, f"optimize {public_id} v{version_no}", model=model or "")
         await db.commit()
@@ -400,6 +404,37 @@ def _profile_payload(profile: ResumeProfile) -> dict[str, Any]:
     }
 
 
+async def save_profile(
+    db: AsyncSession,
+    user_id: int,
+    public_id: str,
+    *,
+    title: str | None = None,
+    structured: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    profile = await get_owned_profile(db, user_id, public_id)
+    if title:
+        profile.title = title.strip()[:255]
+    if structured is not None:
+        ver = max(profile.versions, key=lambda v: v.version_no, default=None)
+        payload = json.dumps(structured, ensure_ascii=False)
+        if ver:
+            ver.structured_json = payload
+        else:
+            db.add(
+                ResumeVersion(
+                    profile_id=profile.id,
+                    version_no=1,
+                    structured_json=payload,
+                )
+            )
+        refresh_profile_thumbnail(profile, structured)
+    profile.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    profile = await get_owned_profile(db, user_id, public_id)
+    return _profile_payload(profile)
+
+
 def list_item_payload(profile: ResumeProfile) -> dict[str, Any]:
     thumb = f"/api/v1/resume/{profile.public_id}/thumbnail" if profile.thumbnail_path else ""
     return {
@@ -409,3 +444,11 @@ def list_item_payload(profile: ResumeProfile) -> dict[str, Any]:
         "status": profile.status,
         "updated_at": profile.updated_at.isoformat() if profile.updated_at else None,
     }
+
+
+async def delete_profile(db: AsyncSession, user_id: int, public_id: str) -> None:
+    profile = await get_owned_profile(db, user_id, public_id)
+    if profile.thumbnail_path:
+        delete_file(profile.thumbnail_path)
+    await db.delete(profile)
+    await db.flush()

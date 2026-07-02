@@ -177,7 +177,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AiCreateLayout from '../../components/create/AiCreateLayout.vue'
 import AspectRatioSelect from '../../components/create/AspectRatioSelect.vue'
 import GenerateTopicInput from '../../components/create/GenerateTopicInput.vue'
@@ -187,7 +187,8 @@ import ResumeFileUpload from '../../components/resume/ResumeFileUpload.vue'
 import ResumeTemplatePicker from '../../components/resume/ResumeTemplatePicker.vue'
 import { api } from '../../api/client.js'
 import { loadDraft, saveDraft } from '../../composables/useAiCreateDraft.js'
-import { loadResumeDraft, saveResumeDraft } from '../../composables/useResumeDraft.js'
+import { loadResumeDraft, saveResumeDraft, clearResumeDraft } from '../../composables/useResumeDraft.js'
+import { isQuotaExceeded, isResumeLimit, isContentPolicy } from '../../composables/useResumeErrors.js'
 import { useDeckPromptTemplates } from '../../composables/useDeckPromptTemplates.js'
 import { useImagePromptTemplates } from '../../composables/useImagePromptTemplates.js'
 import { formatDeckPromptTemplate } from '../../constants/deckPromptTemplates.js'
@@ -202,6 +203,7 @@ import {
 } from '../../constants/imageGenerateOptions.js'
 
 const router = useRouter()
+const route = useRoute()
 const type = ref('deck')
 const pageCount = ref(10)
 const background = ref('')
@@ -271,7 +273,7 @@ function onAspectRatioChange(ratio) {
 
 onMounted(() => {
   const draft = loadDraft()
-  type.value = 'deck'
+  type.value = route.query.tab === 'resume' ? 'resume' : 'deck'
   pageCount.value = draft.pageCount || 10
   background.value = draft.background ?? ''
   viewportMode.value = draft.viewportMode || 'auto'
@@ -363,6 +365,7 @@ async function goResumeGenerate() {
   if (!canResumeGenerate.value || resumeGenerating.value) return
   resumeGenerating.value = true
   resumeUploadError.value = ''
+  let createdPublicId = null
   try {
     let fileId = resumeFileId.value
     if (pendingResumeFile.value) {
@@ -379,16 +382,35 @@ async function goResumeGenerate() {
       prompt: resumePrompt.value.trim() || undefined,
       file_id: fileId || undefined,
     })
+    createdPublicId = created.public_id
     await api.generateResume(created.public_id, {
       prompt: resumePrompt.value.trim() || undefined,
       file_id: fileId || undefined,
     })
+    clearResumeDraft()
     router.push(`/create/generate/resume/${created.public_id}`)
   } catch (e) {
-    resumeUploadError.value = e.message || '生成失败'
-    if (String(e.message).includes('402') || String(e.message).includes('配额')) {
-      router.push('/upgrade')
+    if (createdPublicId) {
+      try {
+        await api.deleteResume(createdPublicId)
+      } catch {
+        /* ignore cleanup failure */
+      }
     }
+    if (isQuotaExceeded(e)) {
+      resumeUploadError.value = e.message || '配额已用完'
+      router.push('/upgrade')
+      return
+    }
+    if (isResumeLimit(e)) {
+      resumeUploadError.value = e.message || '最多保存 5 份简历，请先在「个人简历」中删除旧简历'
+      return
+    }
+    if (isContentPolicy(e)) {
+      resumeUploadError.value = e.message || '内容不符合规范'
+      return
+    }
+    resumeUploadError.value = e.message || '生成失败'
   } finally {
     resumeGenerating.value = false
     resumeUploading.value = false

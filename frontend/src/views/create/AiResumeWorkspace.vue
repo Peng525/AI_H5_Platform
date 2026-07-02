@@ -42,6 +42,7 @@ import ResumeAdviceSidebar from '../../components/resume/ResumeAdviceSidebar.vue
 import ResumeChatPanel from '../../components/resume/ResumeChatPanel.vue'
 import ResumePreviewPanel from '../../components/resume/ResumePreviewPanel.vue'
 import { api } from '../../api/client.js'
+import { isQuotaExceeded } from '../../composables/useResumeErrors.js'
 import { useToast } from '../../composables/useToast.js'
 
 const route = useRoute()
@@ -104,7 +105,7 @@ async function onOptimize(prompt) {
     toast.show('优化完成', { type: 'success' })
   } catch (e) {
     error.value = e.message || '优化失败'
-    if (String(e.message).includes('402') || String(e.message).includes('配额')) {
+    if (isQuotaExceeded(e)) {
       router.push('/upgrade')
     }
   } finally {

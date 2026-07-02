@@ -54,6 +54,11 @@ File download.
 
 List current user's resumes: `{ "items": [{ "public_id", "title", "thumbnail_url", "updated_at" }] }`
 
+### GET `/{public_id}/thumbnail`
+
+Returns PNG preview image (`image/png`). Requires auth; 404 if profile missing, expired, or thumbnail not generated yet.  
+`thumbnail_url` in list items points to this path when `thumbnail_path` exists on the profile.
+
 ### DELETE `/{public_id}`
 
 Delete resume and files.
