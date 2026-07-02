@@ -103,5 +103,13 @@ class Settings(BaseSettings):
     # NovAI 控制台与 API 可能不同域（如 once-cf.novai.su 钱包 + us.novaiapi.com 调用）
     relay_novai_dashboard_url: str = ""
 
+    # Resume module (English API /api/v1/resume/*)
+    resume_max_per_user: int = 5
+    resume_max_file_mb: int = 5
+    resume_retention_days: int = 30
+    resume_data_dir: str = "./data/resume"
+    resume_paddleocr_enabled: bool = False
+    resume_paddleocr_lang: str = "ch"
+
 
 settings = Settings()

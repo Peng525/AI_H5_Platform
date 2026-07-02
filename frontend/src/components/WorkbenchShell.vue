@@ -61,6 +61,16 @@
             探索模板
           </button>
         </template>
+        <template v-else-if="isResumes">
+          <button
+            type="button"
+            class="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm bg-primary text-on-primary font-medium"
+            @click="goResumes"
+          >
+            <span class="material-symbols-outlined text-[20px]">description</span>
+            全部简历
+          </button>
+        </template>
         <router-link
           v-if="isAdmin"
           to="/admin"
@@ -151,13 +161,15 @@ const mobileNavOpen = ref(false)
 const logoutOpen = ref(false)
 const displayName = computed(() => user.value?.username || user.value?.email || '用户')
 const showUpgradeLink = computed(() => user.value?.tier !== 'pro')
-const isDashboard = computed(() => route.path.startsWith('/dashboard'))
+const isDashboard = computed(() => route.path.startsWith('/dashboard') && !route.path.startsWith('/dashboard/resumes'))
 const isTemplates = computed(() => route.path.startsWith('/templates'))
+const isResumes = computed(() => route.path.startsWith('/dashboard/resumes'))
 
 const iconNav = [
   { label: '主页', to: '/create/generate', match: '/create/generate', icon: 'home' },
   { label: '工作台', to: '/dashboard', match: '/dashboard', icon: 'dashboard' },
   { label: '模板库', to: '/templates', match: '/templates', icon: 'dashboard_customize' },
+  { label: '个人简历', to: '/dashboard/resumes', match: '/dashboard/resumes', icon: 'description' },
 ]
 
 function isActive(match) {
@@ -172,6 +184,11 @@ function goDashboard() {
 function goTemplates() {
   mobileNavOpen.value = false
   if (!isTemplates.value) router.push('/templates')
+}
+
+function goResumes() {
+  mobileNavOpen.value = false
+  if (!isResumes.value) router.push('/dashboard/resumes')
 }
 
 function openMobileLogout() {

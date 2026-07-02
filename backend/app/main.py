@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import admin, auth, bgm, commerce, deck_prompt_templates, image_prompt_templates, layout_blocks, projects, settings, standalone_image, templates_catalog
+from app.api import admin, auth, bgm, commerce, deck_prompt_templates, image_prompt_templates, layout_blocks, projects, resume, settings, standalone_image, templates_catalog
 from app.services.bgm_service import resolve_bgm_dir
 from app.config import settings as app_settings
 from app.database import init_db
@@ -63,6 +63,7 @@ app.include_router(layout_blocks.router)
 app.include_router(image_prompt_templates.router)
 app.include_router(deck_prompt_templates.router)
 app.include_router(standalone_image.router)
+app.include_router(resume.router)
 
 
 @app.get("/api/v1/健康", tags=["系统"])

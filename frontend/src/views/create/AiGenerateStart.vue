@@ -59,7 +59,7 @@
         </label>
       </div>
 
-      <div>
+      <div v-if="type !== 'resume'">
         <GenerateTopicInput
           ref="topicInputRef"
           v-model="topic"
@@ -69,7 +69,41 @@
         <p class="text-right text-xs text-on-surface-variant/60 mt-1.5 tabular-nums">{{ charCount }}</p>
       </div>
 
-      <div v-if="hasTopic" class="flex justify-center pt-2">
+      <template v-if="type === 'resume'">
+        <ResumeFileUpload
+          :uploading="resumeUploading"
+          :file-name="resumeFileName"
+          :error="resumeUploadError"
+          @select="onResumeFileSelect"
+        />
+        <GenerateTopicInput
+          ref="resumeTopicRef"
+          v-model="resumePrompt"
+          placeholder="目标岗位、JD、优化方向…"
+          @paste="onResumePaste"
+        />
+        <div v-if="canResumeGenerate" class="flex justify-center pt-2">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 px-8 py-2.5 rounded-full bg-primary text-on-primary font-medium shadow-card hover:bg-primary/90 transition disabled:opacity-50"
+            :disabled="resumeGenerating"
+            @click="goResumeGenerate"
+          >
+            <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+            {{ resumeGenerating ? '生成中…' : '生成' }}
+          </button>
+        </div>
+        <template v-if="showResumeTemplates">
+          <hr class="border-0 border-t border-outline-variant/50" />
+          <ResumeTemplatePicker
+            :templates="resumeTemplates"
+            :selected-id="selectedResumeTemplateId"
+            @select="applyResumeTemplate"
+          />
+        </template>
+      </template>
+
+      <div v-if="type !== 'resume' && hasTopic" class="flex justify-center pt-2">
         <button
           type="button"
           class="inline-flex items-center gap-2 px-8 py-2.5 rounded-full bg-primary text-on-primary font-medium shadow-card hover:bg-primary/90 transition"
@@ -149,7 +183,11 @@ import AspectRatioSelect from '../../components/create/AspectRatioSelect.vue'
 import GenerateTopicInput from '../../components/create/GenerateTopicInput.vue'
 import PromptTemplateCard from '../../components/create/PromptTemplateCard.vue'
 import PageLoading from '../../components/PageLoading.vue'
+import ResumeFileUpload from '../../components/resume/ResumeFileUpload.vue'
+import ResumeTemplatePicker from '../../components/resume/ResumeTemplatePicker.vue'
+import { api } from '../../api/client.js'
 import { loadDraft, saveDraft } from '../../composables/useAiCreateDraft.js'
+import { loadResumeDraft, saveResumeDraft } from '../../composables/useResumeDraft.js'
 import { useDeckPromptTemplates } from '../../composables/useDeckPromptTemplates.js'
 import { useImagePromptTemplates } from '../../composables/useImagePromptTemplates.js'
 import { formatDeckPromptTemplate } from '../../constants/deckPromptTemplates.js'
@@ -176,6 +214,16 @@ const topic = ref('')
 const topicInputRef = ref(null)
 const selectedImageTemplateId = ref('')
 const selectedDeckTemplateId = ref('')
+const resumePrompt = ref('')
+const resumeFileId = ref(null)
+const resumeFileName = ref('')
+const resumeUploading = ref(false)
+const resumeUploadError = ref('')
+const resumeGenerating = ref(false)
+const resumeTemplates = ref([])
+const selectedResumeTemplateId = ref('')
+const resumeTopicRef = ref(null)
+const pendingResumeFile = ref(null)
 
 const {
   templates: imageTemplates,
@@ -196,6 +244,7 @@ const {
 const typeTabs = [
   { id: 'deck', label: '演示文稿', icon: 'stacked_bar_chart' },
   { id: 'image', label: '生成图片', icon: 'image' },
+  { id: 'resume', label: '简历生成', icon: 'description' },
 ]
 
 const colorOptions = IMAGE_COLOR_OPTIONS
@@ -204,6 +253,9 @@ const imageStyleOptions = IMAGE_STYLE_OPTIONS
 
 const charCount = computed(() => topic.value.length)
 const hasTopic = computed(() => topic.value.trim().length > 0)
+const hasResumeInput = computed(() => resumePrompt.value.trim().length > 0 || !!resumeFileId.value || !!pendingResumeFile.value)
+const showResumeTemplates = computed(() => type.value === 'resume' && !hasResumeInput.value)
+const canResumeGenerate = computed(() => resumePrompt.value.trim() || resumeFileId.value || pendingResumeFile.value)
 
 function resizeTopicInput() {
   topicInputRef.value?.resize()
@@ -230,9 +282,44 @@ onMounted(() => {
   viewportMode.value = aspectRatioToViewportMode(imageAspectRatio.value)
   language.value = draft.language || '简体中文'
   topic.value = draft.topic || ''
+  const rd = loadResumeDraft()
+  resumePrompt.value = rd.prompt || ''
+  resumeFileId.value = rd.fileId
+  resumeFileName.value = rd.fileName || ''
   loadPromptTemplates()
   loadDeckPromptTemplates()
+  loadResumeTemplates()
   nextTick(resizeTopicInput)
+})
+
+async function loadResumeTemplates() {
+  try {
+    const data = await api.listResumeTemplates()
+    resumeTemplates.value = (data.items || []).map((t) => ({
+      id: t.id,
+      title: t.title,
+      description: t.description,
+      prompt_hint: t.prompt_hint,
+    }))
+  } catch {
+    resumeTemplates.value = []
+  }
+}
+
+watch(type, (val) => {
+  if (val === 'resume') {
+    saveResumeDraft({ prompt: resumePrompt.value, fileId: resumeFileId.value, fileName: resumeFileName.value })
+  }
+})
+
+watch([resumePrompt, resumeFileId], () => {
+  saveResumeDraft({
+    prompt: resumePrompt.value,
+    fileId: resumeFileId.value,
+    fileName: resumeFileName.value,
+    selectedTemplateId: selectedResumeTemplateId.value,
+  })
+  nextTick(() => resumeTopicRef.value?.resize())
 })
 
 watch(hasTopic, () => {
@@ -249,6 +336,63 @@ watch(topic, (val) => {
 
 function onPaste() {
   /* resize handled inside GenerateTopicInput */
+}
+
+function onResumePaste() {
+  nextTick(() => resumeTopicRef.value?.resize())
+}
+
+function applyResumeTemplate(tpl) {
+  selectedResumeTemplateId.value = tpl.id
+  resumePrompt.value = tpl.prompt_hint || tpl.description || ''
+  nextTick(() => resumeTopicRef.value?.resize())
+}
+
+async function onResumeFileSelect(payload) {
+  if (payload.error) {
+    resumeUploadError.value = payload.error
+    return
+  }
+  resumeUploadError.value = ''
+  pendingResumeFile.value = payload.file
+  resumeFileName.value = payload.file.name
+  resumeFileId.value = null
+}
+
+async function goResumeGenerate() {
+  if (!canResumeGenerate.value || resumeGenerating.value) return
+  resumeGenerating.value = true
+  resumeUploadError.value = ''
+  try {
+    let fileId = resumeFileId.value
+    if (pendingResumeFile.value) {
+      resumeUploading.value = true
+      const fd = new FormData()
+      fd.append('file', pendingResumeFile.value)
+      const up = await api.uploadResumeFile(fd)
+      fileId = up.file_id
+      resumeFileId.value = fileId
+      pendingResumeFile.value = null
+      resumeUploading.value = false
+    }
+    const created = await api.createResume({
+      prompt: resumePrompt.value.trim() || undefined,
+      file_id: fileId || undefined,
+    })
+    await api.generateResume(created.public_id, {
+      prompt: resumePrompt.value.trim() || undefined,
+      file_id: fileId || undefined,
+    })
+    router.push(`/create/generate/resume/${created.public_id}`)
+  } catch (e) {
+    resumeUploadError.value = e.message || '生成失败'
+    if (String(e.message).includes('402') || String(e.message).includes('配额')) {
+      router.push('/upgrade')
+    }
+  } finally {
+    resumeGenerating.value = false
+    resumeUploading.value = false
+  }
 }
 
 function applyDeckTemplate(tpl) {
@@ -298,6 +442,10 @@ function goNext() {
     viewportMode: vp,
     language: language.value,
     topic: topic.value.trim(),
+    extraContent: topic.value.trim(),
+    contentMode: 'free',
+    cardSplitMode: null,
+    pageContents: [],
   })
   router.push('/create/generate/review')
 }

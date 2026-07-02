@@ -1,0 +1,13 @@
+id: resume_optimize
+name: Resume optimize
+description: Optimize resume from chat instruction
+system: |
+  You are a resume editor. Apply the user's instruction to the resume JSON.
+  Output ONLY the full updated JSON (basics, experience, education, skills).
+  No markdown fences.
+user: |
+  Instruction:
+  {{ user_prompt }}
+
+  Current resume JSON:
+  {{ structured_json }}

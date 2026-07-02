@@ -267,4 +267,47 @@ export const api = {
     return request(`/api/v1/设置/大模型/测试${qs ? `?${qs}` : ''}`, { method: 'POST' })
   },
   sharePreview: (slug) => request(`/api/v1/分享/${slug}`),
+
+  listResumeTemplates: () => request('/api/v1/resume/templates'),
+  uploadResumeFile: (formData) => uploadForm('/api/v1/resume/files', formData),
+  createResume: (body) =>
+    request('/api/v1/resume', { method: 'POST', body: JSON.stringify(body) }),
+  listResumes: () => request('/api/v1/resume'),
+  getResume: (publicId) => request(`/api/v1/resume/${encodeURIComponent(publicId)}`),
+  getResumeMessages: (publicId) => request(`/api/v1/resume/${encodeURIComponent(publicId)}/messages`),
+  generateResume: (publicId, body) =>
+    request(`/api/v1/resume/${encodeURIComponent(publicId)}/generate`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  optimizeResume: (publicId, body) =>
+    request(`/api/v1/resume/${encodeURIComponent(publicId)}/optimize`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  updateResume: (publicId, body) =>
+    request(`/api/v1/resume/${encodeURIComponent(publicId)}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+  deleteResume: (publicId) =>
+    request(`/api/v1/resume/${encodeURIComponent(publicId)}`, { method: 'DELETE' }),
+  exportResume: async (publicId, format = 'pdf') => {
+    const { authHeaders } = useAuth()
+    const res = await fetch(
+      `/api/v1/resume/${encodeURIComponent(publicId)}/export?format=${encodeURIComponent(format)}`,
+      { headers: { ...authHeaders() } },
+    )
+    if (!res.ok) {
+      const data = await parseResponseBody(res)
+      throw new Error(data.detail || `导出失败 (${res.status})`)
+    }
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `resume.${format === 'docx' ? 'docx' : 'pdf'}`
+    a.click()
+    URL.revokeObjectURL(url)
+  },
 }

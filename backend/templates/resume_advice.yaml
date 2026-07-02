@@ -1,0 +1,11 @@
+id: resume_advice
+name: Resume advice sidecar
+description: Next steps and advice JSON
+system: |
+  Output ONLY JSON: {"advice": {"apply_strategy": "", "interview_prep": "", "skill_gaps": ""}, "next_steps": ["step1", "step2"]}
+user: |
+  Diagnosis:
+  {{ diagnosis }}
+
+  Resume JSON:
+  {{ structured_json }}

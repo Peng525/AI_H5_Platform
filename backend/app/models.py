@@ -186,6 +186,78 @@ class DeckPromptTemplate(Base):
     )
 
 
+class ResumeProfile(Base):
+    __tablename__ = "resume_profiles"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    public_id: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    title: Mapped[str] = mapped_column(String(255), default="我的简历")
+    thumbnail_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="draft")
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    versions: Mapped[list["ResumeVersion"]] = relationship(back_populates="profile", cascade="all, delete-orphan")
+    messages: Mapped[list["ResumeMessage"]] = relationship(back_populates="profile", cascade="all, delete-orphan")
+    sidecar: Mapped["ResumeSidecar | None"] = relationship(back_populates="profile", uselist=False, cascade="all, delete-orphan")
+
+
+class ResumeVersion(Base):
+    __tablename__ = "resume_versions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    profile_id: Mapped[int] = mapped_column(ForeignKey("resume_profiles.id"), index=True)
+    version_no: Mapped[int] = mapped_column(Integer, default=1)
+    structured_json: Mapped[str] = mapped_column(Text, default="{}")
+    source_file_id: Mapped[int | None] = mapped_column(ForeignKey("resume_files.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    profile: Mapped["ResumeProfile"] = relationship(back_populates="versions")
+
+
+class ResumeMessage(Base):
+    __tablename__ = "resume_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    profile_id: Mapped[int] = mapped_column(ForeignKey("resume_profiles.id"), index=True)
+    role: Mapped[str] = mapped_column(String(16), default="assistant")
+    content: Mapped[str] = mapped_column(Text, default="")
+    message_type: Mapped[str] = mapped_column(String(32), default="chat")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    profile: Mapped["ResumeProfile"] = relationship(back_populates="messages")
+
+
+class ResumeFile(Base):
+    __tablename__ = "resume_files"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    path: Mapped[str] = mapped_column(String(512))
+    mime: Mapped[str] = mapped_column(String(128), default="application/octet-stream")
+    size_bytes: Mapped[int] = mapped_column(Integer, default=0)
+    sha256: Mapped[str] = mapped_column(String(64), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ResumeSidecar(Base):
+    __tablename__ = "resume_sidecar"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    profile_id: Mapped[int] = mapped_column(ForeignKey("resume_profiles.id"), unique=True, index=True)
+    advice_json: Mapped[str] = mapped_column(Text, default="{}")
+    next_steps_json: Mapped[str] = mapped_column(Text, default="[]")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    profile: Mapped["ResumeProfile"] = relationship(back_populates="sidecar")
+
+
 class GenerationLog(Base):
     __tablename__ = "generation_logs"
 
