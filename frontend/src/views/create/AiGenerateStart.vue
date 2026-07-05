@@ -87,13 +87,19 @@
         <ResumeOptimizeForm
           ref="resumeOptimizeRef"
           v-model:prompt="resumePrompt"
-          :file-name="resumeFileName"
-          :uploading="resumeUploading"
+          :resume-file-name="resumeFileName"
+          :jd-file-name="jdFileName"
+          :resume-uploading="resumeUploading"
+          :jd-uploading="jdUploading"
           :generating="resumeGenerating"
           :can-generate="canResumeGenerate"
           :error="resumeUploadError"
-          @select-file="onResumeFileSelect"
-          @remove-file="onResumeFileRemove"
+          :resume-error="resumeFieldError"
+          :jd-error="jdFieldError"
+          @select-resume="onResumeFileSelect"
+          @remove-resume="onResumeFileRemove"
+          @select-jd="onJdFileSelect"
+          @remove-jd="onJdFileRemove"
           @generate="goResumeGenerate"
           @paste="onResumePaste"
         />
@@ -224,8 +230,13 @@ const selectedDeckTemplateId = ref('')
 const resumePrompt = ref('')
 const resumeFileId = ref(null)
 const resumeFileName = ref('')
+const jdFileId = ref(null)
+const jdFileName = ref('')
 const resumeUploading = ref(false)
+const jdUploading = ref(false)
 const resumeUploadError = ref('')
+const resumeFieldError = ref('')
+const jdFieldError = ref('')
 const resumeGenerating = ref(false)
 const resumePromptTemplates = ref([])
 const visualTemplates = ref([])
@@ -237,6 +248,7 @@ const resumeOptimizeRef = ref(null)
 const editCreating = ref(false)
 const editError = ref('')
 const pendingResumeFile = ref(null)
+const pendingJdFile = ref(null)
 
 const {
   templates: imageTemplates,
@@ -267,9 +279,21 @@ const imageStyleOptions = IMAGE_STYLE_OPTIONS
 
 const charCount = computed(() => topic.value.length)
 const hasTopic = computed(() => topic.value.trim().length > 0)
-const hasResumeInput = computed(() => resumePrompt.value.trim().length > 0 || !!resumeFileId.value || !!pendingResumeFile.value)
+const hasResumeInput = computed(() =>
+  resumePrompt.value.trim().length > 0
+  || !!resumeFileId.value
+  || !!pendingResumeFile.value
+  || !!jdFileId.value
+  || !!pendingJdFile.value,
+)
 const showResumePromptTemplates = computed(() => type.value === 'resume-optimize' && !hasResumeInput.value)
-const canResumeGenerate = computed(() => resumePrompt.value.trim() || resumeFileId.value || pendingResumeFile.value)
+const canResumeGenerate = computed(() =>
+  resumePrompt.value.trim()
+  || resumeFileId.value
+  || pendingResumeFile.value
+  || jdFileId.value
+  || pendingJdFile.value,
+)
 const isResumeTab = computed(() => type.value === 'resume-edit' || type.value === 'resume-optimize')
 
 function resizeTopicInput() {
@@ -302,6 +326,8 @@ onMounted(() => {
   resumePrompt.value = rd.prompt || ''
   resumeFileId.value = rd.fileId
   resumeFileName.value = rd.fileName || ''
+  jdFileId.value = rd.jdFileId ?? null
+  jdFileName.value = rd.jdFileName || ''
   selectedResumeTemplateId.value = rd.selectedPromptTemplateId || rd.selectedTemplateId || ''
   loadPromptTemplates()
   loadDeckPromptTemplates()
@@ -323,6 +349,8 @@ watch(type, (val) => {
       prompt: resumePrompt.value,
       fileId: resumeFileId.value,
       fileName: resumeFileName.value,
+      jdFileId: jdFileId.value,
+      jdFileName: jdFileName.value,
       selectedPromptTemplateId: selectedResumeTemplateId.value,
       selectedVisualTemplateId: selectedVisualTemplateId.value,
     })
@@ -362,13 +390,15 @@ async function loadVisualTemplates() {
   }
 }
 
-watch([resumePrompt, resumeFileId, resumeFileName], () => {
+watch([resumePrompt, resumeFileId, resumeFileName, jdFileId, jdFileName], () => {
   if (!isResumeTab.value) return
   saveResumeDraft({
     tab: type.value,
     prompt: resumePrompt.value,
     fileId: resumeFileId.value,
     fileName: resumeFileName.value,
+    jdFileId: jdFileId.value,
+    jdFileName: jdFileName.value,
     selectedPromptTemplateId: selectedResumeTemplateId.value,
     selectedVisualTemplateId: selectedVisualTemplateId.value,
   })
@@ -422,10 +452,10 @@ async function onSelectVisualTemplate(tpl) {
 
 async function onResumeFileSelect(payload) {
   if (payload.error) {
-    resumeUploadError.value = payload.error
+    resumeFieldError.value = payload.error
     return
   }
-  resumeUploadError.value = ''
+  resumeFieldError.value = ''
   pendingResumeFile.value = payload.file
   resumeFileName.value = payload.file.name
   resumeFileId.value = null
@@ -435,7 +465,25 @@ function onResumeFileRemove() {
   pendingResumeFile.value = null
   resumeFileName.value = ''
   resumeFileId.value = null
-  resumeUploadError.value = ''
+  resumeFieldError.value = ''
+}
+
+async function onJdFileSelect(payload) {
+  if (payload.error) {
+    jdFieldError.value = payload.error
+    return
+  }
+  jdFieldError.value = ''
+  pendingJdFile.value = payload.file
+  jdFileName.value = payload.file.name
+  jdFileId.value = null
+}
+
+function onJdFileRemove() {
+  pendingJdFile.value = null
+  jdFileName.value = ''
+  jdFileId.value = null
+  jdFieldError.value = ''
 }
 
 async function goResumeGenerate() {
@@ -445,6 +493,7 @@ async function goResumeGenerate() {
   let createdPublicId = null
   try {
     let fileId = resumeFileId.value
+    let jdId = jdFileId.value
     if (pendingResumeFile.value) {
       resumeUploading.value = true
       const fd = new FormData()
@@ -455,14 +504,26 @@ async function goResumeGenerate() {
       pendingResumeFile.value = null
       resumeUploading.value = false
     }
+    if (pendingJdFile.value) {
+      jdUploading.value = true
+      const fd = new FormData()
+      fd.append('file', pendingJdFile.value)
+      const up = await api.uploadResumeFile(fd)
+      jdId = up.file_id
+      jdFileId.value = jdId
+      pendingJdFile.value = null
+      jdUploading.value = false
+    }
     const created = await api.createResume({
       prompt: resumePrompt.value.trim() || undefined,
       file_id: fileId || undefined,
+      jd_file_id: jdId || undefined,
     })
     createdPublicId = created.public_id
     await api.generateResume(created.public_id, {
       prompt: resumePrompt.value.trim() || undefined,
       file_id: fileId || undefined,
+      jd_file_id: jdId || undefined,
     })
     clearResumeDraft()
     router.push(`/create/generate/resume/${created.public_id}?mode=optimize`)
@@ -491,6 +552,7 @@ async function goResumeGenerate() {
   } finally {
     resumeGenerating.value = false
     resumeUploading.value = false
+    jdUploading.value = false
   }
 }
 

@@ -22,12 +22,12 @@ Errors: 413 file too large
 
 ### POST `/`
 
-Create profile. Body: `{ "title?", "prompt?", "file_id?", "template_id?" }`  
+Create profile. Body: `{ "title?", "prompt?", "file_id?", "jd_file_id?", "template_id?" }`  
 
 | 场景 | 行为 |
 |------|------|
 | 仅 `template_id`（RS3 编辑 Tab） | 创建空白版本 + compile visual；**不扣配额** |
-| `prompt` / `file_id` | 与 V1 相同；前端随后调 `generate` |
+| `prompt` / `file_id` / `jd_file_id` | 与 V1 相同；前端随后调 `generate`；可组合简历文件 + JD 文件 + 提示词 |
 
 Response: `{ "public_id", "title", ... }`  
 Errors: 409 max 5 resumes
@@ -35,7 +35,7 @@ Errors: 409 max 5 resumes
 ### POST `/{public_id}/generate`
 
 First generation: parse + diagnose + generate resume.  
-Body: `{ "prompt?", "file_id?" }`  
+Body: `{ "prompt?", "file_id?", "jd_file_id?" }`  
 Response: `{ "public_id", "version_no", "structured", "messages", "sidecar" }`  
 Quota: **1 on success** (402 if exceeded)
 
@@ -48,7 +48,7 @@ Quota: **1 on success**
 ### GET `/{public_id}`
 
 Detail + current version + sidecar summary.  
-Response includes `structured` and `visual_document` (`template_id`, `photo_file_id`, `styles`).
+Response includes `structured` and `visual_document` (`template_id`, `photo_file_id`, `styles`, `pages[]` with `{ id, structured, styles }` per A4 page).
 
 ### GET `/{public_id}/messages`
 

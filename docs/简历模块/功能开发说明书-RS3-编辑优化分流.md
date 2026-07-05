@@ -26,41 +26,32 @@ AiGenerateStart.vue
 ├── [resume-edit]
 │   └── ResumeTemplatePicker  @select → createFromVisualTemplate()
 └── [resume-optimize]
-    ├── ResumeOptimizeForm.vue          ← 新建，封装上传+提示词+生成
-    │   ├── ResumeAttachmentChip.vue    ← 左上角文件名 + 更换 + 移除
-    │   ├── GenerateTopicInput          ← 提示词
-    │   └── [生成] 按钮
-    └── ResumeTemplatePicker（可选）     ← 提示词模板，空态且无附件时显示
+    ├── ResumeOptimizeForm.vue
+    │   ├── ResumeAttachmentBar（左/右卡片 + 中间 chip）
+    │   ├── GenerateTopicInput
+    │   └── [生成]
+    └── ResumeTemplatePicker（可选）
 ```
 
-### 2.1 上传交互（RS3-25 ~ RS3-30）
+### 2.1 上传交互（RS3-25 ~ RS3-31）
 
-**现状问题**：`ResumeFileUpload.vue` 为大块虚线区，选中文件后按钮文案变为文件名，整块区域仍占主视觉，用户感知为「上传功能被占用」。
+**目标**：单行 `ResumeAttachmentBar`；左/右卡片按钮；中间 chip 展示文件名与格式；右下角限制提示。`GenerateTopicInput` 与「生成」按钮保持原样式。
 
-**目标结构**：
-
-| 状态 | UI |
-|------|-----|
-| 无文件 | 提示词卡片上方或角标行显示轻量「上传简历」按钮 / 小虚线条 |
-| 已选文件 | 提示词卡片**内顶部**一行：`ResumeAttachmentChip`（图标 + 文件名 truncate + 「更换」+ ×） |
-| 更换 | 触发隐藏 `<input type="file">`，选中新文件替换 `pendingResumeFile` / 清空旧 `fileId` |
-| 移除 | 清空附件状态；若提示词也为空 → 显示提示词模板区 |
-
-**数据流（与现 `goResumeGenerate` 一致）**：
+**数据流**：
 
 ```javascript
-// useResumeDraft 扩展
+// useResumeDraft
 {
   tab: 'resume-optimize',
   prompt: '',
   fileId: null,
   fileName: '',
-  pendingFile: null,  // 仅内存，不入 localStorage
-  selectedPromptTemplateId: '',
+  jdFileId: null,
+  jdFileName: '',
 }
 ```
 
-生成时：优先上传 `pendingFile` → 得 `fileId` → `createResume` + `generateResume`。
+生成时：分别上传 pending 文件 → `createResume({ file_id, jd_file_id, prompt })` → `generateResume`。
 
 ---
 
@@ -153,13 +144,14 @@ else:
 
 **新建组件**：
 
-- `ResumeOptimizeForm.vue` — 优化 Tab 主表单
-- `ResumeAttachmentChip.vue` — 附件角标行
+- `ResumeOptimizeForm.vue` — 优化 Tab 主表单（`ResumeAttachmentBar` + 提示词）
+- `ResumeAttachmentBar.vue` / `ResumeAttachmentChip.vue` — 单行附件栏与文件 chip
 - `ResumeChatAside.vue` — 可收起左栏
 
-**弱化 / 替换**：
+**核心复用**：
 
-- `ResumeFileUpload.vue` — 拆为轻量触发器 + `ResumeAttachmentChip`；或保留为子组件仅负责 file input + 校验
+- `GenerateTopicInput.vue` — 提示词输入（样式不变）
+- `utils/resumeFileValidate.js` — 5MB 校验与格式标签
 
 ---
 
@@ -185,9 +177,9 @@ RS3 后：
 **优化 Tab**
 
 ```
-[提示词卡片]
-  ├─ 附件角标行（有文件时）
-  └─ 多行提示词
-[提示词模板]  ← 仅无输入且无附件
+[上传简历]  文件名·PDF×  文件名·PDF×  [上传工作描述]
+                              仅支持各一份… ← 右下
+[ GenerateTopicInput — 提示词 ]
 [生成]
+[提示词模板]  ← 仅无输入且无附件
 ```

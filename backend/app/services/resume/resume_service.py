@@ -119,6 +119,20 @@ async def save_uploaded_file(db: AsyncSession, user_id: int, filename: str, cont
     return row
 
 
+async def _assert_owned_file(db: AsyncSession, user_id: int, file_id: int) -> None:
+    fr = await db.get(ResumeFile, file_id)
+    if not fr or fr.user_id != user_id:
+        raise ResumeNotFoundError("File not found")
+
+
+async def _file_source_text(db: AsyncSession, user_id: int, file_id: int, label: str) -> str:
+    await _assert_owned_file(db, user_id, file_id)
+    fr = await db.get(ResumeFile, file_id)
+    raw = file_storage.read_file(fr.path)
+    body = extract_text_from_file(fr.path, fr.mime, raw)
+    return f"【{label}】\n{body}"
+
+
 async def create_profile(
     db: AsyncSession,
     user: User,
@@ -126,6 +140,7 @@ async def create_profile(
     title: str | None = None,
     prompt: str | None = None,
     file_id: int | None = None,
+    jd_file_id: int | None = None,
     template_id: str | None = None,
 ) -> ResumeProfile:
     count = await count_user_profiles(db, user.id)
@@ -139,6 +154,7 @@ async def create_profile(
         bool(template_id)
         and not (prompt and prompt.strip())
         and not file_id
+        and not jd_file_id
     )
     profile = ResumeProfile(
         public_id=new_public_id(),
@@ -161,9 +177,9 @@ async def create_profile(
             )
         )
     if file_id:
-        fr = await db.get(ResumeFile, file_id)
-        if not fr or fr.user_id != user.id:
-            raise ResumeNotFoundError("File not found")
+        await _assert_owned_file(db, user.id, file_id)
+    if jd_file_id:
+        await _assert_owned_file(db, user.id, jd_file_id)
     if is_blank_edit:
         structured = _default_structured()
         visual = compile_visual_document(structured, template_id=template_id)
@@ -175,16 +191,20 @@ async def create_profile(
     return profile
 
 
-async def _load_source_text(db: AsyncSession, user_id: int, prompt: str | None, file_id: int | None) -> str:
+async def _load_source_text(
+    db: AsyncSession,
+    user_id: int,
+    prompt: str | None,
+    file_id: int | None,
+    jd_file_id: int | None = None,
+) -> str:
     parts: list[str] = []
     if prompt and prompt.strip():
         parts.append(prompt.strip())
     if file_id:
-        fr = await db.get(ResumeFile, file_id)
-        if not fr or fr.user_id != user_id:
-            raise ResumeNotFoundError("File not found")
-        raw = file_storage.read_file(fr.path)
-        parts.append(extract_text_from_file(fr.path, fr.mime, raw))
+        parts.append(await _file_source_text(db, user_id, file_id, "简历原文"))
+    if jd_file_id:
+        parts.append(await _file_source_text(db, user_id, jd_file_id, "工作描述"))
     text = "\n\n".join(p for p in parts if p).strip()
     if not text:
         raise ValueError("Prompt or file required")
@@ -267,10 +287,11 @@ async def run_generate(
     *,
     prompt: str | None = None,
     file_id: int | None = None,
+    jd_file_id: int | None = None,
 ) -> dict[str, Any]:
     profile = await get_owned_profile(db, user.id, public_id)
     tier = user.tier or "free"
-    source_text = await _load_source_text(db, user.id, prompt, file_id)
+    source_text = await _load_source_text(db, user.id, prompt, file_id, jd_file_id)
 
     try:
         structured_in = await _parse_structured(source_text, tier)

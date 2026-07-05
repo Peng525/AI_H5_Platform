@@ -68,6 +68,12 @@ def normalize_structured(data: dict[str, Any] | None) -> dict[str, Any]:
     return out
 
 
+def _new_page_id() -> str:
+    import uuid
+
+    return f"page-{uuid.uuid4()}"
+
+
 def compile_visual_document(
     structured: dict[str, Any],
     existing: dict[str, Any] | None = None,
@@ -76,10 +82,37 @@ def compile_visual_document(
 ) -> dict[str, Any]:
     prev = existing if isinstance(existing, dict) else {}
     styles = prev.get("styles") if isinstance(prev.get("styles"), dict) else {}
+    normalized = normalize_structured(structured)
+    tid = prev.get("template_id") or template_id
+    prev_pages = prev.get("pages")
+    if isinstance(prev_pages, list) and prev_pages:
+        pages = copy.deepcopy(prev_pages)
+        if pages:
+            first = pages[0] if isinstance(pages[0], dict) else {}
+            pages[0] = {
+                **first,
+                "id": first.get("id") or _new_page_id(),
+                "structured": copy.deepcopy(normalized),
+                "styles": first.get("styles") if isinstance(first.get("styles"), dict) else copy.deepcopy(styles),
+            }
+        for i in range(1, len(pages)):
+            if not isinstance(pages[i], dict):
+                pages[i] = {"id": _new_page_id(), "structured": copy.deepcopy(_default_structured()), "styles": {}}
+            elif not pages[i].get("id"):
+                pages[i]["id"] = _new_page_id()
+    else:
+        pages = [
+            {
+                "id": _new_page_id(),
+                "structured": copy.deepcopy(normalized),
+                "styles": copy.deepcopy(styles),
+            }
+        ]
     return {
-        "template_id": template_id,
+        "template_id": tid,
         "photo_file_id": prev.get("photo_file_id"),
         "styles": copy.deepcopy(styles),
+        "pages": pages,
     }
 
 

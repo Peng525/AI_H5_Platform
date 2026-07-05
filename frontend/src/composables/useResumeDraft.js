@@ -5,6 +5,8 @@ const DEFAULT_DRAFT = {
   prompt: '',
   fileId: null,
   fileName: '',
+  jdFileId: null,
+  jdFileName: '',
   selectedPromptTemplateId: '',
   selectedVisualTemplateId: '',
 }

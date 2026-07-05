@@ -40,12 +40,14 @@ class CreateResumeBody(BaseModel):
     title: str | None = None
     prompt: str | None = None
     file_id: int | None = None
+    jd_file_id: int | None = None
     template_id: str | None = None
 
 
 class GenerateBody(BaseModel):
     prompt: str | None = None
     file_id: int | None = None
+    jd_file_id: int | None = None
 
 
 class OptimizeBody(BaseModel):
@@ -105,6 +107,7 @@ async def create_resume(
             title=body.title,
             prompt=body.prompt,
             file_id=body.file_id,
+            jd_file_id=body.jd_file_id,
             template_id=body.template_id,
         )
         await db.commit()
@@ -176,7 +179,14 @@ async def generate_resume(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        return await run_generate(db, user, public_id, prompt=body.prompt, file_id=body.file_id)
+        return await run_generate(
+            db,
+            user,
+            public_id,
+            prompt=body.prompt,
+            file_id=body.file_id,
+            jd_file_id=body.jd_file_id,
+        )
     except QuotaExceeded as exc:
         _quota_http(exc)
     except ResumeNotFoundError as exc:

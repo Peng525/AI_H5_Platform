@@ -1,16 +1,46 @@
 import { computed, ref, watch } from 'vue'
-import { defaultStructured, defaultVisualDocument, getBindValue, mergeCellStyle, setBindValue, setCellStyle } from '../utils/resumeBind.js'
+import {
+  defaultStructured,
+  defaultVisualDocument,
+  getBindValue,
+  mergeCellStyle,
+  setBindValue,
+  setCellStyle,
+} from '../utils/resumeBind.js'
+import {
+  blankPage,
+  duplicatePage,
+  normalizePages,
+  pagesToVisualDocument,
+} from '../utils/resumePages.js'
 
 export function useResumeEditor(initialStructured, initialVisual, { onSave } = {}) {
   const structured = ref(defaultStructured())
   const visualDocument = ref(defaultVisualDocument())
+  const pages = ref([])
+  const activePageIndex = ref(0)
   const selectedBind = ref('')
   const editingBind = ref('')
   const canvasRef = ref(null)
+  const pageRefs = ref([])
+
+  function syncStructuredFromPages() {
+    if (pages.value[0]) {
+      structured.value = pages.value[0].structured
+    }
+  }
+
+  function syncVisualFromPages() {
+    visualDocument.value = pagesToVisualDocument(visualDocument.value, pages.value)
+  }
 
   function load(data) {
-    structured.value = { ...defaultStructured(), ...(data?.structured || {}) }
-    visualDocument.value = { ...defaultVisualDocument(), ...(data?.visual_document || {}) }
+    const vd = { ...defaultVisualDocument(), ...(data?.visual_document || {}) }
+    const fallback = { ...defaultStructured(), ...(data?.structured || {}) }
+    visualDocument.value = vd
+    pages.value = normalizePages(vd, fallback)
+    activePageIndex.value = 0
+    syncStructuredFromPages()
   }
 
   if (initialStructured) load({ structured: initialStructured, visual_document: initialVisual })
@@ -24,19 +54,32 @@ export function useResumeEditor(initialStructured, initialVisual, { onSave } = {
     },
   )
 
-  const selectedStyle = computed(() => mergeCellStyle(visualDocument.value, selectedBind.value))
+  const selectedStyle = computed(() => {
+    const page = pages.value[activePageIndex.value]
+    const bind = selectedBind.value
+    if (!bind) return {}
+    const pageStyle = page?.styles?.[bind] || {}
+    const globalStyle = activePageIndex.value === 0 ? mergeCellStyle(visualDocument.value, bind) : {}
+    return { ...globalStyle, ...pageStyle }
+  })
 
   const toolbarSelected = computed(() => ({
     id: selectedBind.value,
     style: selectedStyle.value,
   }))
 
-  function selectCell(bind) {
+  function setPageRef(index, el) {
+    pageRefs.value[index] = el
+  }
+
+  function selectCell(bind, pageIndex = activePageIndex.value) {
+    activePageIndex.value = pageIndex
     selectedBind.value = bind
     editingBind.value = ''
   }
 
-  function startEdit(bind) {
+  function startEdit(bind, pageIndex = activePageIndex.value) {
+    activePageIndex.value = pageIndex
     selectedBind.value = bind
     editingBind.value = bind
   }
@@ -45,29 +88,66 @@ export function useResumeEditor(initialStructured, initialVisual, { onSave } = {
     editingBind.value = ''
   }
 
-  function updateCellValue(bind, value) {
-    structured.value = setBindValue(structured.value, bind, value)
+  function updateCellValue(bind, value, pageIndex = activePageIndex.value) {
+    const page = pages.value[pageIndex]
+    if (!page) return
+    page.structured = setBindValue(page.structured, bind, value)
+    if (pageIndex === 0) {
+      structured.value = page.structured
+    }
+    syncVisualFromPages()
   }
 
   function updateCellStyle(patch) {
     if (!selectedBind.value) return
-    visualDocument.value = setCellStyle(visualDocument.value, selectedBind.value, patch)
+    const idx = activePageIndex.value
+    const page = pages.value[idx]
+    if (!page) return
+    page.styles = {
+      ...(page.styles || {}),
+      [selectedBind.value]: {
+        ...(page.styles?.[selectedBind.value] || {}),
+        ...patch,
+      },
+    }
+    if (idx === 0) {
+      visualDocument.value = setCellStyle(visualDocument.value, selectedBind.value, patch)
+    }
+    syncVisualFromPages()
   }
 
-  function cellValue(bind) {
-    return getBindValue(structured.value, bind)
+  function cellValue(bind, pageIndex) {
+    const page = pages.value[pageIndex]
+    return getBindValue(page?.structured, bind)
   }
 
-  function cellStyle(bind) {
-    return mergeCellStyle(visualDocument.value, bind)
+  function cellStyle(bind, pageIndex) {
+    const page = pages.value[pageIndex]
+    const pageStyle = page?.styles?.[bind] || {}
+    const globalStyle = pageIndex === 0 ? mergeCellStyle(visualDocument.value, bind) : {}
+    return { ...globalStyle, ...pageStyle }
   }
 
   function resolveCellEl(_slideId, bind) {
-    if (!canvasRef.value || !bind) return null
-    return canvasRef.value.querySelector(`[data-resume-bind="${bind}"]`)
+    const root = pageRefs.value[activePageIndex.value] || canvasRef.value
+    if (!root || !bind) return null
+    return root.querySelector(`[data-resume-bind="${bind}"]`)
+  }
+
+  function insertBlankPageAfter(index) {
+    pages.value.splice(index + 1, 0, blankPage())
+    syncVisualFromPages()
+  }
+
+  function duplicatePageAfter(index) {
+    const source = pages.value[index]
+    if (!source) return
+    pages.value.splice(index + 1, 0, duplicatePage(source))
+    syncVisualFromPages()
   }
 
   async function save() {
+    syncVisualFromPages()
     if (onSave) {
       await onSave({
         structured: structured.value,
@@ -77,16 +157,19 @@ export function useResumeEditor(initialStructured, initialVisual, { onSave } = {
   }
 
   function applyRemoteData(data) {
-    if (data?.structured) structured.value = { ...defaultStructured(), ...data.structured }
-    if (data?.visual_document) visualDocument.value = { ...defaultVisualDocument(), ...data.visual_document }
+    load(data)
   }
 
   return {
     structured,
     visualDocument,
+    pages,
+    activePageIndex,
     selectedBind,
     editingBind,
     canvasRef,
+    pageRefs,
+    setPageRef,
     toolbarSelected,
     selectCell,
     startEdit,
@@ -96,6 +179,8 @@ export function useResumeEditor(initialStructured, initialVisual, { onSave } = {
     cellValue,
     cellStyle,
     resolveCellEl,
+    insertBlankPageAfter,
+    duplicatePageAfter,
     save,
     applyRemoteData,
     load,
