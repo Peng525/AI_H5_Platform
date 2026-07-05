@@ -33,7 +33,7 @@
         </header>
 
         <div class="flex-1 min-h-0 overflow-auto">
-          <div class="dialogue-generator-body flex flex-row min-h-full min-w-[44rem]">
+          <div class="dialogue-generator-body flex flex-row min-h-full min-w-0 sm:min-w-[44rem]">
             <aside class="w-28 xl:w-36 shrink-0 border-r border-outline-variant bg-white overflow-y-auto p-2 flex flex-col gap-2">
               <p class="text-[10px] font-semibold text-on-surface-variant px-1 shrink-0">样式预设</p>
               <button
@@ -52,8 +52,16 @@
               </button>
             </aside>
 
-            <main class="flex-1 min-w-[14rem] min-h-0 h-full flex items-center justify-center p-3 sm:p-6 bg-[#e8eaed] overflow-hidden">
-              <PhoneDeviceFrame ref="phoneFrameRef" class="shrink-0 h-full max-h-full" fit="contain">
+            <main class="flex-1 min-w-[14rem] min-h-0 h-full flex items-center justify-center p-3 sm:p-6 bg-[#e8eaed] overflow-auto">
+              <PhoneDeviceFrame
+                ref="phoneFrameRef"
+                class="shrink-0 h-full max-h-full"
+                fit="contain"
+                :width="previewViewport.width"
+                :height="previewViewport.height"
+                :device="previewViewport.device"
+                :label="previewViewport.label"
+              >
                 <DialoguePreviewCanvas
                   v-model="localScript"
                   editable
@@ -201,6 +209,7 @@
 import { computed, ref, watch } from 'vue'
 import DialoguePreviewCanvas from './DialoguePreviewCanvas.vue'
 import PhoneDeviceFrame from '../PhoneDeviceFrame.vue'
+import { getViewportPreset } from '../../constants/editorPresets.js'
 import { CHAT_STYLE_PRESETS } from '../../constants/chatStylePresets.js'
 import { emptyChatScript, normalizeChatScript, serializeChatScript } from '../../utils/chatScript.js'
 import { downloadElementAsPng } from '../../utils/exportCanvasImage.js'
@@ -208,9 +217,12 @@ import { downloadElementAsPng } from '../../utils/exportCanvasImage.js'
 const props = defineProps({
   open: { type: Boolean, default: false },
   initialScript: { type: Object, default: null },
+  canvasViewportId: { type: String, default: 'web-wide-1024' },
 })
 
 const emit = defineEmits(['close', 'insert'])
+
+const previewViewport = computed(() => getViewportPreset(props.canvasViewportId))
 
 const localScript = ref(emptyChatScript())
 const exporting = ref(false)

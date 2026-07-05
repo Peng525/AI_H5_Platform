@@ -37,7 +37,7 @@
       v-model="prompt"
       show-send
       :rows="3"
-      :auto-resize="false"
+      :auto-resize="true"
       placeholder="描述你想制作的内容…"
       :disabled="loading"
       :loading="loading"

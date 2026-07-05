@@ -1,5 +1,4 @@
 """AI 全量演示生成。"""
-import hashlib
 import json
 import logging
 import time
@@ -12,7 +11,7 @@ from app.models import GenerationLog, Project, Slide, User
 from app.schemas import AiDeckGenerateRequest, AiSlideGenerateRequest
 from app.services.deck_generator import new_public_id
 from app.services.llm.image_provider import generate_image
-from app.services.llm.provider import LlmError, chat_completion, extract_json
+from app.services.llm.provider import LlmError, QuotaLlmError, chat_completion, extract_json
 from app.services.project_seed_service import reload_project, seed_project_slides
 from app.services.prompt_template_service import render_template
 from app.services.quota import QuotaExceeded, check_and_consume
@@ -55,8 +54,8 @@ THEME_DEFAULT_GRADIENTS = {
 }
 
 VIEWPORT_MAP = {
-    "auto": "web-wide-1024",
-    "web": "web-wide-1024",
+    "auto": "web-1280",
+    "web": "web-1280",
     "mobile": "mobile-375",
 }
 
@@ -74,12 +73,23 @@ TEXT_DENSITY_STYLE = {
     "简约": "简洁明了，每页要点极少",
     "精炼": "精炼专业，重点突出",
     "详细": "详细展开，信息充实",
-    "繁琐": "详尽全面，覆盖细节",
+    "完整": "详尽全面，覆盖细节",
 }
 
 VALID_TEMPLATES = frozenset({
     "cover", "section", "split_lr", "grid_2x2", "cards_row",
     "stat_hero", "steps", "quote", "closing",
+})
+
+FIXED_LAYOUT_IDS = frozenset({
+    "cover_title",
+    "toc",
+    "chapter_divider",
+    "roadmap_bottom",
+    "scene_left",
+    "chart_left",
+    "key_points",
+    "closing",
 })
 
 TEMPLATE_MODULE_RULES = {
@@ -93,6 +103,149 @@ TEMPLATE_MODULE_RULES = {
     "quote": (0, 0),
     "closing": (0, 0),
 }
+
+VISUAL_TO_LAYOUT = {
+    "roadmap": "roadmap_bottom",
+    "scene": "scene_left",
+    "chart": "chart_left",
+    "none": "key_points",
+}
+
+
+def _clean_text(value: Any, limit: int = 255) -> str:
+    return str(value or "").strip()[:limit]
+
+
+def _normalize_points(raw: Any, limit: int = 4) -> list[dict]:
+    if not isinstance(raw, list):
+        return []
+    out: list[dict] = []
+    for item in raw:
+        if isinstance(item, str):
+            title = item.strip()
+            body = ""
+            icon = "circle"
+        elif isinstance(item, dict):
+            title = _clean_text(item.get("title") or item.get("label") or item.get("name"), 48)
+            body = _clean_text(item.get("body") or item.get("desc") or item.get("description"), 120)
+            icon = _clean_text(item.get("icon") or "circle", 32)
+        else:
+            continue
+        if title or body:
+            out.append({"icon": icon or "circle", "title": title, "body": body})
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _fallback_points_from_text(*values: Any, limit: int = 4) -> list[dict]:
+    chunks: list[str] = []
+    for value in values:
+        text = _clean_text(value, 600)
+        if not text:
+            continue
+        for sep in ("。", "；", ";", "\n", "."):
+            text = text.replace(sep, "|")
+        chunks.extend(part.strip() for part in text.split("|") if part.strip())
+    out: list[dict] = []
+    for i, chunk in enumerate(chunks[:limit]):
+        out.append({
+            "icon": ["target", "bolt", "trending_up", "database"][i % 4],
+            "title": chunk[:48],
+            "body": "",
+        })
+    return out
+
+
+def _normalize_chart(raw: Any) -> dict:
+    if not isinstance(raw, dict):
+        return {}
+    labels = raw.get("labels") if isinstance(raw.get("labels"), list) else []
+    values = raw.get("values") if isinstance(raw.get("values"), list) else []
+    pairs: list[tuple[str, float]] = []
+    for i in range(min(len(labels), len(values), 6)):
+        try:
+            value = float(values[i])
+        except (TypeError, ValueError):
+            value = 0
+        pairs.append((_clean_text(labels[i], 16), value))
+    if not pairs:
+        return {}
+    return {
+        "type": "pie" if raw.get("type") == "pie" or raw.get("chartType") == "pie" else "bar",
+        "title": _clean_text(raw.get("title"), 80),
+        "labels": [p[0] for p in pairs],
+        "values": [p[1] for p in pairs],
+    }
+
+
+def _infer_visual_intent(slide: dict) -> str:
+    visual = _clean_text(slide.get("visual_intent") or slide.get("visual"), 32)
+    if visual in {"roadmap", "scene", "chart", "none"}:
+        return visual
+    if slide.get("chart"):
+        return "chart"
+    if slide.get("image_intent") == "roadmap":
+        return "roadmap"
+    if slide.get("image_intent") == "scene" or slide.get("image_prompt"):
+        return "scene"
+    return "none"
+
+
+def _normalize_fixed_layout_slide(raw: dict, index: int, total: int) -> dict:
+    visual = _infer_visual_intent(raw)
+    layout_id = _clean_text(raw.get("layout_id") or raw.get("fixed_layout") or "", 32)
+    if layout_id not in FIXED_LAYOUT_IDS:
+        if raw.get("is_chapter") is True:
+            layout_id = "chapter_divider"
+        elif raw.get("chart"):
+            layout_id = "chart_left"
+        elif raw.get("image_prompt") or raw.get("image_url"):
+            layout_id = "scene_left" if visual != "roadmap" else "roadmap_bottom"
+        else:
+            layout_id = VISUAL_TO_LAYOUT.get(visual, "key_points")
+
+    points = _normalize_points(
+        raw.get("points") or raw.get("steps") or raw.get("blocks") or raw.get("modules"),
+        6 if layout_id == "toc" else 4,
+    )
+    if not points and layout_id in {"key_points", "roadmap_bottom", "toc"}:
+        points = _fallback_points_from_text(
+            raw.get("insight") or raw.get("summary"),
+            raw.get("body") or raw.get("description"),
+            raw.get("subtitle"),
+            raw.get("title"),
+            limit=6 if layout_id == "toc" else 4,
+        )
+    chart = _normalize_chart(raw.get("chart"))
+    structured = {
+        "layout_id": layout_id,
+        "title": _clean_text(raw.get("title"), 255),
+        "subtitle": _clean_text(raw.get("subtitle"), 512),
+        "headline": _clean_text(raw.get("headline"), 255),
+        "insight": _clean_text(raw.get("insight") or raw.get("summary"), 255),
+        "body": _clean_text(raw.get("body") or raw.get("description"), 600),
+        "visual_intent": visual,
+        "points": points,
+        "steps": points,
+        "chart": chart,
+        "image_prompt": _clean_text(raw.get("image_prompt"), 120),
+        "image_url": _clean_text(raw.get("image_url"), 4096),
+        "contact": _clean_text(raw.get("contact"), 200),
+    }
+    return {k: v for k, v in structured.items() if v not in ("", [], {})}
+
+
+def _build_toc_points(slides: list[dict]) -> list[dict]:
+    items: list[dict] = []
+    for slide in slides[2:]:
+        st = slide.get("structured") if isinstance(slide.get("structured"), dict) else {}
+        title = _clean_text(st.get("title") or slide.get("title"), 48)
+        if title and st.get("layout_id") != "closing":
+            items.append({"icon": "circle", "title": title, "body": ""})
+        if len(items) >= 6:
+            break
+    return items
 
 
 def _normalize_modules(raw: Any) -> list[dict]:
@@ -113,6 +266,7 @@ def _normalize_modules(raw: Any) -> list[dict]:
             "author": str(m.get("author") or "").strip()[:120],
             "contact": str(m.get("contact") or "").strip()[:200],
             "role": str(m.get("role") or "").strip()[:32],
+            "image_intent": str(m.get("image_intent") or "").strip()[:32],
             "image_prompt": str(m.get("image_prompt") or "").strip()[:120],
         }
         if m.get("image_url"):
@@ -121,7 +275,10 @@ def _normalize_modules(raw: Any) -> list[dict]:
     return out
 
 
-def _extract_structured_slide(s: dict) -> dict:
+def _extract_structured_slide(s: dict, index: int = 0, total: int = 1) -> dict:
+    if s.get("layout_id") or s.get("fixed_layout") or s.get("visual_intent") or s.get("chart"):
+        return _normalize_fixed_layout_slide(s, index, total)
+
     template = str(s.get("template") or s.get("layout") or "section").strip()
     if template == "bullets":
         template = "cards_row"
@@ -143,6 +300,8 @@ def _extract_structured_slide(s: dict) -> dict:
         structured["contact"] = str(s.get("contact"))[:200]
     if s.get("image_prompt"):
         structured["image_prompt"] = str(s.get("image_prompt"))[:120]
+    if s.get("image_intent"):
+        structured["image_intent"] = str(s.get("image_intent"))[:32]
     if s.get("image_url"):
         structured["image_url"] = str(s.get("image_url"))[:4096]
     return structured
@@ -152,6 +311,15 @@ def _validate_slide_structure(slides: list[dict]) -> list[str]:
     warnings: list[str] = []
     for i, s in enumerate(slides):
         st = s.get("structured") if isinstance(s.get("structured"), dict) else {}
+        if st.get("layout_id"):
+            if st["layout_id"] not in FIXED_LAYOUT_IDS:
+                warnings.append(f"slide_{i + 1}:fixed_layout_rejected")
+                st["layout_id"] = "key_points"
+            if st["layout_id"] == "chart_left" and not st.get("chart"):
+                warnings.append(f"slide_{i + 1}:chart_missing")
+            if st["layout_id"] in {"scene_left", "roadmap_bottom"} and not (st.get("image_prompt") or st.get("image_url")):
+                warnings.append(f"slide_{i + 1}:image_prompt_missing")
+            continue
         template = st.get("template") or "section"
         if template == "bullets":
             warnings.append(f"slide_{i + 1}:bullets_template_rejected")
@@ -182,14 +350,14 @@ def _validate_slide_structure(slides: list[dict]) -> list[str]:
 
 def _llm_slides_to_seed(slides: list[dict], bg: str) -> list[dict]:
     out: list[dict] = []
-    for s in slides:
-        structured = _extract_structured_slide(s)
-        template = structured["template"]
+    for idx, s in enumerate(slides):
+        structured = _extract_structured_slide(s, idx, len(slides))
+        template = structured.get("layout_id") or structured.get("template") or "key_points"
         out.append(
             {
                 "layout": template[:32],
-                "title": structured["title"],
-                "subtitle": structured["subtitle"],
+                "title": structured.get("title", ""),
+                "subtitle": structured.get("subtitle", ""),
                 "bullets": [],
                 "speakerNotes": str(s.get("speakerNotes", s.get("speaker_notes", "")))[:8000],
                 "animation": str(s.get("animation", "fade"))[:32],
@@ -198,21 +366,101 @@ def _llm_slides_to_seed(slides: list[dict], bg: str) -> list[dict]:
                 "structured": structured,
             }
         )
+    if len(out) >= 4 and out[1].get("structured", {}).get("layout_id") == "toc":
+        toc = out[1]["structured"]
+        if not toc.get("points"):
+            toc["points"] = _build_toc_points(out)
+            toc["steps"] = toc["points"]
     return out
 
 
-def _picsum_fallback(prompt: str, width: int, height: int) -> str:
-    seed = hashlib.md5(prompt.encode("utf-8")).hexdigest()[:12]
-    return f"https://picsum.photos/seed/{seed}/{width}/{height}"
+def _build_deck_image_prompt(
+    prompt: str,
+    *,
+    slide_title: str = "",
+    deck_title: str = "",
+    slot: str = "scene",
+) -> str:
+    scene = str(prompt or "").strip()
+    slide = str(slide_title or "").strip()
+    topic = str(deck_title or "").strip()
+    lines: list[str] = []
+    if topic:
+        lines.append(f"演示主题：{topic}")
+    if slide and slide != scene:
+        lines.append(f"本页标题：{slide}")
+    lines.append(f"画面内容：{scene or slide or topic}")
+    if slot == "cover":
+        lines.append(
+            "专业演示封面主视觉，写实摄影或高质量插画，与上述主题高度相关，"
+            "现代商务/教育场景，无文字、无水印、无 Logo。"
+        )
+    elif slot == "roadmap":
+        lines.append(
+            "专业流程路线图/信息图插画，清晰展示步骤与流向，与上述主题高度相关，"
+            "扁平或商务风格，无文字、无水印、无 Logo。"
+        )
+    else:
+        lines.append(
+            "专业商务/教育场景配图，写实摄影风格，与上述主题高度相关，"
+            "如管理者查看数据大屏、教师在智慧教室使用平板等，无文字、无水印、无 Logo。"
+        )
+    return "\n".join(lines)
+
+
+async def _generate_deck_image_with_retry(
+    prompt: str,
+    *,
+    channel: str | None,
+    tier: str,
+    width: int,
+    height: int,
+    viewport_id: str,
+) -> str:
+    last_err: Exception | None = None
+    for attempt in range(2):
+        try:
+            url, _, _, _, _ = await generate_image(
+                prompt,
+                channel=channel,
+                tier=tier,
+                viewport_width=width,
+                viewport_height=height,
+                viewport_preset_id=viewport_id,
+            )
+            if url and str(url).strip():
+                return str(url).strip()
+        except Exception as exc:
+            last_err = exc
+            if attempt == 0:
+                logger.info("deck_image_enrich retry prompt=%s err=%s", prompt[:80], exc)
+    if last_err:
+        raise last_err
+    raise RuntimeError("生图结果为空，请重试")
 
 
 def _collect_image_jobs(slides_seed: list[dict]) -> list[tuple[int, str, str]]:
+    """仅 image_intent 为 cover_bg / scene / roadmap 且含 image_prompt 的页入队生图；无 title 兜底。"""
     jobs: list[tuple[int, str, str]] = []
     for i, slide in enumerate(slides_seed):
         st = slide.get("structured") if isinstance(slide.get("structured"), dict) else {}
+        layout_id = st.get("layout_id") or ""
+        if layout_id == "scene_left":
+            prompt = str(st.get("image_prompt") or "").strip()
+            if prompt:
+                jobs.append((i, "fixed_scene", prompt))
+            continue
+        if layout_id == "roadmap_bottom":
+            prompt = str(st.get("image_prompt") or "").strip()
+            if prompt:
+                jobs.append((i, "fixed_roadmap", prompt))
+            continue
+
         template = st.get("template") or ""
         if template == "cover":
-            prompt = str(st.get("image_prompt") or st.get("title") or "").strip()
+            if str(st.get("image_intent") or "").strip() != "cover_bg":
+                continue
+            prompt = str(st.get("image_prompt") or "").strip()
             if prompt:
                 jobs.append((i, "cover", prompt))
         elif template == "split_lr":
@@ -220,14 +468,18 @@ def _collect_image_jobs(slides_seed: list[dict]) -> list[tuple[int, str, str]]:
             if len(modules) < 2:
                 continue
             right = modules[1]
-            role = str(right.get("role") or "").strip()
-            if role == "chart_placeholder" and not right.get("image_prompt"):
+            intent = str(right.get("image_intent") or "").strip()
+            if intent != "scene":
                 continue
-            prompt = str(
-                right.get("image_prompt") or right.get("title") or st.get("title") or ""
-            ).strip()
+            prompt = str(right.get("image_prompt") or "").strip()
             if prompt:
                 jobs.append((i, "split_right", prompt))
+        elif template == "steps":
+            if str(st.get("image_intent") or "").strip() != "roadmap":
+                continue
+            prompt = str(st.get("image_prompt") or "").strip()
+            if prompt:
+                jobs.append((i, "roadmap", prompt))
     return jobs
 
 
@@ -237,12 +489,15 @@ async def _enrich_slide_images(
     tier: str,
     channel: str | None,
     page_count: int,
+    deck_title: str = "",
 ) -> int:
     vp_w, vp_h = VIEWPORT_SIZES.get(viewport_id, VIEWPORT_SIZES["web-wide-1024"])
     cover_img_w = max(200, round(vp_w * 0.38))
     cover_img_h = vp_h
     split_img_w = max(200, round(vp_w * 0.48))
     split_img_h = max(200, round(vp_h * 0.75))
+    roadmap_img_w = vp_w
+    roadmap_img_h = max(200, round(vp_h * 0.28))
 
     jobs = _collect_image_jobs(slides_seed)
     max_images = max(1, min(len(jobs), page_count // 2 + 1))
@@ -251,33 +506,77 @@ async def _enrich_slide_images(
     generated = 0
     for slide_idx, slot, prompt in jobs:
         st = slides_seed[slide_idx]["structured"]
+        slide_title = str(st.get("title") or "").strip()
+        slot_key = "roadmap" if slot == "fixed_roadmap" else slot if slot in ("cover", "roadmap") else "scene"
+        full_prompt = _build_deck_image_prompt(
+            prompt,
+            slide_title=slide_title,
+            deck_title=deck_title,
+            slot=slot_key,
+        )
         try:
             if slot == "cover":
-                url, _, _, _, _ = await generate_image(
-                    prompt,
+                url = await _generate_deck_image_with_retry(
+                    full_prompt,
                     channel=channel,
                     tier=tier,
-                    viewport_width=cover_img_w,
-                    viewport_height=cover_img_h,
-                    viewport_preset_id=viewport_id,
+                    width=cover_img_w,
+                    height=cover_img_h,
+                    viewport_id=viewport_id,
+                )
+                st["image_url"] = url
+                st["image_intent"] = "cover_bg"
+                generated += 1
+            elif slot == "fixed_scene":
+                url = await _generate_deck_image_with_retry(
+                    full_prompt,
+                    channel=channel,
+                    tier=tier,
+                    width=split_img_w,
+                    height=split_img_h,
+                    viewport_id=viewport_id,
                 )
                 st["image_url"] = url
                 generated += 1
             elif slot == "split_right":
-                url, _, _, _, _ = await generate_image(
-                    prompt,
+                url = await _generate_deck_image_with_retry(
+                    full_prompt,
                     channel=channel,
                     tier=tier,
-                    viewport_width=split_img_w,
-                    viewport_height=split_img_h,
-                    viewport_preset_id=viewport_id,
+                    width=split_img_w,
+                    height=split_img_h,
+                    viewport_id=viewport_id,
                 )
                 modules = st.setdefault("modules", [])
                 while len(modules) < 2:
                     modules.append({})
                 modules[1]["image_url"] = url
+                modules[1]["image_intent"] = "scene"
                 if not modules[1].get("role"):
                     modules[1]["role"] = "scene_image"
+                generated += 1
+            elif slot == "fixed_roadmap":
+                url = await _generate_deck_image_with_retry(
+                    full_prompt,
+                    channel=channel,
+                    tier=tier,
+                    width=roadmap_img_w,
+                    height=roadmap_img_h,
+                    viewport_id=viewport_id,
+                )
+                st["image_url"] = url
+                generated += 1
+            elif slot == "roadmap":
+                url = await _generate_deck_image_with_retry(
+                    full_prompt,
+                    channel=channel,
+                    tier=tier,
+                    width=roadmap_img_w,
+                    height=roadmap_img_h,
+                    viewport_id=viewport_id,
+                )
+                st["image_url"] = url
+                st["image_intent"] = "roadmap"
                 generated += 1
         except Exception as exc:
             logger.warning(
@@ -286,15 +585,6 @@ async def _enrich_slide_images(
                 slot,
                 exc,
             )
-            if slot == "cover":
-                st["image_url"] = _picsum_fallback(prompt, cover_img_w, cover_img_h)
-            elif slot == "split_right":
-                modules = st.setdefault("modules", [])
-                while len(modules) < 2:
-                    modules.append({})
-                modules[1]["image_url"] = _picsum_fallback(prompt, split_img_w, split_img_h)
-                if not modules[1].get("role"):
-                    modules[1]["role"] = "scene_image"
     return generated
 
 
@@ -337,7 +627,7 @@ async def generate_deck_from_ai(
     try:
         await check_and_consume(db, user.id, tier)
     except QuotaExceeded as exc:
-        raise LlmError(str(exc)) from exc
+        raise QuotaLlmError(str(exc)) from exc
 
     content_mode = body.content_mode or "free"
     page_contents = list(body.page_contents or [])
@@ -360,7 +650,7 @@ async def generate_deck_from_ai(
         "page_contents": page_contents,
     }
 
-    messages = render_template("全量生成.yaml", variables)
+    messages = render_template("固定布局生成.yaml", variables)
     model_override = (body.model or "").strip() or None
     logger.info(
         "deck_generate start user_id=%s pages=%s mode=%s model=%s",
@@ -435,6 +725,7 @@ async def generate_deck_from_ai(
             tier,
             body.channel,
             body.page_count,
+            deck_title=title,
         )
         if images_generated:
             template_settings["generationMeta"]["images_generated"] = images_generated
@@ -505,10 +796,15 @@ async def generate_deck_from_ai(
 
 TEMPLATE_HINT_INSTRUCTIONS = {
     "magic": "自动选择最合适的 template（cover/section/split_lr/grid_2x2/cards_row 等）",
-    "text": "优先 section 或 cards_row，以文字内容为主",
+    "bullets": "必须输出要点式内容，优先 key_points layout_id；根据内容的数字顺序或者标题顺序，提供对应的points，每个要点独立成段",
+    "paragraph": "必须输出段落式内容，优先 key_points 或 section；以一段完整说明为主，然后根据内容，查看是否还有小标题，并可以继续拆分为段落，一般再提供一个points作为辅助",
+    "cards": "必须输出卡片式内容，优先 key_points layout_id；根据内容的逻辑如顺序或者小标题拆分为独立 points，每个 point 结构清晰，适合前端渲染成卡片",
+    "image_text": "必须输出图片配文字结构，优先 scene_left layout_id；提供 image_prompt 与 body/points，图片放左侧，文字补充右侧或下方说明",
+    
     "split": "必须使用 split_lr template，左右分栏",
-    "image": "优先 split_lr，一侧为 scene_image 场景配图",
+    "image": "split_lr 右栏仅在 image_intent=scene 时配图；cover 仅 cover_bg；steps 可 roadmap",
     "grid": "必须使用 grid_2x2 template，四宫格卡片",
+    "text": "优先 paragraph 或 cards，以文字内容为主",
 }
 
 
@@ -560,8 +856,9 @@ async def generate_single_slide_into_project(
     try:
         await check_and_consume(db, user.id, tier)
     except QuotaExceeded as exc:
-        raise LlmError(str(exc)) from exc
+        raise QuotaLlmError(str(exc)) from exc
 
+    replace_slide_id = body.replace_slide_id
     prev_title, next_title, style_summary = _neighbor_context(project.slides, body.insert_after_slide_id)
     hint = TEMPLATE_HINT_INSTRUCTIONS.get(body.template_hint or "magic", TEMPLATE_HINT_INSTRUCTIONS["magic"])
     context_bits = [
@@ -598,7 +895,7 @@ async def generate_single_slide_into_project(
         "page_contents": [],
     }
 
-    messages = render_template("全量生成.yaml", variables)
+    messages = render_template("固定布局生成.yaml", variables)
     model_override = (body.model or "").strip() or None
     t0 = time.perf_counter()
     raw = ""
@@ -636,8 +933,15 @@ async def generate_single_slide_into_project(
     seed = slides_seed[0]
     structured = seed.get("structured") or {}
 
-    new_order = compute_insert_sort_order(list(project.slides), body.insert_after_slide_id)
-    await shift_slide_sort_orders_from(db, project.id, new_order)
+    if replace_slide_id is not None:
+        existing = next((s for s in project.slides if s.id == replace_slide_id), None)
+        if not existing:
+            raise LlmError("要替换的页面不存在")
+        new_order = existing.sort_order
+    else:
+        new_order = compute_insert_sort_order(list(project.slides), body.insert_after_slide_id)
+        if body.insert_after_slide_id is not None:
+            await shift_slide_sort_orders_from(db, project.id, new_order)
 
     slide = Slide(
         project_id=project.id,
@@ -654,6 +958,12 @@ async def generate_single_slide_into_project(
     )
     db.add(slide)
     await db.flush()
+
+    if replace_slide_id is not None:
+        old_slide = await db.get(Slide, replace_slide_id)
+        if old_slide and old_slide.project_id == project.id:
+            await db.delete(old_slide)
+            await db.flush()
 
     canvas_bg = seed.get("canvas_background")
     if canvas_bg:
@@ -674,5 +984,6 @@ async def generate_single_slide_into_project(
     )
     await db.commit()
     await db.refresh(slide)
+    await db.refresh(project)
     return slide
 

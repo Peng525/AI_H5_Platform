@@ -1,22 +1,29 @@
 """Resume module API — English paths only."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+import logging
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.deps.auth import get_current_user
 from app.models import ResumeProfile, User
+from app.services.ocr.paddle_provider import OcrUnavailableError
 from app.services.quota import QuotaExceeded
 from app.services.resume import file_storage
 from app.services.resume.export_service import export_docx_bytes, export_pdf_bytes
 from app.services.resume.thumbnail_service import read_thumbnail
+from app.services.resume.template_catalog import (
+    INDUSTRIES,
+    filter_resume_templates,
+    filter_visual_templates,
+)
 from app.services.resume.resume_service import (
-    RESUME_TEMPLATES,
-    VISUAL_TEMPLATES,
     ContentPolicyError,
     ResumeLimitExceeded,
     ResumeNotFoundError,
@@ -33,6 +40,8 @@ from app.services.resume.resume_service import (
     save_uploaded_file,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/v1/resume", tags=["resume"])
 
 
@@ -42,12 +51,17 @@ class CreateResumeBody(BaseModel):
     file_id: int | None = None
     jd_file_id: int | None = None
     template_id: str | None = None
+    prompt_template_id: str | None = None
+    industry_id: str | None = None
 
 
 class GenerateBody(BaseModel):
+    template_id: str = Field(..., min_length=1, description="视觉模板 ID，必填")
     prompt: str | None = None
     file_id: int | None = None
     jd_file_id: int | None = None
+    prompt_template_id: str | None = None
+    industry_id: str | None = None
 
 
 class OptimizeBody(BaseModel):
@@ -64,14 +78,19 @@ def _quota_http(exc: QuotaExceeded):
     raise HTTPException(status_code=402, detail=str(exc))
 
 
+@router.get("/industries")
+async def list_industries():
+    return {"items": INDUSTRIES}
+
+
 @router.get("/templates")
-async def list_templates():
-    return {"items": RESUME_TEMPLATES}
+async def list_templates(industry: str | None = Query(default=None)):
+    return {"items": filter_resume_templates(industry)}
 
 
 @router.get("/visual-templates")
-async def list_visual_templates():
-    return {"items": VISUAL_TEMPLATES}
+async def list_visual_templates(industry: str | None = Query(default=None)):
+    return {"items": filter_visual_templates(industry)}
 
 
 @router.post("/files")
@@ -119,6 +138,12 @@ async def create_resume(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except OperationalError as exc:
+        logger.exception("create_resume db schema error user_id=%s", user.id)
+        raise HTTPException(status_code=503, detail="数据库结构需同步，请重启服务") from exc
+    except Exception as exc:
+        logger.exception("create_resume failed user_id=%s", user.id)
+        raise HTTPException(status_code=500, detail=f"创建失败：{exc}") from exc
 
 
 @router.get("")
@@ -186,6 +211,9 @@ async def generate_resume(
             prompt=body.prompt,
             file_id=body.file_id,
             jd_file_id=body.jd_file_id,
+            template_id=body.template_id,
+            prompt_template_id=body.prompt_template_id,
+            industry_id=body.industry_id,
         )
     except QuotaExceeded as exc:
         _quota_http(exc)
@@ -193,10 +221,13 @@ async def generate_resume(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ContentPolicyError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except OcrUnavailableError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Generation failed: {exc}") from exc
+        logger.exception("generate_resume failed public_id=%s", public_id)
+        raise HTTPException(status_code=502, detail=f"生成失败：{exc}") from exc
 
 
 @router.post("/{public_id}/optimize")
@@ -214,10 +245,13 @@ async def optimize_resume(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ContentPolicyError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except OcrUnavailableError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Optimize failed: {exc}") from exc
+        logger.exception("optimize_resume failed public_id=%s", public_id)
+        raise HTTPException(status_code=502, detail=f"优化失败：{exc}") from exc
 
 
 @router.get("/{public_id}/thumbnail")
@@ -231,11 +265,11 @@ async def get_resume_thumbnail(
     except ResumeNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     if not profile.thumbnail_path:
-        raise HTTPException(status_code=404, detail="Thumbnail not found")
+        raise HTTPException(status_code=404, detail="缩略图不存在")
     try:
         data = read_thumbnail(profile.thumbnail_path)
     except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail="Thumbnail not found") from exc
+        raise HTTPException(status_code=404, detail="缩略图不存在") from exc
     return Response(data, media_type="image/png")
 
 

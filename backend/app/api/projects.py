@@ -14,6 +14,7 @@ from app.models import Project, Slide, User
 from app.schemas import (
     AiDeckGenerateRequest,
     AiSlideGenerateRequest,
+    DeckPremiumJobOut,
     GenerateImageRequest,
     GenerateImageResponse,
     GenerationMetaOut,
@@ -34,10 +35,15 @@ from app.services.deck_generation_service import (
     generate_single_slide_into_project,
     shift_slide_sort_orders_from,
 )
+from app.services.deck_premium_job import (
+    get_premium_job_status,
+    import_premium_pptx,
+    submit_premium_deck_job,
+)
 from app.services.deck_generator import new_public_id
 from app.services.h5_template_service import get_template as get_h5_template
 from app.services.image_generator import generate_slide_image
-from app.services.llm.provider import LlmError
+from app.services.llm.provider import LlmError, QuotaLlmError
 from app.services.project_seed_service import reload_project, seed_project_slides
 from app.services.prompt_template_service import list_templates
 from app.services.pptx_template_parser import PptxParseError, parse_pptx_bytes
@@ -196,6 +202,58 @@ async def import_project_pptx(
     return _project_out(project)
 
 
+@router.post("/项目/premium-导入-pptx", response_model=ProjectOut, summary="导入 ppt-master 高质量 PPTX")
+async def import_premium_project_pptx(
+    file: UploadFile = File(...),
+    title: str | None = Form(None),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    raw = await file.read()
+    inferred_title = title or (file.filename or "ppt-master 导入").rsplit(".", 1)[0]
+    try:
+        project = await import_premium_pptx(
+            db,
+            user,
+            raw,
+            title=inferred_title,
+            filename=file.filename or "",
+        )
+    except PptxParseError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    await db.commit()
+    project = await _reload_project(db, project.id)
+    return _project_out(project)
+
+
+@router.post("/项目/ai-生成-premium", response_model=DeckPremiumJobOut, summary="提交 ppt-master 高质量生成任务")
+async def ai_generate_premium_project(
+    body: AiDeckGenerateRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        result = await submit_premium_deck_job(db, user, body)
+    except Exception as exc:
+        await db.rollback()
+        logger.exception("ai_generate_premium_project failed user_id=%s", user.id)
+        raise HTTPException(status_code=500, detail=f"提交失败：{exc}") from exc
+    await db.commit()
+    return DeckPremiumJobOut(**result)
+
+
+@router.get("/项目/ai-生成-premium/{job_id}", response_model=DeckPremiumJobOut, summary="查询高质量生成任务状态")
+async def get_premium_deck_job(
+    job_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await get_premium_job_status(db, job_id, user.id)
+    if not result:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    return DeckPremiumJobOut(**result)
+
+
 @router.post("/项目/ai-生成", response_model=ProjectOut, summary="AI 全量生成演示项目")
 async def ai_generate_project(
     body: AiDeckGenerateRequest,
@@ -204,11 +262,12 @@ async def ai_generate_project(
 ):
     try:
         project = await generate_deck_from_ai(db, user, body)
+    except QuotaLlmError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=402, detail=str(exc)) from exc
     except LlmError as exc:
         await db.rollback()
-        msg = str(exc)
-        status = 402 if "配额" in msg else 502
-        raise HTTPException(status_code=status, detail=msg) from exc
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     except Exception as exc:
         await db.rollback()
         logger.exception("ai_generate_project failed user_id=%s page_count=%s", user.id, body.page_count)
@@ -305,11 +364,12 @@ async def ai_generate_slide(
 ):
     try:
         slide = await generate_single_slide_into_project(db, user, project, body)
+    except QuotaLlmError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=402, detail=str(exc)) from exc
     except LlmError as exc:
         await db.rollback()
-        msg = str(exc)
-        status = 402 if "配额" in msg else 502
-        raise HTTPException(status_code=status, detail=msg) from exc
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     except Exception as exc:
         await db.rollback()
         logger.exception("ai_generate_slide failed project_id=%s", project.id)

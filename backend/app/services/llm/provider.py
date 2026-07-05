@@ -13,6 +13,10 @@ class LlmError(Exception):
     pass
 
 
+class QuotaLlmError(LlmError):
+    """配额不足；API 层应映射 HTTP 402。"""
+
+
 def _relay_ready() -> bool:
     return bool(settings.llm_relay_base_url and settings.llm_relay_api_key.strip())
 
@@ -27,6 +31,23 @@ def _normalize_openai_base_url(base_url: str) -> str:
     if base.endswith("/v1") or base.endswith("/v1beta"):
         return base
     return base + "/v1"
+
+
+def _resolve_channel_text_model(
+    channel: str,
+    tier: str | None = "free",
+    model: str | None = None,
+) -> str:
+    override = (model or "").strip()
+    if override:
+        return override
+
+    channel_name = (channel or "").strip().lower()
+    if channel_name == "relay" and settings.llm_relay_model.strip():
+        return settings.llm_relay_model.strip()
+    if channel_name == "official" and settings.llm_official_model.strip():
+        return settings.llm_official_model.strip()
+    return resolve_text_model(tier)
 
 
 async def _chat_openai_compatible(
@@ -56,7 +77,7 @@ async def chat_relay(
 ) -> str:
     if not _relay_ready():
         raise LlmError("中转 API 未配置，请设置 LLM_RELAY_BASE_URL 与 LLM_RELAY_API_KEY")
-    resolved = model or resolve_text_model(tier)
+    resolved = _resolve_channel_text_model("relay", tier, model)
     return await _chat_openai_compatible(
         settings.llm_relay_base_url,
         settings.llm_relay_api_key.strip(),
@@ -72,7 +93,7 @@ async def chat_official(
 ) -> str:
     if not _official_ready():
         raise LlmError("官方 API 未配置，请设置 LLM_OFFICIAL_API_KEY")
-    resolved = model or resolve_text_model(tier)
+    resolved = _resolve_channel_text_model("official", tier, model)
     return await _chat_openai_compatible(
         settings.llm_official_base_url,
         settings.llm_official_api_key.strip(),
@@ -102,7 +123,7 @@ async def chat_auto(
     messages: list[dict[str, str]],
     tier: str | None = "free",
     model: str | None = None,
-) -> tuple[str, str]:
+) -> tuple[str, str, str]:
     channels = _resolve_auto_order()
     if not channels:
         raise LlmError("auto 模式无可用通道，请至少配置中转或官方 API 之一")
@@ -110,8 +131,10 @@ async def chat_auto(
     for ch in channels:
         try:
             if ch == "official":
-                return await chat_official(messages, tier, model), "official"
-            return await chat_relay(messages, tier, model), "relay"
+                resolved = _resolve_channel_text_model("official", tier, model)
+                return await chat_official(messages, tier, model), "official", resolved
+            resolved = _resolve_channel_text_model("relay", tier, model)
+            return await chat_relay(messages, tier, model), "relay", resolved
         except LlmError as exc:
             errors.append(f"{ch}: {exc}")
     raise LlmError("auto 模式全部通道失败 — " + "；".join(errors))
@@ -124,14 +147,15 @@ async def chat_completion(
     model: str | None = None,
 ) -> tuple[str, str, str]:
     """返回 (回复文本, 通道, 实际使用的模型名)。"""
-    resolved = model or resolve_text_model(tier)
     ch = (channel or settings.llm_default_channel).lower()
     if ch == "auto":
-        text, used = await chat_auto(messages, tier, model)
+        text, used, resolved = await chat_auto(messages, tier, model)
         return text, used, resolved
     if ch == "relay":
+        resolved = _resolve_channel_text_model("relay", tier, model)
         return await chat_relay(messages, tier, model), "relay", resolved
     if ch == "official":
+        resolved = _resolve_channel_text_model("official", tier, model)
         return await chat_official(messages, tier, model), "official", resolved
     raise LlmError(f"未知通道: {channel}")
 
@@ -143,6 +167,8 @@ def _loads_json_relaxed(payload: str) -> dict[str, Any]:
 
 def extract_json(text: str) -> dict[str, Any]:
     text = text.strip()
+    if not text:
+        raise LlmError("大模型返回为空，请检查当前文本模型配置或稍后重试")
     fence = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
     if fence:
         text = fence.group(1).strip()

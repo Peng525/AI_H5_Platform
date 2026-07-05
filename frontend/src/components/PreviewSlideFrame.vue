@@ -32,6 +32,12 @@
           />
         </template>
         <div
+          v-else-if="chatScriptForPreview"
+          class="absolute inset-0 z-10 pointer-events-none"
+        >
+          <DialoguePreviewCanvas :model-value="chatScriptForPreview" :editable="false" />
+        </div>
+        <div
           v-else-if="structuredSlide"
           class="absolute inset-0 overflow-hidden pointer-events-none"
         >
@@ -80,6 +86,8 @@ import { DEFAULT_CANVAS_BG } from '../constants/canvasBackgrounds.js'
 import { isLightSlideBackground, textColorForSlideBackground } from '../utils/slideBackground.js'
 import SlideTemplateRenderer from '../slide-templates/SlideTemplateRenderer.vue'
 import { resolveSlideStructured } from '../utils/compileStructuredSlide.js'
+import DialoguePreviewCanvas from './dialogue/DialoguePreviewCanvas.vue'
+import { normalizeChatScript } from '../utils/chatScript.js'
 
 const props = defineProps({
   viewport: { type: Object, required: true },
@@ -121,8 +129,13 @@ const directTextOnCanvas = computed(
 const directTextColor = computed(() => textColorForSlideBackground(props.canvasBackground))
 
 const structuredSlide = computed(
-  () => !props.elements.length && props.slide && resolveSlideStructured(props.slide)
+  () => !props.elements.length && props.slide && !props.slide?.chat_script?.enabled && resolveSlideStructured(props.slide)
 )
+
+const chatScriptForPreview = computed(() => {
+  if (props.elements.length || !props.slide?.chat_script?.enabled) return null
+  return normalizeChatScript(props.slide.chat_script)
+})
 
 const sortedElements = computed(() =>
   [...props.elements].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))

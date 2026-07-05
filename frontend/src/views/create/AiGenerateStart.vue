@@ -20,6 +20,8 @@
     </div>
 
     <div class="mx-auto w-full px-0 max-w-3xl space-y-6">
+      <DeckQualityHint v-if="type === 'deck'" />
+
       <div v-if="type === 'deck'" class="generate-pills-bar flex flex-wrap justify-start gap-1.5 items-center">
         <AspectRatioSelect v-model="imageAspectRatio" @update:model-value="onAspectRatioChange" />
         <label class="relative inline-flex items-center">
@@ -84,11 +86,45 @@
       </template>
 
       <template v-else-if="type === 'resume-optimize'">
+        <section class="space-y-3">
+          <h2 class="text-sm font-semibold text-on-surface-variant">选择行业</h2>
+          <ResumeIndustryChips
+            :industries="industries"
+            :selected-id="selectedIndustryId"
+            @update:selected-id="onIndustryChange"
+          />
+        </section>
+
+        <section class="space-y-3">
+          <PageLoading v-if="visualTemplatesLoading" message="加载模板…" />
+          <p v-else-if="visualTemplatesError" class="text-sm text-red-600">{{ visualTemplatesError }}</p>
+          <ResumeTemplatePicker
+            v-else
+            heading="选择简历模板（必选）"
+            :templates="filteredVisualTemplates"
+            :selected-id="selectedVisualTemplateId"
+            @select="onSelectVisualForOptimize"
+          />
+          <p v-if="templateSelectError" class="text-sm text-red-600">{{ templateSelectError }}</p>
+        </section>
+
+        <template v-if="showResumePromptTemplates">
+          <hr class="border-0 border-t border-outline-variant/50" />
+          <ResumeTemplatePicker
+            heading="选择提示词模板"
+            :templates="filteredPromptTemplates"
+            :selected-id="selectedResumeTemplateId"
+            @select="applyResumeTemplate"
+          />
+        </template>
+
         <ResumeOptimizeForm
           ref="resumeOptimizeRef"
           v-model:prompt="resumePrompt"
           :resume-file-name="resumeFileName"
           :jd-file-name="jdFileName"
+          :resume-file="pendingResumeFile"
+          :jd-file="pendingJdFile"
           :resume-uploading="resumeUploading"
           :jd-uploading="jdUploading"
           :generating="resumeGenerating"
@@ -102,16 +138,11 @@
           @remove-jd="onJdFileRemove"
           @generate="goResumeGenerate"
           @paste="onResumePaste"
-        />
-        <template v-if="showResumePromptTemplates">
-          <hr class="border-0 border-t border-outline-variant/50" />
-          <ResumeTemplatePicker
-            heading="选择提示词模板"
-            :templates="resumePromptTemplates"
-            :selected-id="selectedResumeTemplateId"
-            @select="applyResumeTemplate"
-          />
-        </template>
+        >
+          <template #generate-hint>
+            <ResumeGenerateHintBubble ref="hintBubbleRef" />
+          </template>
+        </ResumeOptimizeForm>
       </template>
 
       <div v-if="type !== 'resume-edit' && type !== 'resume-optimize' && hasTopic" class="flex justify-center pt-2">
@@ -191,14 +222,18 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AiCreateLayout from '../../components/create/AiCreateLayout.vue'
 import AspectRatioSelect from '../../components/create/AspectRatioSelect.vue'
+import DeckQualityHint from '../../components/create/DeckQualityHint.vue'
 import GenerateTopicInput from '../../components/create/GenerateTopicInput.vue'
 import PromptTemplateCard from '../../components/create/PromptTemplateCard.vue'
 import PageLoading from '../../components/PageLoading.vue'
 import ResumeOptimizeForm from '../../components/resume/ResumeOptimizeForm.vue'
+import ResumeIndustryChips from '../../components/resume/ResumeIndustryChips.vue'
+import ResumeGenerateHintBubble from '../../components/resume/ResumeGenerateHintBubble.vue'
 import ResumeTemplatePicker from '../../components/resume/ResumeTemplatePicker.vue'
 import { api } from '../../api/client.js'
 import { loadDraft, saveDraft } from '../../composables/useAiCreateDraft.js'
 import { loadResumeDraft, saveResumeDraft, clearResumeDraft, resolveResumeTab } from '../../composables/useResumeDraft.js'
+import { savePendingGenerate } from '../../composables/useResumePendingGenerate.js'
 import { isQuotaExceeded, isResumeLimit, isContentPolicy } from '../../composables/useResumeErrors.js'
 import { useDeckPromptTemplates } from '../../composables/useDeckPromptTemplates.js'
 import { useImagePromptTemplates } from '../../composables/useImagePromptTemplates.js'
@@ -239,12 +274,16 @@ const resumeFieldError = ref('')
 const jdFieldError = ref('')
 const resumeGenerating = ref(false)
 const resumePromptTemplates = ref([])
+const industries = ref([])
+const selectedIndustryId = ref('all')
 const visualTemplates = ref([])
 const visualTemplatesLoading = ref(false)
 const visualTemplatesError = ref('')
 const selectedResumeTemplateId = ref('')
 const selectedVisualTemplateId = ref('')
+const templateSelectError = ref('')
 const resumeOptimizeRef = ref(null)
+const hintBubbleRef = ref(null)
 const editCreating = ref(false)
 const editError = ref('')
 const pendingResumeFile = ref(null)
@@ -294,6 +333,13 @@ const canResumeGenerate = computed(() =>
   || jdFileId.value
   || pendingJdFile.value,
 )
+
+const filteredPromptTemplates = computed(() => {
+  if (selectedIndustryId.value === 'all') return resumePromptTemplates.value
+  return resumePromptTemplates.value.filter((t) => t.industry_id === selectedIndustryId.value)
+})
+
+const filteredVisualTemplates = computed(() => visualTemplates.value)
 const isResumeTab = computed(() => type.value === 'resume-edit' || type.value === 'resume-optimize')
 
 function resizeTopicInput() {
@@ -329,10 +375,13 @@ onMounted(() => {
   jdFileId.value = rd.jdFileId ?? null
   jdFileName.value = rd.jdFileName || ''
   selectedResumeTemplateId.value = rd.selectedPromptTemplateId || rd.selectedTemplateId || ''
+  selectedVisualTemplateId.value = rd.selectedVisualTemplateId || ''
+  selectedIndustryId.value = rd.selectedIndustryId || 'all'
   loadPromptTemplates()
   loadDeckPromptTemplates()
+  loadIndustries()
   loadResumePromptTemplates()
-  if (type.value === 'resume-edit') loadVisualTemplates()
+  if (isResumeTab.value) loadVisualTemplates(selectedIndustryId.value)
   nextTick(resizeTopicInput)
 })
 
@@ -342,7 +391,7 @@ watch(() => route.query.tab, (tab) => {
 })
 
 watch(type, (val) => {
-  if (val === 'resume-edit') loadVisualTemplates()
+  if (val === 'resume-edit' || val === 'resume-optimize') loadVisualTemplates(selectedIndustryId.value)
   if (isResumeTab.value) {
     saveResumeDraft({
       tab: val,
@@ -353,34 +402,71 @@ watch(type, (val) => {
       jdFileName: jdFileName.value,
       selectedPromptTemplateId: selectedResumeTemplateId.value,
       selectedVisualTemplateId: selectedVisualTemplateId.value,
+      selectedIndustryId: selectedIndustryId.value,
     })
   }
 })
 
-async function loadResumePromptTemplates() {
+async function loadIndustries() {
   try {
-    const data = await api.listResumeTemplates()
+    const data = await api.listResumeIndustries()
+    industries.value = data.items || []
+  } catch {
+    industries.value = [{ id: 'all', label: '全部' }]
+  }
+}
+
+function onIndustryChange(id) {
+  selectedIndustryId.value = id
+  loadVisualTemplates(id)
+  loadResumePromptTemplates(id)
+  if (selectedResumeTemplateId.value) {
+    const still = filteredPromptTemplates.value.some((t) => t.id === selectedResumeTemplateId.value)
+    if (!still) selectedResumeTemplateId.value = ''
+  }
+  saveResumeDraft({
+    tab: type.value,
+    selectedIndustryId: id,
+    selectedVisualTemplateId: selectedVisualTemplateId.value,
+    selectedPromptTemplateId: selectedResumeTemplateId.value,
+  })
+}
+
+function onSelectVisualForOptimize(tpl) {
+  selectedVisualTemplateId.value = tpl.id
+  templateSelectError.value = ''
+  saveResumeDraft({
+    tab: type.value,
+    selectedVisualTemplateId: tpl.id,
+    selectedIndustryId: selectedIndustryId.value,
+  })
+}
+
+async function loadResumePromptTemplates(industry) {
+  try {
+    const data = await api.listResumeTemplates(industry && industry !== 'all' ? industry : undefined)
     resumePromptTemplates.value = (data.items || []).map((t) => ({
       id: t.id,
       title: t.title,
       description: t.description,
       prompt_hint: t.prompt_hint,
+      industry_id: t.industry_id,
     }))
   } catch {
     resumePromptTemplates.value = []
   }
 }
 
-async function loadVisualTemplates() {
-  if (visualTemplates.value.length) return
+async function loadVisualTemplates(industry) {
   visualTemplatesLoading.value = true
   visualTemplatesError.value = ''
   try {
-    const data = await api.listResumeVisualTemplates()
+    const data = await api.listResumeVisualTemplates(industry && industry !== 'all' ? industry : undefined)
     visualTemplates.value = (data.items || []).map((t) => ({
       id: t.id,
       title: t.title,
       description: t.description,
+      preview_url: t.preview_url || '',
     }))
   } catch (e) {
     visualTemplatesError.value = e.message || '加载模板失败'
@@ -401,6 +487,7 @@ watch([resumePrompt, resumeFileId, resumeFileName, jdFileId, jdFileName], () => 
     jdFileName: jdFileName.value,
     selectedPromptTemplateId: selectedResumeTemplateId.value,
     selectedVisualTemplateId: selectedVisualTemplateId.value,
+    selectedIndustryId: selectedIndustryId.value,
   })
   nextTick(() => resumeOptimizeRef.value?.resize())
 })
@@ -427,7 +514,9 @@ function onResumePaste() {
 
 function applyResumeTemplate(tpl) {
   selectedResumeTemplateId.value = tpl.id
-  resumePrompt.value = tpl.prompt_hint || tpl.description || ''
+  if (!resumePrompt.value.trim()) {
+    resumePrompt.value = tpl.prompt_hint || tpl.description || ''
+  }
   nextTick(() => resumeOptimizeRef.value?.resize())
 }
 
@@ -487,7 +576,13 @@ function onJdFileRemove() {
 }
 
 async function goResumeGenerate() {
-  if (!canResumeGenerate.value || resumeGenerating.value) return
+  if (resumeGenerating.value) return
+  if (!selectedVisualTemplateId.value) {
+    templateSelectError.value = '请选择简历模板'
+    return
+  }
+  if (!canResumeGenerate.value) return
+  templateSelectError.value = ''
   resumeGenerating.value = true
   resumeUploadError.value = ''
   let createdPublicId = null
@@ -518,15 +613,22 @@ async function goResumeGenerate() {
       prompt: resumePrompt.value.trim() || undefined,
       file_id: fileId || undefined,
       jd_file_id: jdId || undefined,
+      template_id: selectedVisualTemplateId.value,
+      prompt_template_id: selectedResumeTemplateId.value || undefined,
+      industry_id: selectedIndustryId.value !== 'all' ? selectedIndustryId.value : undefined,
     })
     createdPublicId = created.public_id
-    await api.generateResume(created.public_id, {
+    savePendingGenerate(created.public_id, {
       prompt: resumePrompt.value.trim() || undefined,
       file_id: fileId || undefined,
       jd_file_id: jdId || undefined,
+      template_id: selectedVisualTemplateId.value,
+      prompt_template_id: selectedResumeTemplateId.value || undefined,
+      industry_id: selectedIndustryId.value !== 'all' ? selectedIndustryId.value : undefined,
     })
+    hintBubbleRef.value?.dismissAfterGenerate?.()
     clearResumeDraft()
-    router.push(`/create/generate/resume/${created.public_id}?mode=optimize`)
+    router.push(`/create/generate/resume/${created.public_id}?mode=optimize&generating=1`)
   } catch (e) {
     if (createdPublicId) {
       try {
@@ -548,7 +650,7 @@ async function goResumeGenerate() {
       resumeUploadError.value = e.message || '内容不符合规范'
       return
     }
-    resumeUploadError.value = e.message || '生成失败'
+    resumeUploadError.value = e.message || '创建失败'
   } finally {
     resumeGenerating.value = false
     resumeUploading.value = false

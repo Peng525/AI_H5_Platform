@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import GenerationLog
 from app.schemas import GenerateImageRequest
 from app.services.llm.image_provider import generate_image
-from app.services.llm.provider import LlmError
+from app.services.llm.provider import LlmError, QuotaLlmError
 from app.services.quota import QuotaExceeded, check_and_consume
 
 
@@ -17,7 +17,7 @@ async def generate_slide_image(
     try:
         await check_and_consume(db, user_id, body.tier)
     except QuotaExceeded as exc:
-        raise LlmError(str(exc)) from exc
+        raise QuotaLlmError(str(exc)) from exc
 
     try:
         image_url, channel, model, width, height = await generate_image(
@@ -55,7 +55,7 @@ async def generate_standalone_image(
     try:
         await check_and_consume(db, user_id, body.tier)
     except QuotaExceeded as exc:
-        raise LlmError(str(exc)) from exc
+        raise QuotaLlmError(str(exc)) from exc
 
     try:
         image_url, channel, model, width, height = await generate_image(

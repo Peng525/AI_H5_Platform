@@ -9,11 +9,9 @@ import { compileSlideIfNeeded, resolveSlideStructured } from '../utils/compileSt
 const STORAGE_PREFIX = 'ai_h5_canvas_'
 const SETTINGS_PREFIX = 'ai_h5_project_settings_'
 
-/** 画布层级：0 为全页背景图；正文组件从 CONTENT_BASE 起 */
-export const CANVAS_Z = {
-  BACKGROUND: 0,
-  CONTENT_BASE: 10,
-}
+import { CANVAS_Z } from '../constants/canvasLayers.js'
+
+export { CANVAS_Z }
 
 function storageKey(projectId, slideId) {
   return `${STORAGE_PREFIX}${String(projectId)}_${slideId}`
@@ -198,7 +196,29 @@ function defaultTableContent() {
 }
 
 function defaultChartContent() {
-  return { chartType: 'bar', values: [35, 65, 45, 80, 55] }
+  return {
+    chartType: 'bar',
+    title: '',
+    labels: ['A', 'B', 'C', 'D', 'E'],
+    values: [35, 65, 45, 80, 55],
+  }
+}
+
+/** 兼容旧版仅含 values 的 chart content */
+export function normalizeChartContent(content) {
+  if (!content || typeof content !== 'object') return defaultChartContent()
+  const values = content.values?.length
+    ? content.values.map((v) => Number(v) || 0)
+    : defaultChartContent().values
+  const labels = content.labels?.length
+    ? [...content.labels]
+    : values.map((_, i) => String.fromCharCode(65 + i))
+  return {
+    chartType: content.chartType === 'pie' ? 'pie' : 'bar',
+    title: content.title || '',
+    labels,
+    values,
+  }
 }
 
 function chartCardId() {

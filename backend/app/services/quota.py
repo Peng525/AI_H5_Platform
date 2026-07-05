@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.models import Order, User
+from app.models import User
 from app.services.plan_pricing import resolve_plan
 
 
@@ -84,28 +84,3 @@ def apply_plan_to_user(user: User, plan_id: str, quota: int | None = None) -> No
         user.free_quota_used = 0
     elif plan["tier"] == "pro":
         user.quota_limit = None
-
-
-async def create_paid_order(
-    db: AsyncSession,
-    user: User,
-    plan_id: str,
-    payment_channel: str = "demo",
-    quota: int | None = None,
-) -> Order:
-    plan = get_plan(plan_id, quota)
-    if not plan:
-        raise ValueError("未知套餐")
-    order = Order(
-        user_id=user.id,
-        plan_id=plan_id,
-        plan_name=plan["name"],
-        amount=plan["price"],
-        payment_channel=payment_channel,
-        status="paid",
-        plan_quota=plan["quota"] if plan_id == "custom" else (plan["quota"] if plan_id == "monthly" else None),
-    )
-    db.add(order)
-    apply_plan_to_user(user, plan_id, quota)
-    await db.flush()
-    return order

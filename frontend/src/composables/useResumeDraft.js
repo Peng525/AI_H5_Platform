@@ -9,6 +9,7 @@ const DEFAULT_DRAFT = {
   jdFileName: '',
   selectedPromptTemplateId: '',
   selectedVisualTemplateId: '',
+  selectedIndustryId: 'all',
 }
 
 export function loadResumeDraft() {

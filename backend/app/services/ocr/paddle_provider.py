@@ -9,6 +9,11 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+
+class OcrUnavailableError(Exception):
+    """图片 OCR 不可用或无法识别文本。"""
+
+
 _ocr_instance = None
 
 
@@ -31,9 +36,7 @@ def _get_ocr():
 def extract_text_from_image_bytes(data: bytes) -> str:
     ocr = _get_ocr()
     if ocr is None:
-        raise RuntimeError(
-            "PaddleOCR is not enabled. Set RESUME_PADDLEOCR_ENABLED=true and install paddleocr."
-        )
+        raise OcrUnavailableError("当前环境未启用图片 OCR，请上传 PDF 或纯文本文件")
     import numpy as np
     from PIL import Image
 
@@ -53,7 +56,7 @@ def extract_text_from_pdf_bytes(data: bytes) -> str:
     try:
         import fitz
     except ImportError as exc:
-        raise RuntimeError("pymupdf (fitz) is required for PDF parsing") from exc
+        raise OcrUnavailableError("PDF 解析组件未安装，请联系管理员") from exc
 
     doc = fitz.open(stream=data, filetype="pdf")
     parts: list[str] = []
@@ -82,4 +85,4 @@ def extract_text_from_file(path: str, mime: str, data: bytes) -> str:
         return extract_text_from_image_bytes(data)
     if name_l.endswith(".txt") or mime_l.startswith("text/"):
         return data.decode("utf-8", errors="replace").strip()
-    raise ValueError(f"Unsupported file type: {mime}")
+    raise ValueError(f"不支持的文件类型：{mime}")

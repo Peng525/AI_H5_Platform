@@ -111,5 +111,8 @@ class Settings(BaseSettings):
     resume_paddleocr_enabled: bool = False
     resume_paddleocr_lang: str = "ch"
 
+    # ppt-master 子项目根目录（默认 develop/ppt-master-main）
+    ppt_master_root: str = ""
+
 
 settings = Settings()

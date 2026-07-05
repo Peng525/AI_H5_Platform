@@ -5,7 +5,8 @@ import copy
 import re
 from typing import Any
 
-TEMPLATE_CLASSIC_BLUE = "classic-blue"
+TEMPLATE_CLASSIC_BLUE = "classic-blue"  # legacy alias → template1
+DEFAULT_TEMPLATE_ID = "template1"
 
 
 def _default_structured() -> dict[str, Any]:
@@ -78,12 +79,14 @@ def compile_visual_document(
     structured: dict[str, Any],
     existing: dict[str, Any] | None = None,
     *,
-    template_id: str = TEMPLATE_CLASSIC_BLUE,
+    template_id: str = DEFAULT_TEMPLATE_ID,
 ) -> dict[str, Any]:
+    from app.services.resume.template_catalog import normalize_template_id
+
     prev = existing if isinstance(existing, dict) else {}
     styles = prev.get("styles") if isinstance(prev.get("styles"), dict) else {}
     normalized = normalize_structured(structured)
-    tid = prev.get("template_id") or template_id
+    tid = normalize_template_id(prev.get("template_id") or template_id) or DEFAULT_TEMPLATE_ID
     prev_pages = prev.get("pages")
     if isinstance(prev_pages, list) and prev_pages:
         pages = copy.deepcopy(prev_pages)

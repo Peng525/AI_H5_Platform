@@ -27,6 +27,7 @@
       >
         <div
           ref="canvasRef"
+          data-editable-canvas
           class="absolute inset-0 overflow-hidden"
         >
           <div
@@ -60,6 +61,12 @@
             @text-edit-start="$emit('text-edit-start', $event)"
             @text-edit-end="$emit('text-edit-end', $event)"
           />
+          <div
+            v-if="chatScriptForPreview && !elements.length"
+            class="absolute inset-0 z-10 pointer-events-none"
+          >
+            <DialoguePreviewCanvas :model-value="chatScriptForPreview" :editable="false" />
+          </div>
         </div>
       </div>
     </div>
@@ -70,6 +77,9 @@
 import { computed, ref } from 'vue'
 import CanvasElement from '../CanvasElement.vue'
 import PreviewSlideFrame from '../PreviewSlideFrame.vue'
+import DialoguePreviewCanvas from '../dialogue/DialoguePreviewCanvas.vue'
+import { normalizeChatScript } from '../../utils/chatScript.js'
+import { useMarqueeSelect } from '../../composables/useMarqueeSelect.js'
 
 const props = defineProps({
   active: { type: Boolean, default: false },
@@ -102,7 +112,25 @@ const emit = defineEmits([
 ])
 
 const canvasRef = ref(null)
-const marqueeRect = ref(null)
+
+function clientToCanvasLocal(clientX, clientY) {
+  const el = canvasRef.value
+  if (!el) return { x: 0, y: 0 }
+  const rect = el.getBoundingClientRect()
+  const lw = props.viewport.width || 1
+  const lh = props.viewport.height || 1
+  return {
+    x: ((clientX - rect.left) / rect.width) * lw,
+    y: ((clientY - rect.top) / rect.height) * lh,
+  }
+}
+
+const { marqueeRect, onCanvasPointerDown } = useMarqueeSelect({
+  clientToLocal: clientToCanvasLocal,
+  getElements: () => props.elements,
+  onDeselect: () => emit('deselect'),
+  onMarqueeSelect: (payload) => emit('marquee-select', payload),
+})
 
 const boxStyle = computed(() => {
   if (props.fillCard) {
@@ -134,6 +162,11 @@ const canvasBounds = computed(() => ({
   height: props.viewport.height,
 }))
 
+const chatScriptForPreview = computed(() => {
+  if (!props.slide?.chat_script?.enabled) return null
+  return normalizeChatScript(props.slide.chat_script)
+})
+
 const marqueeStyle = computed(() => {
   const r = marqueeRect.value
   if (!r) return {}
@@ -145,80 +178,10 @@ const marqueeStyle = computed(() => {
   }
 })
 
-function clientToCanvasLocal(clientX, clientY) {
-  const el = canvasRef.value
-  if (!el) return { x: 0, y: 0 }
-  const rect = el.getBoundingClientRect()
-  const lw = props.viewport.width || 1
-  const lh = props.viewport.height || 1
-  return {
-    x: ((clientX - rect.left) / rect.width) * lw,
-    y: ((clientY - rect.top) / rect.height) * lh,
-  }
+function resolveElementEl(elementId) {
+  if (!props.active || !canvasRef.value || elementId == null) return null
+  return canvasRef.value.querySelector(`[data-element-id="${elementId}"]`)
 }
 
-function elementIntersectsRect(el, rect) {
-  const ex = el.x ?? 0
-  const ey = el.y ?? 0
-  const ew = el.width ?? 0
-  const eh = el.height ?? 0
-  return !(ex + ew < rect.x || rect.x + rect.w < ex || ey + eh < rect.y || rect.y + rect.h < ey)
-}
-
-function onCanvasPointerDown(e) {
-  if (e.button !== 0) return
-  e.preventDefault()
-  e.stopPropagation()
-
-  const startClient = { x: e.clientX, y: e.clientY }
-  const startLocal = clientToCanvasLocal(startClient.x, startClient.y)
-  let dragging = false
-  const DRAG_THRESHOLD = 4
-
-  marqueeRect.value = { x: startLocal.x, y: startLocal.y, w: 0, h: 0 }
-
-  function onMove(ev) {
-    const dx = ev.clientX - startClient.x
-    const dy = ev.clientY - startClient.y
-    if (!dragging && Math.hypot(dx, dy) < DRAG_THRESHOLD) return
-    dragging = true
-    const cur = clientToCanvasLocal(ev.clientX, ev.clientY)
-    const x = Math.min(startLocal.x, cur.x)
-    const y = Math.min(startLocal.y, cur.y)
-    marqueeRect.value = {
-      x,
-      y,
-      w: Math.abs(cur.x - startLocal.x),
-      h: Math.abs(cur.y - startLocal.y),
-    }
-  }
-
-  function onUp(ev) {
-    window.removeEventListener('mousemove', onMove)
-    window.removeEventListener('mouseup', onUp)
-    const rect = marqueeRect.value
-    marqueeRect.value = null
-
-    if (!dragging) {
-      emit('deselect')
-      return
-    }
-
-    if (!rect || rect.w < 2 || rect.h < 2) {
-      emit('deselect')
-      return
-    }
-
-    const ids = props.elements.filter((el) => elementIntersectsRect(el, rect)).map((el) => el.id)
-    emit('marquee-select', {
-      ids,
-      additive: ev.ctrlKey || ev.metaKey || ev.shiftKey,
-    })
-  }
-
-  window.addEventListener('mousemove', onMove)
-  window.addEventListener('mouseup', onUp)
-}
-
-defineExpose({ canvasRef })
+defineExpose({ canvasRef, resolveElementEl })
 </script>

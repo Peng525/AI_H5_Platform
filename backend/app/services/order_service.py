@@ -309,16 +309,6 @@ async def delete_expired_orders(db: AsyncSession) -> int:
     return int(result.rowcount or 0)
 
 
-async def list_claimed_orders(db: AsyncSession, limit: int = 50) -> list[Order]:
-    result = await db.execute(
-        select(Order)
-        .where(Order.status == "claimed")
-        .order_by(Order.claimed_at.desc())
-        .limit(limit)
-    )
-    return list(result.scalars().all())
-
-
 def order_snapshot(user: User) -> dict[str, int | str]:
     return {
         "tier": user.tier,

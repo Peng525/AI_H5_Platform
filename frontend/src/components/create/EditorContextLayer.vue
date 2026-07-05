@@ -4,7 +4,11 @@
       v-if="showQuickBar"
       :selected="selectedElement"
       :anchor-rect="anchorRect"
+      :theme-id="themeId"
+      :viewport-id="viewportId"
+      :slide-id="slideId"
       :viewport="viewport"
+      @style-change="$emit('style-change', $event)"
       @image-fit="$emit('image-fit', $event)"
       @image-crop="$emit('image-crop')"
       @image-layout="$emit('image-layout', $event)"
@@ -14,16 +18,6 @@
       @delete-selected="$emit('delete-selected')"
       @edit-chart-stack="$emit('edit-chart-stack')"
     />
-    <TextFormatToolbar
-      v-if="showTextBar"
-      :selected="selectedElement"
-      :visible="textEditing"
-      :anchor-rect="anchorRect"
-      :theme-id="themeId"
-      :viewport-id="viewportId"
-      :slide-id="slideId"
-      @style-change="$emit('style-change', $event)"
-    />
   </Teleport>
 </template>
 
@@ -31,7 +25,6 @@
 import { computed, watch } from 'vue'
 import { useElementAnchor } from '../../composables/useElementAnchor.js'
 import ElementQuickToolbar from './ElementQuickToolbar.vue'
-import TextFormatToolbar from './TextFormatToolbar.vue'
 
 const props = defineProps({
   selectedElement: { type: Object, default: null },
@@ -75,10 +68,5 @@ watch(
   { deep: true },
 )
 
-const showQuickBar = computed(
-  () => enabled.value && props.selectedElement && !props.textEditing,
-)
-const showTextBar = computed(
-  () => enabled.value && props.selectedElement?.type === 'text' && props.textEditing,
-)
+const showQuickBar = computed(() => enabled.value && !!props.selectedElement)
 </script>

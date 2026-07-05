@@ -51,11 +51,18 @@
 
 ## 演示文稿配置项
 
+### 快速生成 vs 高质量
+
+| 路径 | 入口 | 说明 |
+|------|------|------|
+| **快速生成** | 填写主题 →「编辑提示词」→ 生成 | 秒级、固定 8 种 layout；默认 **1280×720** |
+| **高质量（推荐）** | 生成页顶部 `DeckQualityHint` → ppt-master 导出 →「导入 ppt-master 成品」 | 原生 PPTX 版式，见 [`ppt-master-benchmark/h5-premium-workflow.md`](ppt-master-benchmark/h5-premium-workflow.md) |
+
 | 配置 | 选项 | 后端字段 |
 |------|------|----------|
 | 页数 | 1–10 张卡片 | `page_count` |
 | 背景 | 经典白粉 / 浅灰 | `background_preset` → `#fafafa` / `#f0f2f5` |
-| 尺寸 | 默认动态 / 传统网页 / 移动端 | `viewport_mode` → `auto` / `web-1280` / `mobile-375` |
+| 尺寸 | 默认动态 / 传统网页 / 移动端 | `viewport_mode` → `auto`（**web-1280**）/ `web-1280` / `mobile-375` |
 | 语言 | 简体中文 / English | `language` |
 | 页数 | 左栏 ±，`N 张卡片` | `page_count` |
 
@@ -124,13 +131,13 @@ Content-Type: application/json
 `content_mode: "per_page"` 时 `page_contents` 长度须等于 `page_count`。
 
 响应：`ProjectOut`（含 `slides` 与 `settings`）。每页 `structured_json` 存语义模板；`canvas_elements` 为空，由前端 `compileStructuredSlide` 排版。  
-生成过程中会为 **cover** 与 **split_lr 右栏** 根据 `image_prompt` 调用 AI 配图（失败则 picsum 占位）；`settings.generationMeta.images_generated` 记录张数。
+生成过程中仅当 LLM 声明 `image_intent`（cover_bg / scene / roadmap）且提供 `image_prompt` 时才调用 AI 配图；失败不写 `image_url`（不用随机图）；`settings.generationMeta.images_generated` 记录张数。
 
 ### 结构化幻灯片与排版
 
 - AI 只输出 `template` + `modules` / `headline` / `image_prompt`，详见 [`幻灯片模板规范.md`](./幻灯片模板规范.md)
 - 后端 [`deck_generation_service.py`](../backend/app/services/deck_generation_service.py) 解析后 `_enrich_slide_images`，再 `seed_project_slides`
-- 前端 [`compileStructuredSlide.js`](../frontend/src/utils/compileStructuredSlide.js)（版本 3）将 structured 转为 `canvas_elements`；历史项目因 `_compileVersion` 过期自动重编译
+- 前端 [`compileStructuredSlide.js`](../frontend/src/utils/compileStructuredSlide.js)（版本 5）将 structured 转为 `canvas_elements`；历史项目因 `_compileVersion` 过期自动重编译
 
 ### 相关实现
 
@@ -157,6 +164,17 @@ Content-Type: application/json
 | 工作台「首页」 | `/dashboard`（项目列表） |
 | 工作台「模板库」 | `/templates` |
 | 工作台「导入 PPT」 | 直接上传 `.pptx` → **生成结果页** |
+
+## 简历优化（RS3）
+
+| 步骤 | 行为 |
+|------|------|
+| 入口 | `/create/generate?tab=resume-optimize` 上传 + 提示词 →「生成」 |
+| 跳转 | `createResume` 成功后**立即**进入 `/create/generate/resume/:id?mode=optimize&generating=1` |
+| 等待 | 工作台内执行 `generateResume`；左侧 AI 显示 loading，**中间编辑器只读** |
+| 完成后 | 简历内容更新；左侧可继续输入优化指令（空态有示例 chips） |
+
+详见 [`简历模块/页面线框图.md`](简历模块/页面线框图.md)。
 
 ## 冒烟检查
 

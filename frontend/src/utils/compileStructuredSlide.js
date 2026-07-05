@@ -3,11 +3,13 @@
  */
 import { getTheme, getThemeMargins, getThemeTypeScale, isWebViewport } from '../constants/designThemes.js'
 import { getLayoutCanvasSize, isWideWebViewport, WIDE_VIEWPORT_RATIO } from '../constants/editorPresets.js'
-import { CANVAS_Z } from '../composables/useSlideCanvas.js'
+import { CANVAS_Z } from '../constants/canvasLayers.js'
 import { measureTextBlock, truncateLines } from './measureTextBlock.js'
+import { normalizeMaterialIconName } from './materialIcons.js'
+import { compileFixedDeckSlide, resolveFixedSlide } from './compileFixedDeckSlide.js'
 
 /** builder 行为变更时递增，触发 structured 页强制重编译 */
-export const STRUCTURED_COMPILE_VERSION = 3
+export const STRUCTURED_COMPILE_VERSION = 8
 
 let _uid = 0
 export function resetCompileIds() {
@@ -46,7 +48,7 @@ function iconEl(id, x, y, size, name, color, z = CANVAS_Z.CONTENT_BASE) {
     width: size,
     height: size,
     zIndex: z,
-    content: name || 'circle',
+    content: normalizeMaterialIconName(name),
     style: { color: color || '#156082', background: 'transparent' },
   }
 }
@@ -195,15 +197,27 @@ function fitTextInBox(x, y, boxW, boxH, content, baseStyle, z = CANVAS_Z.CONTENT
   return textEl(uid('t'), x, y, boxW, Math.min(boxH, m.height), truncated, style, z)
 }
 
+function cardSurface(colors) {
+  return colors.bgMuted
+}
+
+function cardBorderStyle(colors) {
+  return {
+    borderRadius: 10,
+    border: `1px solid ${colors.textMuted}33`,
+  }
+}
+
 function appendGridCard(els, c, x, y, colW, rowH, mod, opts = {}) {
   const { scale, colors, fonts } = c
   const pad = opts.pad ?? 8
   const iconSize = opts.iconSize ?? 16
+  const border = cardBorderStyle(colors)
   els.push(
     shapeEl(uid('card'), x, y, colW, rowH, {
-      background: colors.bgMuted,
-      borderRadius: opts.borderRadius ?? 10,
-      border: `1px solid ${colors.textMuted}33`,
+      background: cardSurface(colors),
+      borderRadius: opts.borderRadius ?? border.borderRadius,
+      border: border.border,
     })
   )
   els.push(iconEl(uid('ic'), x + pad, y + pad, iconSize, mod.icon || 'circle', colors.accent))
@@ -221,7 +235,8 @@ function appendGridCard(els, c, x, y, colW, rowH, mod, opts = {}) {
   cy += titleEl.height + 4
   const bodyMaxH = Math.max(12, y + rowH - pad - cy)
   const bodyEl = fitTextInBox(x + pad, cy, innerW, bodyMaxH, mod.body || '', {
-    fontSize: Math.max(10, scale.caption - 2),
+    fontSize: Math.max(9, scale.caption - 2),
+    minFontSize: 9,
     color: colors.textMuted,
     fontFamily: fonts.body,
     lineHeight: 1.3,
@@ -243,148 +258,80 @@ function imageEl(id, x, y, w, h, url, z = CANVAS_Z.BACKGROUND) {
   }
 }
 
-function picsumUrl(seedText, w, h) {
-  const seed = encodeURIComponent(String(seedText || 'cover').slice(0, 24))
-  return `https://picsum.photos/seed/${seed}/${w}/${h}`
+function resolveCoverImageUrl(st) {
+  if (st.image_intent !== 'cover_bg') return ''
+  return String(st.image_url || '').trim()
 }
 
-function resolveCoverImageUrl(st, w, h) {
-  if (st.image_url) return st.image_url
-  return picsumUrl(st.image_prompt || st.title || 'cover', w, h)
+function resolveSceneImageUrl(mod) {
+  const intent = mod?.image_intent || (mod?.role === 'scene_image' ? 'scene' : '')
+  if (intent !== 'scene') return ''
+  return String(mod?.image_url || '').trim()
 }
 
-function resolveSceneImageUrl(mod, fallbackSeed, w, h) {
-  if (mod?.image_url) return mod.image_url
-  return picsumUrl(mod?.image_prompt || fallbackSeed || 'scene', w, h)
+function resolveRoadmapImageUrl(st) {
+  if (st.image_intent !== 'roadmap') return ''
+  return String(st.image_url || '').trim()
 }
 
-function buildCoverWideSplit(c, st) {
-  const { W, H, scale, fonts, colors } = c
-  const imgW = Math.round(W * 0.38)
-  const panelX = imgW
-  const panelW = W - imgW
-  const panelBg = colors.text
-  const textLight = '#FFFFFF'
-  const textMuted = 'rgba(255,255,255,0.78)'
-  const padX = 48
-  const padY = Math.round(H * 0.14)
-  const textW = panelW - padX * 2
-  const els = [
-    imageEl(uid('img'), 0, 0, imgW, H, resolveCoverImageUrl(st, imgW, H)),
-    shapeEl(uid('panel'), panelX, 0, panelW, H, { background: panelBg, borderRadius: 0 }, CANVAS_Z.BACKGROUND),
-  ]
-  let y = padY
-  const eyebrow = st.eyebrow || st.modules?.[0]?.eyebrow || ''
-  if (eyebrow) {
-    els.push(
-      textEl(uid('ey'), panelX + padX, y, textW, 24, eyebrow, {
-        fontSize: scale.caption,
-        color: textMuted,
-        fontFamily: fonts.body,
-      })
-    )
-    y += 28
-  }
-  const title = st.title || '主标题'
-  const titleMaxH = Math.round(H * 0.32)
-  const titleEl = fitTextInBox(panelX + padX, y, textW, titleMaxH, title, {
-    fontSize: scale.display,
-    fontWeight: 'bold',
-    color: textLight,
-    fontFamily: fonts.display,
-    lineHeight: 1.25,
-  })
-  els.push(titleEl)
-  y += titleEl.height + 8
-  const body = st.subtitle || st.modules?.[0]?.body || ''
-  if (body) {
-    const bodyMaxH = Math.max(24, H - y - padY)
-    els.push(
-      fitTextInBox(panelX + padX, y, textW, bodyMaxH, body, {
-        fontSize: scale.body,
-        color: textMuted,
-        fontFamily: fonts.body,
-        lineHeight: 1.55,
-      })
-    )
-  }
-  return els
-}
-
-function buildCoverMobileStack(c, st) {
-  const { W, H, scale, fonts, colors } = c
-  const imgH = Math.round(H * 0.42)
-  const panelY = imgH
-  const panelH = H - imgH
-  const panelBg = colors.text
-  const textLight = '#FFFFFF'
-  const textMuted = 'rgba(255,255,255,0.78)'
-  const padX = 28
-  const padY = 24
-  const textW = W - padX * 2
-  const els = [
-    imageEl(uid('img'), 0, 0, W, imgH, resolveCoverImageUrl(st, W, imgH)),
-    shapeEl(uid('panel'), 0, panelY, W, panelH, { background: panelBg, borderRadius: 0 }, CANVAS_Z.BACKGROUND),
-  ]
-  let y = panelY + padY
-  const title = st.title || '主标题'
-  const titleMaxH = Math.round(panelH * 0.35)
-  const titleEl = fitTextInBox(padX, y, textW, titleMaxH, title, {
-    fontSize: scale.h1,
-    fontWeight: 'bold',
-    color: textLight,
-    fontFamily: fonts.display,
-    lineHeight: 1.25,
-  })
-  els.push(titleEl)
-  y += titleEl.height + 8
-  const body = st.subtitle || st.modules?.[0]?.body || ''
-  if (body) {
-    const bodyMaxH = Math.max(24, panelY + panelH - y - padY)
-    els.push(
-      fitTextInBox(padX, y, textW, bodyMaxH, body, {
-        fontSize: scale.body,
-        color: textMuted,
-        fontFamily: fonts.body,
-        lineHeight: 1.5,
-      })
-    )
-  }
-  return els
-}
-
-function buildCoverClassic(c, st) {
+function buildCoverClassic(c, st, opts = {}) {
   const { scale, margin, colors, fonts, H } = c
-  const y0 = Math.round(H * 0.2)
-  return [
-    shapeEl(uid('bar'), margin.x + margin.contentWidth / 2 - (c.web ? 60 : 40), y0 + (c.web ? 100 : 88), c.web ? 120 : 80, 3, {
-      background: colors.accent,
-      borderRadius: 2,
-    }),
-    textEl(uid('t'), margin.x, y0, margin.contentWidth, c.web ? 80 : 64, st.title || '主标题', {
+  const y0 = opts.startY ?? Math.round(H * 0.2)
+  const textW = opts.width ?? margin.contentWidth
+  const x = opts.x ?? margin.x
+  const z = opts.z ?? CANVAS_Z.CONTENT_BASE
+  const els = []
+  els.push(
+    shapeEl(
+      uid('bar'),
+      x + textW / 2 - (c.web ? 60 : 40),
+      y0 + (c.web ? 100 : 88),
+      c.web ? 120 : 80,
+      3,
+      { background: colors.accent, borderRadius: 2 },
+      z
+    )
+  )
+  const titleMaxH = Math.round(H * 0.28)
+  els.push(
+    fitTextInBox(x, y0, textW, titleMaxH, st.title || '主标题', {
       fontSize: scale.display,
       fontWeight: 'bold',
       color: colors.text,
       fontFamily: fonts.display,
       textAlign: 'center',
-    }),
-    textEl(uid('s'), margin.x, y0 + (c.web ? 96 : 76), margin.contentWidth, c.web ? 48 : 40, st.subtitle || '', {
-      fontSize: scale.body,
-      color: colors.textMuted,
-      fontFamily: fonts.body,
-      textAlign: 'center',
-    }),
-  ]
+      lineHeight: 1.25,
+    }, z)
+  )
+  const subtitle = st.subtitle || st.modules?.[0]?.body || ''
+  if (subtitle) {
+    const subY = y0 + (c.web ? 96 : 76)
+    const subMaxH = Math.max(24, H - subY - 24)
+    els.push(
+      fitTextInBox(x, subY, textW, subMaxH, subtitle, {
+        fontSize: scale.body,
+        color: colors.textMuted,
+        fontFamily: fonts.body,
+        textAlign: 'center',
+        lineHeight: 1.45,
+      }, z)
+    )
+  }
+  return els
 }
 
 function buildCover(c, st) {
-  if (c.wide || (c.web && c.W / c.H >= WIDE_VIEWPORT_RATIO)) {
-    return buildCoverWideSplit(c, st)
+  const { W, H, margin, colors } = c
+  const els = []
+  const coverUrl = resolveCoverImageUrl(st)
+  if (coverUrl) {
+    els.push(imageEl(uid('img'), 0, 0, W, H, coverUrl, CANVAS_Z.BACKGROUND - 1))
+    els.push(
+      shapeEl(uid('ov'), 0, 0, W, H, { background: 'rgba(0,0,0,0.38)', borderRadius: 0 }, CANVAS_Z.BACKGROUND)
+    )
   }
-  if (!c.web) {
-    return buildCoverMobileStack(c, st)
-  }
-  return buildCoverClassic(c, st)
+  els.push(...buildCoverClassic(c, st, { z: CANVAS_Z.CONTENT_BASE + 2 }))
+  return els
 }
 
 function buildSectionWide(c, st) {
@@ -508,7 +455,7 @@ function buildGrid2x2Wide(c, st) {
 
   const colW = Math.floor((margin.contentWidth - gap) / 2)
   const availH = H - gridY - bottomPad
-  const rowH = Math.min(Math.max(72, Math.floor((availH - gap) / 2)), availH - gap)
+  const rowH = Math.max(68, Math.floor((availH - gap) / 2))
 
   for (let row = 0; row < 2; row++) {
     for (let col = 0; col < 2; col++) {
@@ -594,10 +541,11 @@ function buildCardsRow(c, st) {
   els.push(...header.elements)
   let y = header.nextY + (c.wide ? 8 : 12)
 
-  const cardW = Math.floor((margin.contentWidth - gap * (count - 1)) / count)
+  const cardW = Math.max(140, Math.floor((margin.contentWidth - gap * (count - 1)) / count))
   const maxCardH = Math.max(100, H - y - 16)
   const iconSize = c.wide ? 22 : 28
   const pad = 12
+  const border = cardBorderStyle(colors)
 
   const cardHeights = modules.map((mod) => {
     const innerW = cardW - pad * 2
@@ -622,9 +570,9 @@ function buildCardsRow(c, st) {
     const x = margin.x + i * (cardW + gap)
     els.push(
       shapeEl(uid('card'), x, y, cardW, cardH, {
-        background: '#ffffff',
-        borderRadius: 12,
-        border: `1px solid ${colors.textMuted}44`,
+        background: cardSurface(colors),
+        borderRadius: border.borderRadius,
+        border: border.border,
       })
     )
     els.push(iconEl(uid('ic'), x + pad, y + pad, iconSize, mod.icon || 'star', colors.accent))
@@ -643,6 +591,7 @@ function buildCardsRow(c, st) {
     const bodyMaxH = y + cardH - pad - cy
     const bodyEl = fitTextInBox(x + pad, cy, innerW, bodyMaxH, mod.body || '', {
       fontSize: scale.caption,
+      minFontSize: 9,
       color: colors.textMuted,
       fontFamily: fonts.body,
       lineHeight: 1.35,
@@ -657,8 +606,6 @@ function buildSplitLr(c, st) {
   const gap = c.wide ? 12 : c.web ? 40 : 16
   const rightPad = c.wide ? 8 : 0
   const bottomPad = c.wide ? 12 : 16
-  const leftW = Math.floor((margin.contentWidth - gap) * 0.52)
-  const rightW = margin.contentWidth - gap - leftW - rightPad
   const topPad = c.wide ? 12 : c.web ? 56 : 48
   const els = []
   const leftMod = st.modules?.[0] || { title: st.title, body: st.subtitle || '' }
@@ -668,6 +615,17 @@ function buildSplitLr(c, st) {
   const headerSt = pageTitle
     ? { ...st, title: pageTitle, headline: st.headline, subtitle: '' }
     : { headline: st.headline, title: '', subtitle: '' }
+
+  const sceneUrl = resolveSceneImageUrl(rightMod)
+  const useChartPlaceholder =
+    rightMod.role === 'chart_placeholder' && !rightMod.image_url && !rightMod.image_prompt
+  const hasRightImage = !!sceneUrl && !useChartPlaceholder
+
+  const leftW = hasRightImage || useChartPlaceholder
+    ? Math.floor((margin.contentWidth - gap) * 0.52)
+    : margin.contentWidth
+  const rightW = margin.contentWidth - gap - leftW - rightPad
+
   const header = stackPageHeader(c, headerSt, topPad, {
     includeSubtitle: false,
     width: leftW,
@@ -676,7 +634,7 @@ function buildSplitLr(c, st) {
   els.push(...header.elements)
   let y = header.nextY + (c.wide ? 8 : 12)
 
-  const titleMaxH = Math.round((H - y - bottomPad) * 0.22)
+  const titleMaxH = Math.round((H - y - bottomPad) * (hasRightImage || useChartPlaceholder ? 0.22 : 0.18))
   const lt = fitTextInBox(margin.x, y, leftW, titleMaxH, leftMod.title || st.title || '', {
     fontSize: scale.h2,
     fontWeight: '600',
@@ -686,7 +644,7 @@ function buildSplitLr(c, st) {
   })
   els.push(lt)
   let cy = y + lt.height + 10
-  const lbMaxH = Math.max(40, H - cy - bottomPad)
+  const lbMaxH = Math.max(40, H - cy - bottomPad - (hasRightImage || useChartPlaceholder ? 0 : 0))
   const lb = fitTextInBox(margin.x, cy, leftW, lbMaxH, leftMod.body || st.subtitle || '', {
     fontSize: scale.body,
     color: colors.textMuted,
@@ -695,16 +653,36 @@ function buildSplitLr(c, st) {
   })
   els.push(lb)
 
-  const phY = y
-  const phH = Math.max(80, H - phY - bottomPad)
-  const phX = margin.x + leftW + gap
-  const useChartPlaceholder =
-    rightMod.role === 'chart_placeholder' && !rightMod.image_url && !rightMod.image_prompt
-  if (useChartPlaceholder) {
-    els.push(...chartPlaceholderEl(phX, phY, rightW, phH, colors))
-  } else {
-    const sceneUrl = resolveSceneImageUrl(rightMod, st.title || leftMod.title, rightW, phH)
-    els.push(imageEl(uid('rimg'), phX, phY, rightW, phH, sceneUrl, CANVAS_Z.BACKGROUND))
+  if (hasRightImage || useChartPlaceholder) {
+    const phY = y
+    const phH = Math.max(80, H - phY - bottomPad)
+    const phX = margin.x + leftW + gap
+    if (useChartPlaceholder) {
+      els.push(...chartPlaceholderEl(phX, phY, rightW, phH, colors))
+    } else {
+      els.push(imageEl(uid('rimg'), phX, phY, rightW, phH, sceneUrl, CANVAS_Z.BACKGROUND))
+    }
+  } else if (rightMod.title || rightMod.body) {
+    cy += lb.height + 12
+    const rt = fitTextInBox(margin.x, cy, margin.contentWidth, 48, rightMod.title || '', {
+      fontSize: scale.body,
+      fontWeight: '600',
+      color: colors.text,
+      fontFamily: fonts.display,
+      lineHeight: 1.25,
+    })
+    els.push(rt)
+    cy += rt.height + 6
+    const rbMaxH = Math.max(32, H - cy - bottomPad)
+    els.push(
+      fitTextInBox(margin.x, cy, margin.contentWidth, rbMaxH, rightMod.body || '', {
+        fontSize: scale.caption,
+        minFontSize: 9,
+        color: colors.textMuted,
+        fontFamily: fonts.body,
+        lineHeight: 1.4,
+      })
+    )
   }
   return els
 }
@@ -752,6 +730,9 @@ function buildSteps(c, st) {
   while (steps.length < 3) steps.push({ title: `步骤 ${steps.length + 1}`, body: '' })
   const topPad = c.wide ? 12 : Math.round(H * 0.14)
   const els = []
+  const roadmapUrl = resolveRoadmapImageUrl(st)
+  const roadmapH = roadmapUrl ? Math.max(72, Math.round(H * 0.26)) : 0
+  const bottomReserve = roadmapUrl ? roadmapH + 16 : 16
 
   const header = stackPageHeader(c, st, topPad, {
     titleSize: scale.h2,
@@ -769,6 +750,7 @@ function buildSteps(c, st) {
   }
   const y0 = header.nextY + (c.wide ? 12 : 24)
   const stepW = Math.floor(margin.contentWidth / 3)
+  const labelMaxH = Math.max(40, H - y0 - (c.web ? 120 : 100) - bottomReserve)
   steps.forEach((s, i) => {
     const x = margin.x + i * stepW + stepW / 2 - (c.web ? 28 : 22)
     els.push(shapeEl(uid('c'), x, y0, c.web ? 56 : 44, c.web ? 56 : 44, { background: colors.accent, borderRadius: 999 }))
@@ -783,14 +765,20 @@ function buildSteps(c, st) {
     )
     const label = s.title || s.body || `步骤 ${i + 1}`
     els.push(
-      textEl(uid('l'), margin.x + i * stepW, y0 + (c.web ? 120 : 100), stepW, c.web ? 64 : 48, label, {
+      fitTextInBox(margin.x + i * stepW, y0 + (c.web ? 120 : 100), stepW, labelMaxH, label, {
         fontSize: scale.caption,
+        minFontSize: 9,
         color: colors.textMuted,
         fontFamily: fonts.body,
         textAlign: 'center',
+        lineHeight: 1.3,
       })
     )
   })
+  if (roadmapUrl) {
+    const imgY = H - roadmapH - 12
+    els.push(imageEl(uid('rdm'), margin.x, imgY, margin.contentWidth, roadmapH, roadmapUrl, CANVAS_Z.BACKGROUND))
+  }
   return els
 }
 
@@ -850,6 +838,7 @@ const BUILDERS = {
 }
 
 export function compileStructuredSlide(structured, viewportId = 'web-wide-1024', themeId = 'zjy-minimal') {
+  if (resolveFixedSlide(structured)) return compileFixedDeckSlide(structured, viewportId, themeId)
   if (!structured?.template) return []
   resetCompileIds()
   const c = layoutCtx(viewportId, themeId)
@@ -859,6 +848,7 @@ export function compileStructuredSlide(structured, viewportId = 'web-wide-1024',
 }
 
 export function resolveSlideStructured(slide) {
+  if (resolveFixedSlide(slide)) return resolveFixedSlide(slide)
   if (slide?.structured?.template) return slide.structured
   if (slide?.layout && BUILDERS[slide.layout]) {
     return {

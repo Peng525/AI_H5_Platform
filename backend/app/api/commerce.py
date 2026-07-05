@@ -25,6 +25,7 @@ from app.services.order_service import (
     order_expires_at,
     order_snapshot,
 )
+from app.services.payment.wechat_native import decrypt_notify_resource, verify_notify_signature
 from app.services.payment.url_utils import absolutize_url, wechat_qr_path
 from app.services.visits import record_visit
 

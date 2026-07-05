@@ -1,14 +1,30 @@
-"""Export resume to PDF/DOCX with classic-blue template layout."""
+"""Export resume to PDF/DOCX with template-aware layout."""
 from __future__ import annotations
 
 import io
 from typing import Any
 
+from app.services.resume.template_catalog import normalize_template_id
 from app.services.resume.visual_compiler import normalize_structured
 
 ACCENT = (37, 99, 235)
 TEXT = (30, 41, 59)
 MUTED = (100, 116, 139)
+
+_TEMPLATE_ACCENTS: dict[str, tuple[int, int, int]] = {
+    "template1": (37, 99, 235),
+    "template2": (15, 118, 110),
+    "template3": (79, 70, 229),
+    "template4": (17, 24, 39),
+    "template5": (30, 64, 175),
+    "template6": (190, 24, 93),
+    "template7": (22, 163, 74),
+}
+
+
+def _template_accent(visual: dict[str, Any] | None) -> tuple[int, int, int]:
+    tid = normalize_template_id((visual or {}).get("template_id")) or "template1"
+    return _TEMPLATE_ACCENTS.get(tid, ACCENT)
 
 
 def _val(structured: dict[str, Any], *path: str, default: str = "") -> str:
@@ -135,24 +151,36 @@ def export_pdf_bytes(structured: dict[str, Any], visual: dict[str, Any] | None =
 
     data = normalize_structured(structured)
     visual = visual or {}
+    accent = _template_accent(visual)
+    tid = normalize_template_id(visual.get("template_id")) or "template1"
+    basics = data.get("basics") or {}
     font = _register_cjk_font()
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=A4)
     width, height = A4
-    x_margin = 40
+    x_margin = 40 if tid != "template5" else 160
+    sidebar_x = 40 if tid == "template5" else None
     y = height - 45
-    content_w = width - 2 * x_margin
+    content_w = width - x_margin - 40
 
     def draw_section(title: str) -> None:
         nonlocal y
         if y < 80:
             c.showPage()
             y = height - 45
-        c.setFillColorRGB(ACCENT[0] / 255, ACCENT[1] / 255, ACCENT[2] / 255)
-        c.rect(x_margin, y - 18, content_w, 20, fill=1, stroke=0)
+        if tid == "template4":
+            c.setFillColorRGB(accent[0] / 255, accent[1] / 255, accent[2] / 255)
+            c.setFont(font, 11)
+            c.drawString(x_margin, y - 12, title)
+            c.line(x_margin, y - 16, x_margin + content_w, y - 16)
+            y -= 28
+            c.setFillColorRGB(TEXT[0] / 255, TEXT[1] / 255, TEXT[2] / 255)
+            return
+        c.setFillColorRGB(accent[0] / 255, accent[1] / 255, accent[2] / 255)
+        c.rect(x_margin if sidebar_x is None else sidebar_x, y - 18, content_w if sidebar_x is None else 100, 20, fill=1, stroke=0)
         c.setFillColorRGB(1, 1, 1)
         c.setFont(font, 11)
-        c.drawString(x_margin + 8, y - 14, title)
+        c.drawString((x_margin if sidebar_x is None else sidebar_x) + 8, y - 14, title)
         y -= 32
         c.setFillColorRGB(TEXT[0] / 255, TEXT[1] / 255, TEXT[2] / 255)
 
@@ -169,8 +197,9 @@ def export_pdf_bytes(structured: dict[str, Any], visual: dict[str, Any] | None =
         c.drawString(x_margin, y, text[:90])
         y -= fs + 6
 
-    c.setFont(font, 18)
-    c.drawCentredString(width / 2, y, "个人简历")
+    c.setFont(font, 18 if tid != "template6" else 22)
+    title_text = str(basics.get("name") or "个人简历") if tid in ("template6", "template7") else "个人简历"
+    c.drawCentredString(width / 2, y, title_text[:20])
     y -= 22
     motto = _val(data, "basics", "motto")
     if motto:
@@ -181,7 +210,6 @@ def export_pdf_bytes(structured: dict[str, Any], visual: dict[str, Any] | None =
         c.setFillColorRGB(TEXT[0] / 255, TEXT[1] / 255, TEXT[2] / 255)
 
     draw_section("基本信息")
-    basics = data.get("basics") or {}
     row1 = f"姓名：{basics.get('name', '')}    电话：{basics.get('phone', '')}"
     row2 = f"邮箱：{basics.get('email', '')}    性别：{basics.get('gender', '')}    年龄：{basics.get('age', '')}"
     draw_line(row1, "basics.name")

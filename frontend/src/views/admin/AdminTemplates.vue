@@ -104,6 +104,7 @@ import AdminShell from '../../components/AdminShell.vue'
 import AdminTemplateEditor from '../../components/admin/AdminTemplateEditor.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
 import { useToast } from '../../composables/useToast.js'
+import { normalizeUserErrorMessage } from '../../utils/apiErrorMessage.js'
 
 const OPEN_COOLDOWN_MS = 3000
 
@@ -186,9 +187,10 @@ async function openVisualEdit(t) {
 
 function simplifyError(msg) {
   if (!msg) return '打开失败，请稍后重试'
-  if (msg.includes('greenlet_spawn')) return '打开编辑草稿失败，请重启后端服务后再试'
-  if (msg.length > 120) return `${msg.slice(0, 120)}…`
-  return msg
+  const normalized = normalizeUserErrorMessage(msg)
+  if (normalized.includes('greenlet_spawn')) return '打开编辑草稿失败，请重启后端服务后再试'
+  if (normalized.length > 120) return `${normalized.slice(0, 120)}…`
+  return normalized
 }
 
 function goEditor({ templateId, projectId }) {

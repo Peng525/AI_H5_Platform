@@ -4,6 +4,8 @@
       <ResumeAttachmentBar
         :resume-file-name="resumeFileName"
         :jd-file-name="jdFileName"
+        :resume-file="resumeFile"
+        :jd-file="jdFile"
         :resume-uploading="resumeUploading"
         :jd-uploading="jdUploading"
         :resume-error="resumeError"
@@ -25,7 +27,8 @@
       @paste="emit('paste')"
     />
     <p v-if="error" class="text-xs text-red-600 px-1">{{ error }}</p>
-    <div v-if="canGenerate" class="flex justify-center pt-1">
+    <div v-if="canGenerate" class="flex justify-center pt-1 relative">
+      <slot name="generate-hint" />
       <button
         type="button"
         class="inline-flex items-center gap-2 px-8 py-2.5 rounded-full bg-primary text-on-primary font-medium shadow-card hover:bg-primary/90 transition disabled:opacity-50"
@@ -48,6 +51,8 @@ defineProps({
   prompt: { type: String, default: '' },
   resumeFileName: { type: String, default: '' },
   jdFileName: { type: String, default: '' },
+  resumeFile: { type: Object, default: null },
+  jdFile: { type: Object, default: null },
   resumeUploading: { type: Boolean, default: false },
   jdUploading: { type: Boolean, default: false },
   generating: { type: Boolean, default: false },

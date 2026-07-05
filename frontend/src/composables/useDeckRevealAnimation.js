@@ -26,7 +26,6 @@ export function useDeckRevealAnimation() {
   let slidesRef = []
   let getElementsForSlide = () => []
   let onCompleteCb = null
-  let overviewScrollFn = null
 
   const isRevealing = computed(() => phase.value === 'revealing')
   const isDone = computed(() => phase.value === 'done')
@@ -56,11 +55,23 @@ export function useDeckRevealAnimation() {
     visibleSlideCount.value = slideIndex + 2
     currentSlideIndex.value = slideIndex + 1
     currentElementIndex.value = 0
-    overviewScrollFn?.(slidesRef[slideIndex + 1]?.id)
-    schedule(SLIDE_TRANSITION_MS, () => revealElementBatch(slideIndex + 1))
+    schedule(SLIDE_TRANSITION_MS, () => {
+      void revealElementBatch(slideIndex + 1)
+    })
   }
 
-  function revealElementBatch(slideIndex) {
+  function preloadImageUrl(url) {
+    const src = String(url || '').trim()
+    if (!src || src.startsWith('data:')) return Promise.resolve()
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.onload = () => resolve()
+      img.onerror = () => resolve()
+      img.src = src
+    })
+  }
+
+  async function revealElementBatch(slideIndex) {
     const slide = slidesRef[slideIndex]
     if (!slide) {
       finishReveal()
@@ -82,6 +93,9 @@ export function useDeckRevealAnimation() {
     }
 
     const el = els[currentElementIndex.value]
+    if (el?.type === 'image' && el.content) {
+      await preloadImageUrl(el.content)
+    }
     if (el?.id) {
       revealed.push(el.id)
       map[slideId] = revealed
@@ -95,7 +109,9 @@ export function useDeckRevealAnimation() {
       return
     }
 
-    schedule(pageElementStepMs(els.length), () => revealElementBatch(slideIndex))
+    schedule(pageElementStepMs(els.length), () => {
+      void revealElementBatch(slideIndex)
+    })
   }
 
   function finishReveal() {
@@ -111,11 +127,10 @@ export function useDeckRevealAnimation() {
     onCompleteCb?.()
   }
 
-  function startReveal({ slides, getElements, onComplete, scrollToSlide }) {
+  function startReveal({ slides, getElements, onComplete }) {
     slidesRef = slides || []
     getElementsForSlide = getElements || (() => [])
     onCompleteCb = onComplete
-    overviewScrollFn = scrollToSlide
     if (!slidesRef.length) {
       phase.value = 'done'
       onComplete?.()
@@ -127,8 +142,9 @@ export function useDeckRevealAnimation() {
     currentSlideIndex.value = 0
     currentElementIndex.value = 0
     brushTarget.value = null
-    overviewScrollFn?.(slidesRef[0]?.id)
-    schedule(SLIDE_TRANSITION_MS, () => revealElementBatch(0))
+    schedule(SLIDE_TRANSITION_MS, () => {
+      void revealElementBatch(0)
+    })
   }
 
   function skipReveal() {
@@ -147,7 +163,6 @@ export function useDeckRevealAnimation() {
     slidesRef = []
     getElementsForSlide = () => []
     onCompleteCb = null
-    overviewScrollFn = null
   }
 
   function isSlideVisible(index) {

@@ -20,7 +20,7 @@
   >
     <div
       v-if="element.type === 'text'"
-      class="w-full h-full overflow-hidden px-1"
+      class="canvas-text-box w-full h-full overflow-hidden px-1"
       :class="readonly ? '' : 'cursor-move'"
       :style="textStyle"
       @dblclick.stop="startEdit"
@@ -64,10 +64,10 @@
 
     <div
       v-else-if="element.type === 'icon'"
-      class="w-full h-full cursor-move flex items-center justify-center"
+      class="w-full h-full cursor-move flex items-center justify-center overflow-hidden"
       :style="iconStyle"
     >
-      <span class="material-symbols-outlined select-none pointer-events-none" :style="{ fontSize: iconSize + 'px' }">{{ element.content || 'star' }}</span>
+      <span class="material-symbols-outlined canvas-icon-symbol select-none pointer-events-none" :style="{ fontSize: iconSize + 'px' }">{{ normalizedIcon }}</span>
     </div>
 
     <div
@@ -108,15 +108,18 @@
 
     <div
       v-else-if="element.type === 'chart'"
-      class="w-full h-full cursor-move flex flex-col p-2"
+      class="w-full h-full cursor-move flex flex-col p-2 min-h-0"
       :style="{ background: element.style?.background || '#fff' }"
     >
-      <div class="flex-1 flex items-end justify-around gap-1 min-h-0">
-        <div
-          v-for="(v, i) in chartValues"
-          :key="i"
-          class="flex-1 max-w-[20%] rounded-t-sm"
-          :style="{ height: barHeight(v) + '%', background: element.style?.chartColor || '#005daa', minHeight: '4px' }"
+      <p v-if="chartContent.title" class="text-[10px] font-semibold text-gray-800 mb-1 line-clamp-1 shrink-0 pointer-events-none">
+        {{ chartContent.title }}
+      </p>
+      <div class="flex-1 min-h-0 pointer-events-none">
+        <SimpleChart
+          :chart-type="chartContent.chartType"
+          :labels="chartContent.labels"
+          :values="chartContent.values"
+          :chart-color="element.style?.chartColor || '#005daa'"
         />
       </div>
     </div>
@@ -124,15 +127,19 @@
     <div
       v-else-if="element.type === 'image'"
       class="w-full h-full cursor-move flex items-center justify-center overflow-hidden"
-      :style="{ background: element.style?.background || '#f0f0f0' }"
+      :style="{ background: element.content ? 'transparent' : (element.style?.background || '#f0f0f0') }"
     >
       <img
         v-if="element.content && !imageCrop"
         :src="element.content"
         alt="素材"
-        class="w-full h-full pointer-events-none"
-        :class="imageObjectFitClass"
+        class="w-full h-full pointer-events-none transition-opacity duration-200"
+        :class="[imageObjectFitClass, imageReady ? 'opacity-100' : 'opacity-0']"
+        loading="eager"
+        decoding="async"
         draggable="false"
+        @load="imageReady = true"
+        @error="imageReady = true"
       />
       <div
         v-else-if="element.content && imageCrop"
@@ -152,7 +159,6 @@
     <div
       v-else-if="element.type === 'chartStack'"
       class="w-full h-full relative flex flex-col min-h-0"
-      @dblclick.stop="openChartStackEditor"
     >
       <div
         v-if="selected && !readonly"
@@ -201,11 +207,14 @@
 
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { CANVAS_Z } from '../composables/useSlideCanvas.js'
+import { CANVAS_Z } from '../constants/canvasLayers.js'
 import { renderWordCloud } from './wordcloud/WordCloudRenderer.js'
 import ChartStack from './charts/ChartStack.vue'
+import SimpleChart from './charts/SimpleChart.vue'
+import { normalizeChartContent } from '../composables/useSlideCanvas.js'
 import { selectionChromeForBackground } from '../utils/selectionChrome.js'
 import { fitTextElementBox } from '../utils/measureTextBlock.js'
+import { normalizeMaterialIconName } from '../utils/materialIcons.js'
 
 const props = defineProps({
   element: { type: Object, required: true },
@@ -221,6 +230,15 @@ const props = defineProps({
 const emit = defineEmits(['select', 'update', 'remove', 'batch-start', 'batch-end', 'edit-wordcloud', 'edit-chart-stack', 'move-delta', 'text-edit-start', 'text-edit-end'])
 
 const wordCloudCanvasRef = ref(null)
+const imageReady = ref(false)
+
+watch(
+  () => props.element.content,
+  () => {
+    imageReady.value = false
+  },
+  { immediate: true },
+)
 
 const editing = ref(false)
 const editText = ref('')
@@ -261,6 +279,7 @@ const iconStyle = computed(() => ({
 }))
 
 const iconSize = computed(() => Math.min(props.element.width, props.element.height) * 0.55)
+const normalizedIcon = computed(() => normalizeMaterialIconName(props.element.content, 'star'))
 
 const selectionChrome = computed(() =>
   selectionChromeForBackground(props.canvasBackground, props.themeId)
@@ -363,25 +382,12 @@ function cellStyle(ri) {
   }
 }
 
-const chartValues = computed(() => {
-  const c = props.element.content
-  return c?.values?.length ? c.values : [35, 65, 45, 80, 55]
-})
+const chartContent = computed(() => normalizeChartContent(props.element.content))
 
 const chartStackCards = computed(() => {
   const c = props.element.content
   return c?.cards?.length ? c.cards : []
 })
-
-function openChartStackEditor() {
-  if (props.readonly) return
-  emit('edit-chart-stack', props.element)
-}
-
-function barHeight(v) {
-  const max = Math.max(...chartValues.value, 1)
-  return Math.max(8, (v / max) * 100)
-}
 
 function onRootMouseDown(e) {
   if (props.readonly) return
@@ -584,3 +590,20 @@ onMounted(() => {
   if (props.element.type === 'wordcloud') paintWordCloud()
 })
 </script>
+
+<style scoped>
+.canvas-text-box {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.canvas-icon-symbol {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  line-height: 1;
+  white-space: nowrap;
+  text-transform: none;
+}
+</style>

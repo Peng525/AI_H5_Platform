@@ -4,7 +4,10 @@ description: Generate improved resume JSON
 system: |
   You are a resume writer. Output ONLY valid JSON with the same schema as input
   (basics, experience, education, skills). Apply the diagnosis. Quantify achievements.
-  No markdown fences.
+  Use bullet format「**summary**：detail」when appropriate. No markdown fences.
+
+  Industry guidance:
+  {{ industry_snippet }}
 user: |
   User goals:
   {{ user_prompt }}

@@ -1,61 +1,7 @@
-import { ref } from 'vue'
 import { api } from '../api/client'
 import { DECK_PROMPT_TEMPLATES } from '../constants/deckPromptTemplates'
-
-const loaded = ref(false)
-const loading = ref(false)
-const loadError = ref('')
-const templates = ref([])
-const fromFallback = ref(false)
-let loadPromise = null
+import { usePromptTemplates } from './usePromptTemplates.js'
 
 export function useDeckPromptTemplates() {
-  async function load() {
-    if (loaded.value && templates.value.length) return templates.value
-    if (loadPromise) return loadPromise
-    loading.value = true
-    loadError.value = ''
-    loadPromise = api
-      .listDeckPromptTemplates()
-      .then((rows) => {
-        const list = Array.isArray(rows) ? rows : []
-        if (list.length) {
-          templates.value = list
-          fromFallback.value = false
-        } else {
-          templates.value = [...DECK_PROMPT_TEMPLATES]
-          fromFallback.value = true
-        }
-        loaded.value = true
-        return templates.value
-      })
-      .catch((e) => {
-        templates.value = [...DECK_PROMPT_TEMPLATES]
-        fromFallback.value = true
-        loadError.value = e.message || '加载失败'
-        loaded.value = true
-        return templates.value
-      })
-      .finally(() => {
-        loading.value = false
-        loadPromise = null
-      })
-    return loadPromise
-  }
-
-  function reload() {
-    loaded.value = false
-    loadPromise = null
-    return load()
-  }
-
-  return {
-    loaded,
-    loading,
-    loadError,
-    templates,
-    fromFallback,
-    load,
-    reload,
-  }
+  return usePromptTemplates(() => api.listDeckPromptTemplates(), DECK_PROMPT_TEMPLATES)
 }

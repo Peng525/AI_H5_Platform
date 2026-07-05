@@ -32,7 +32,7 @@ def user_dir(user_id: int) -> Path:
 
 def save_upload(user_id: int, filename: str, content: bytes, mime: str) -> tuple[str, str, int]:
     if len(content) > max_bytes():
-        raise FileTooLargeError(f"File exceeds {settings.resume_max_file_mb}MB limit")
+        raise FileTooLargeError(f"文件超过 {settings.resume_max_file_mb}MB 限制")
     digest = hashlib.sha256(content).hexdigest()
     ext = Path(filename or "upload").suffix or ".bin"
     safe_name = f"{uuid.uuid4().hex}{ext}"

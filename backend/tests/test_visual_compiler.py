@@ -22,7 +22,7 @@ class VisualCompilerTests(unittest.TestCase):
         structured = normalize_structured({"basics": {"name": "A"}})
         existing = {"template_id": "classic-blue", "styles": {"basics.name": {"fontSize": 14}}}
         doc = compile_visual_document(structured, existing)
-        self.assertEqual(doc["template_id"], "classic-blue")
+        self.assertEqual(doc["template_id"], "template1")
         self.assertEqual(doc["styles"]["basics.name"]["fontSize"], 14)
 
     def test_bind_roundtrip(self):

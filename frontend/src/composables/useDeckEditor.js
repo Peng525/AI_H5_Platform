@@ -18,6 +18,11 @@ import { fitTextElementBox } from '../utils/measureTextBlock.js'
 
 const COACH_KEY = 'ai_h5_editor_coach_seen'
 
+/**
+ * 演示项目编辑器核心 composable。
+ * 分区：项目加载/保存 · 结构化编译 · 画布 CRUD（useSlideCanvas）· 主题/设置 · 模态与 AI 配图。
+ * layoutMode: 'studio' 单页画布 + 顶栏工具栏；'result' 纵览多页 + 浮动 EditorContextLayer。
+ */
 export function useDeckEditor(projectIdSource, options = {}) {
   const layoutMode = options.layoutMode || 'studio'
   const onProjectLoaded = options.onProjectLoaded
@@ -88,7 +93,7 @@ const project = ref(null)
 const current = ref(null)
 const imageLoading = ref(false)
 const aiPanelRef = ref(null)
-const aiImageModalRef = ref(null)
+const resultRailRef = ref(null)
 const quota = ref({ remaining: 5, total: 5 })
 const previewAnimation = ref('')
 const previewAnimationTick = ref(0)
@@ -98,6 +103,7 @@ const wordCloudOpen = ref(false)
 const wordCloudEditContent = ref(null)
 const chartStackOpen = ref(false)
 const chartStackEditContent = ref(null)
+const chartEditMode = ref('chartStack')
 const showDialoguePreview = ref(false)
 const cropModalOpen = ref(false)
 const cropTargetId = ref(null)
@@ -113,7 +119,6 @@ const templateMeta = ref(null)
 const layoutMeta = ref(null)
 const showEditorCoach = ref(false)
 const editingSlideId = ref(null)
-const aiImageOpen = ref(false)
 
 const { settings, viewport, setViewport, setScrollEffect, getSlideBackground, setSlideBackground, applyFromServer, setBgm, setThemeId, save: saveSettings } = useProjectEditorSettings(projectId)
 
@@ -514,14 +519,17 @@ async function generateSlideAfter(afterSlideId, { prompt, templateHint, language
     const slide = await api.generateAiSlide(apiProjectRef(), {
       prompt,
       insert_after_slide_id: afterSlideId ?? undefined,
+      replace_slide_id: afterSlideId ?? undefined,
       template_hint: templateHint || 'magic',
       language: language || settings.value.aiLanguage || '简体中文',
     })
-    insertSlideInList(slide, afterSlideId)
-    finishNewSlide(slide)
+    const refreshed = await api.getProject(apiProjectRef())
+    await applyProjectPayload(refreshed)
+    const nextSlide = refreshed.slides?.find((s) => s.id === slide.id) || slide
+    finishNewSlide(nextSlide)
     await refreshQuota()
     toastSuccess('卡片已生成')
-    return slide
+    return nextSlide
   } catch (e) {
     toastError(e.message)
     return null
@@ -726,12 +734,27 @@ function onEditWordCloud(el) {
 }
 
 function onEditChartStack(el) {
-  if (el?.content) {
-    chartStackEditContent.value = el.content
+  const target = el?.type ? el : selectedId.value ? elements.value.find((e) => e.id === selectedId.value) : null
+  if (target?.type === 'chart') {
+    chartEditMode.value = 'chart'
+    chartStackEditContent.value = target.content || null
+  } else if (target?.type === 'chartStack' || el?.content) {
+    chartEditMode.value = 'chartStack'
+    chartStackEditContent.value = el?.content || target?.content || null
   } else if (selectedId.value) {
     const selected = elements.value.find((e) => e.id === selectedId.value)
-    chartStackEditContent.value = selected?.type === 'chartStack' ? selected.content : null
+    if (selected?.type === 'chart') {
+      chartEditMode.value = 'chart'
+      chartStackEditContent.value = selected.content
+    } else if (selected?.type === 'chartStack') {
+      chartEditMode.value = 'chartStack'
+      chartStackEditContent.value = selected.content
+    } else {
+      chartEditMode.value = 'chartStack'
+      chartStackEditContent.value = null
+    }
   } else {
+    chartEditMode.value = 'chartStack'
     chartStackEditContent.value = null
   }
   chartStackOpen.value = true
@@ -740,6 +763,27 @@ function onEditChartStack(el) {
 function onSaveChartStack(content) {
   chartStackOpen.value = false
   const targetId = selectedId.value
+  if (chartEditMode.value === 'chart') {
+    if (targetId) {
+      const el = elements.value.find((e) => e.id === targetId)
+      if (el?.type === 'chart') {
+        updateElement(targetId, { content })
+        chartStackEditContent.value = null
+        return
+      }
+    }
+    const vp = viewport.value
+    addElement('chart', {
+      x: Math.round((vp.width - 200) / 2),
+      y: 80,
+      width: 200,
+      height: 120,
+      content,
+      style: { background: '#ffffff', chartColor: '#005daa' },
+    })
+    chartStackEditContent.value = null
+    return
+  }
   if (targetId) {
     const el = elements.value.find((e) => e.id === targetId)
     if (el?.type === 'chartStack') {
@@ -970,7 +1014,7 @@ async function onGenerateImage({
   if (!prompt?.trim() || !project.value) return
   imageLoading.value = true
   aiPanelRef.value?.setImageError('')
-  aiImageModalRef.value?.setImageError('')
+  resultRailRef.value?.setImageError('')
   try {
     const result = await api.generateImage(apiProjectRef(), {
       prompt,
@@ -983,11 +1027,11 @@ async function onGenerateImage({
       viewport_height: viewportHeight || undefined,
     })
     aiPanelRef.value?.setGeneratedImage(result)
-    aiImageModalRef.value?.setGeneratedImage(result)
+    resultRailRef.value?.setGeneratedImage(result)
     await refreshQuota()
   } catch (e) {
     aiPanelRef.value?.setImageError(e.message)
-    aiImageModalRef.value?.setImageError(e.message)
+    resultRailRef.value?.setImageError(e.message)
   } finally {
     imageLoading.value = false
   }
@@ -1194,8 +1238,7 @@ async function applyGlobalTheme(themeId) {
     current,
     imageLoading,
     aiPanelRef,
-    aiImageModalRef,
-    aiImageOpen,
+    resultRailRef,
     quota,
     previewAnimation,
     previewAnimationTick,
@@ -1205,6 +1248,7 @@ async function applyGlobalTheme(themeId) {
     wordCloudEditContent,
     chartStackOpen,
     chartStackEditContent,
+    chartEditMode,
     showDialoguePreview,
     cropModalOpen,
     cropImageUrl,

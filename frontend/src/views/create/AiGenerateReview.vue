@@ -10,21 +10,8 @@
       <UserMenu />
     </header>
 
-    <div class="lg:hidden flex gap-1 p-2 bg-white border-b border-outline-variant">
-      <button
-        v-for="tab in mobileTabs"
-        :key="tab.id"
-        type="button"
-        class="flex-1 py-2 rounded-lg text-sm"
-        :class="mobileTab === tab.id ? 'bg-primary/10 text-primary font-medium' : 'text-on-surface-variant'"
-        @click="mobileTab = tab.id"
-      >
-        {{ tab.label }}
-      </button>
-    </div>
-
-    <div class="flex-1 grid lg:grid-cols-[260px_1fr_240px] gap-0 min-h-0 overflow-hidden">
-      <aside class="min-h-0 overflow-hidden bg-white border-r border-outline-variant p-4 overflow-y-auto space-y-4" :class="mobileTab !== 'settings' && 'hidden lg:block'">
+    <div class="review-editor-grid flex-1 gap-0 min-h-0 overflow-x-auto overflow-y-hidden">
+      <aside class="min-h-0 bg-white border-r border-outline-variant p-4 overflow-y-auto space-y-4">
         <h2 class="text-sm font-semibold">设置</h2>
         <div>
           <p class="text-xs font-medium text-on-surface-variant mb-2">文本量</p>
@@ -77,7 +64,7 @@
         </div>
       </aside>
 
-      <section class="flex flex-col min-h-0 overflow-hidden bg-surface-container-low" :class="mobileTab !== 'content' && 'hidden lg:flex'">
+      <section class="flex flex-col min-h-0 overflow-hidden bg-surface-container-low">
         <div class="p-4 border-b border-outline-variant bg-white shrink-0 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 class="text-sm font-semibold">内容</h2>
@@ -131,7 +118,7 @@
         </div>
       </section>
 
-      <aside class="min-h-0 overflow-hidden bg-white border-l border-outline-variant p-4 overflow-y-auto space-y-4" :class="mobileTab !== 'tips' && 'hidden lg:block'">
+      <aside class="min-h-0 bg-white border-l border-outline-variant p-4 overflow-y-auto space-y-4">
         <h2 class="text-sm font-semibold">说明</h2>
         <label class="block text-sm">
           <span class="text-xs font-medium text-on-surface-variant">附加说明</span>
@@ -196,7 +183,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import CardSplitModeDialog from '../../components/create/CardSplitModeDialog.vue'
 import ConfirmDialog from '../../components/ConfirmDialog.vue'
@@ -207,6 +194,7 @@ import { useQuota } from '../../composables/useQuota.js'
 import {
   clearReturnToResult,
   loadDraft,
+  normalizeDeckReviewDraftState,
   PENDING_RESULT_PUBLIC_ID,
   requireDeckDraft,
   saveDraft,
@@ -222,12 +210,6 @@ const router = useRouter()
 const { success: toastSuccess } = useToast()
 const { quotaText } = useQuota()
 const draft = ref(loadDraft())
-const mobileTab = ref('content')
-const mobileTabs = [
-  { id: 'settings', label: '设置' },
-  { id: 'content', label: '内容' },
-  { id: 'tips', label: '说明' },
-]
 const densityOptions = ['简约', '精炼', '详细', '繁琐']
 
 const pageCount = ref(10)
@@ -330,7 +312,7 @@ watch(pageCount, (n) => {
   }
 })
 
-onMounted(async () => {
+function hydrateFromDraft() {
   const d = requireDeckDraft(router)
   if (!d) return
   if (!d.topic?.trim()) {
@@ -338,18 +320,22 @@ onMounted(async () => {
     return
   }
   draft.value = d
-  pageCount.value = d.pageCount || 10
-  textDensity.value = d.textDensity || '精炼'
-  audience.value = d.audience || ''
-  tone.value = d.tone || '专业、清晰、具说服力'
-  language.value = d.language || '简体中文'
-  themeId.value = d.themeId || 'zjy-minimal'
-  extraContent.value = d.extraContent || d.topic || ''
-  extraInstructions.value = d.extraInstructions || ''
-  contentMode.value = d.contentMode || 'free'
-  cardSplitMode.value = d.cardSplitMode || null
-  pageContents.value = syncPageContents(d.pageContents || [], pageCount.value)
-})
+  const state = normalizeDeckReviewDraftState(d)
+  pageCount.value = state.pageCount
+  textDensity.value = state.textDensity
+  audience.value = state.audience
+  tone.value = state.tone
+  language.value = state.language
+  themeId.value = state.themeId
+  extraContent.value = state.extraContent
+  extraInstructions.value = state.extraInstructions
+  contentMode.value = state.contentMode
+  cardSplitMode.value = state.cardSplitMode
+  pageContents.value = state.pageContents
+}
+
+onMounted(hydrateFromDraft)
+onActivated(hydrateFromDraft)
 
 function buildDraftPatch() {
   return {
@@ -428,6 +414,20 @@ function generate() {
 </script>
 
 <style scoped>
+.review-editor-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(190px, clamp(190px, 22vw, 260px))
+    minmax(420px, 1fr)
+    minmax(180px, clamp(180px, 20vw, 240px));
+}
+
+@media (max-width: 900px) {
+  .review-editor-grid {
+    grid-template-columns: minmax(170px, 0.75fr) minmax(360px, 1.65fr) minmax(170px, 0.7fr);
+  }
+}
+
 .sidebar-field {
   @apply border border-outline-variant rounded-lg px-3 py-2 text-sm leading-relaxed resize-none overflow-y-auto;
   @apply focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40;

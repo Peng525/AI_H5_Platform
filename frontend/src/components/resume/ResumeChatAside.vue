@@ -1,13 +1,13 @@
 <template>
   <div
-    class="relative flex flex-col h-full min-h-0 border-r border-outline-variant bg-white transition-[width]"
+    class="relative flex flex-col h-full min-h-0 border-r border-outline-variant bg-white transition-[width] overflow-visible"
     :class="collapsed ? 'lg:w-12' : 'lg:w-[320px]'"
   >
     <button
       type="button"
-      class="hidden lg:flex absolute -right-3 top-3 z-10 w-6 h-6 items-center justify-center rounded-full border border-outline-variant bg-white shadow-sm text-on-surface-variant hover:bg-surface-container-low"
+      class="hidden lg:flex absolute top-1/2 -translate-y-1/2 -right-3 z-30 w-6 h-6 items-center justify-center rounded-full border border-outline-variant bg-white shadow-sm text-on-surface-variant hover:bg-surface-container-low pointer-events-auto"
       :title="collapsed ? '展开 AI 助手' : '收起 AI 助手'"
-      @click="toggle"
+      @click.stop="toggle"
     >
       <span class="material-symbols-outlined text-[16px]">
         {{ collapsed ? 'chevron_right' : 'chevron_left' }}

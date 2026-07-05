@@ -1,4 +1,5 @@
 import { useAuth } from '../composables/useAuth'
+import { normalizeUserErrorMessage } from '../utils/apiErrorMessage.js'
 
 const BASE = ''
 
@@ -25,7 +26,9 @@ async function parseResponseBody(res) {
     return JSON.parse(text)
   } catch {
     if (!res.ok) {
-      const err = new Error(text.slice(0, 300) || `请求失败 (${res.status})`)
+      const err = new Error(
+        normalizeUserErrorMessage(text.slice(0, 300), res.status) || `请求失败 (${res.status})`,
+      )
       err.status = res.status
       throw err
     }
@@ -38,7 +41,9 @@ function buildApiError(res, data) {
   if (Array.isArray(detail)) {
     detail = detail.map((d) => d.msg || JSON.stringify(d)).join('；')
   }
-  const err = new Error(detail || `请求失败 (${res.status})`)
+  const err = new Error(
+    normalizeUserErrorMessage(detail, res.status) || `请求失败 (${res.status})`,
+  )
   err.status = res.status
   return err
 }
@@ -113,6 +118,13 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  importPremiumProjectPptx: (formData) => uploadForm('/api/v1/项目/premium-导入-pptx', formData),
+  submitPremiumDeckJob: (body) =>
+    request('/api/v1/项目/ai-生成-premium', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  getPremiumDeckJob: (jobId) => request(`/api/v1/项目/ai-生成-premium/${jobId}`),
   resolveProjectRef: (ref) => request(`/api/v1/项目/resolve/${encodeURIComponent(ref)}`),
   getProject: (publicId) => request(projectApiPath(publicId)),
   updateProjectSettings: (publicId, body) =>
@@ -272,8 +284,15 @@ export const api = {
   },
   sharePreview: (slug) => request(`/api/v1/分享/${slug}`),
 
-  listResumeTemplates: () => request('/api/v1/resume/templates'),
-  listResumeVisualTemplates: () => request('/api/v1/resume/visual-templates'),
+  listResumeTemplates: (industry) => {
+    const q = industry ? `?industry=${encodeURIComponent(industry)}` : ''
+    return request(`/api/v1/resume/templates${q}`)
+  },
+  listResumeIndustries: () => request('/api/v1/resume/industries'),
+  listResumeVisualTemplates: (industry) => {
+    const q = industry ? `?industry=${encodeURIComponent(industry)}` : ''
+    return request(`/api/v1/resume/visual-templates${q}`)
+  },
   uploadResumeFile: (formData) => uploadForm('/api/v1/resume/files', formData),
   createResume: (body) =>
     request('/api/v1/resume', { method: 'POST', body: JSON.stringify(body) }),

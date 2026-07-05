@@ -74,10 +74,10 @@ const emit = defineEmits(['update:modelValue', 'update:templateHint'])
 
 const templates = [
   { uiId: 'magic', hint: 'magic', label: 'Magic', wireframe: 'magic' },
-  { uiId: 'bullets', hint: 'text', label: '要点', wireframe: 'bullets' },
-  { uiId: 'paragraph', hint: 'text', label: '段落', wireframe: 'paragraph' },
-  { uiId: 'cards', hint: 'grid', label: '卡片', wireframe: 'cards' },
-  { uiId: 'image_text', hint: 'image', label: '图片配文字', wireframe: 'image_text' },
+  { uiId: 'bullets', hint: 'bullets', label: '要点', wireframe: 'bullets' },
+  { uiId: 'paragraph', hint: 'paragraph', label: '段落', wireframe: 'paragraph' },
+  { uiId: 'cards', hint: 'cards', label: '卡片', wireframe: 'cards' },
+  { uiId: 'image_text', hint: 'image_text', label: '图片配文字', wireframe: 'image_text' },
 ]
 
 function select(t) {

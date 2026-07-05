@@ -16,7 +16,8 @@ system: |
         "title": "页标题",
         "subtitle": "副标题，可空字符串",
         "headline": "核心结论（可选，大号强调，建议不超过 24 字，勿与 title 重复）",
-        "image_prompt": "场景配图描述（cover 必填，≤120 字，与主题一致，如：香港中学教师在智慧教室查看错题分析大屏）",
+        "image_intent": "none|cover_bg|scene|roadmap",
+        "image_prompt": "配图描述（仅当 image_intent 非 none 时填写，≤120 字）",
         "modules": [
           {
             "icon": "target",
@@ -29,7 +30,8 @@ system: |
             "author": "署名",
             "contact": "联系方式",
             "role": "text|scene_image|chart_placeholder",
-            "image_prompt": "模块配图描述（split_lr 右栏 scene_image 时必填，≤120 字）"
+            "image_intent": "none|scene",
+            "image_prompt": "模块配图描述（split_lr 右栏 image_intent=scene 时必填，≤120 字）"
           }
         ],
         "quote": "整页金句（template=quote 时）",
@@ -42,20 +44,29 @@ system: |
   }
 
   template 与 modules 规则（必须遵守）：
-  - cover：0 个 module；必须提供 image_prompt（主题场景图，帮助读者直观理解）；section：0–1 个 module（导语）；closing：contact 写在 contact 或 module
-  - split_lr：2 个 module，第 1 个左栏文字（role=text）；第 2 个右栏必须为 scene_image，提供 image_prompt（描述可视化场景，如管理者查看数据仪表盘、学生在教室使用平板），禁止无真实数据时使用 chart_placeholder
-  - grid_2x2：恰好 4 个 module，用于「核心问题」「平台定位」等四宫格卡片，每项必有 icon+title+body；不足 4 项视为不合格
+  - cover：0 个 module；默认 image_intent=none（页面背景由主题渐变承担）；仅当需要全页背景图时设 image_intent=cover_bg 并写 image_prompt
+  - section：0–1 个 module（导语）；禁止配图字段
+  - split_lr：2 个 module，第 1 个左栏文字（role=text）；第 2 个默认纯文字（role=text）；仅当需要情景配图时设 image_intent=scene + image_prompt（右栏 module）
+  - steps：3 个 module；需要路线图插画时设 image_intent=roadmap + image_prompt
+  - grid_2x2：恰好 4 个 module；禁止配图
+  - cards_row / stat_hero / quote / closing：禁止配图
   - headline 宜短（≤24 字），勿与 title 重复；module body 严格 ≤120 字
-  - cards_row：3–4 个 module，横排信息分块，禁止用单一列表代替
+  - cards_row：3–4 个 module，横排信息分块
   - stat_hero：1 个 module，含 stat 与 desc
-  - steps：3 个 module，每步 title 为步骤名
   - quote：quote + author
+
+  配图策略（重要）：
+  - 大多数页面不需要配图；仅在以下场景使用 image_intent + image_prompt：
+    1. cover_bg：封面全页背景图
+    2. scene：split_lr 情景/场景图（如管理者查看仪表盘、课堂使用平板）
+    3. roadmap：steps 流程路线图
+  - 无真实数据图表时禁止 chart_placeholder
 
   硬性禁止：
   - 禁止使用 layout=bullets 或 bullets 数组
-  - 禁止整页仅输出无序列表；每个大主题（背景、目标、问题、方案）必须独立 module 或独立 template 页
+  - 禁止整页仅输出无序列表
   - 禁止输出 HTML 标签或 Tailwind/CSS class
-  - 无真实数据图表时禁止 chart_placeholder；优先 scene_image + image_prompt
+  - 禁止为 grid_2x2 / cards_row / section / stat_hero 输出 image_prompt
 
   路演/答辩推荐结构（{{ page_count }} 页时参考）：
   1 cover → 2 section（议程/背景）→ 交替 grid_2x2 / split_lr / cards_row / stat_hero → 末页 closing

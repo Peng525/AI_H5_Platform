@@ -33,7 +33,7 @@ class SlideOut(BaseModel):
         structured = None
         try:
             parsed_struct = json.loads(getattr(slide, "structured_json", None) or "{}")
-            if isinstance(parsed_struct, dict) and parsed_struct.get("template"):
+            if isinstance(parsed_struct, dict) and (parsed_struct.get("template") or parsed_struct.get("layout_id")):
                 structured = parsed_struct
         except json.JSONDecodeError:
             structured = None
@@ -171,6 +171,17 @@ class AiDeckGenerateRequest(BaseModel):
     @classmethod
     def cap_page_contents(cls, v: list[str]) -> list[str]:
         return [str(x) for x in (v or [])[:30]]
+
+
+class DeckPremiumJobOut(BaseModel):
+    job_id: int
+    status: str
+    topic: str | None = None
+    page_count: int | None = None
+    pipeline_available: bool = False
+    workflow_doc: str = ""
+    import_endpoint: str = ""
+    hint: str = ""
 
 
 class OrderOut(BaseModel):
@@ -456,7 +467,8 @@ class SlideCreate(BaseModel):
 class AiSlideGenerateRequest(BaseModel):
     prompt: str = Field(..., min_length=2, max_length=4000, description="卡片生成提示词")
     insert_after_slide_id: int | None = Field(None, description="插入到指定页面之后")
-    template_hint: str = Field("magic", description="magic|text|split|image|grid")
+    replace_slide_id: int | None = Field(None, description="替换指定页面")
+    template_hint: str = Field("magic", description="magic|bullets|paragraph|cards|image_text|split|image|grid|text")
     language: str = Field("简体中文", description="简体中文|English")
     channel: str | None = Field(None, description="LLM 通道")
     tier: str | None = Field(None, description="free|pro")
@@ -465,7 +477,7 @@ class AiSlideGenerateRequest(BaseModel):
     @field_validator("template_hint")
     @classmethod
     def normalize_template_hint(cls, v: str) -> str:
-        allowed = {"magic", "text", "split", "image", "grid"}
+        allowed = {"magic", "bullets", "paragraph", "cards", "image_text", "split", "image", "grid", "text"}
         return v if v in allowed else "magic"
 
 

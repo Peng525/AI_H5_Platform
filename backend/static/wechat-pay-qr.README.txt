@@ -1,7 +1,0 @@
-将微信个人收款码保存为 `wechat-pay-qr.png`，推荐路径：
-
-`backend/pay_assets/wechat-pay-qr.png`
-
-（不会被前端 build 清空；Docker 已挂载该目录）
-
-也可放在 `backend/static/`，或在 `.env` 设置公网 URL。

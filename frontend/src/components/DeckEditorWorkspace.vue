@@ -241,7 +241,14 @@
       :scroll-effect="settings.scrollEffect"
       :primary-layouts="primaryLayoutItems"
       :more-layouts="moreLayoutItems"
-      @open-ai-image="aiImageOpen = true"
+      :image-loading="imageLoading"
+      :quota-remaining="quota.remaining"
+      :quota-total="quota.total"
+      :canvas-viewport-id="effectiveViewportId"
+      :chart-editor-active="chartStackOpen"
+      :chart-edit-mode="chartEditMode"
+      :chart-edit-content="chartStackEditContent"
+      :chart-color="chartEditorColor"
       @add-material="addMaterial"
       @canvas-bg-change="onCanvasBgChange"
       @apply-layout="applyLayoutBlock"
@@ -251,6 +258,10 @@
       @scroll-change="setScrollEffect"
       @preview-animation="onPreviewAnimation"
       @bgm-change="onBgmChange"
+      @generate-image="onGenerateImage"
+      @add-image-to-page="onAddImageToPage"
+      @save-chart="onSaveChartStack"
+      @close-chart-editor="closeChartEditor"
     />
     <div v-else-if="layoutMode !== 'result'" :class="aiPanelClass">
       <AiPanel
@@ -266,23 +277,18 @@
   </div>
 
   <EditorShortcutsHelp v-model:open="shortcutsHelpOpen" />
-  <DialogueGeneratorModal :open="dialogueGeneratorOpen" :initial-script="current?.chat_script" @close="dialogueGeneratorOpen = false" @insert="onInsertDialogue" />
+  <DialogueGeneratorModal :open="dialogueGeneratorOpen" :initial-script="current?.chat_script" :canvas-viewport-id="effectiveViewportId" @close="dialogueGeneratorOpen = false" @insert="onInsertDialogue" />
   <WordCloudEditorModal :open="wordCloudOpen" :theme-id="settings.themeId || 'zjy-minimal'" :initial-content="wordCloudEditContent" @close="wordCloudOpen = false; wordCloudEditContent = null" @insert-vector="onInsertWordCloud" @insert-image="onInsertWordCloudImage" />
-  <ChartStackEditorModal :open="chartStackOpen" :initial-content="chartStackEditContent" @close="chartStackOpen = false; chartStackEditContent = null" @save="onSaveChartStack" />
+  <ChartStackEditorModal
+    v-if="layoutMode !== 'result'"
+    :open="chartStackOpen"
+    :mode="chartEditMode"
+    :initial-content="chartStackEditContent"
+    @close="closeChartEditor"
+    @save="onSaveChartStack"
+  />
   <ImageCropModal :open="cropModalOpen" :image-url="cropImageUrl" :initial-crop="cropInitial" @close="cropModalOpen = false" @confirm="onCropConfirm" @reset="onCropReset" />
   <ConfirmDialog :open="!!deleteSlideConfirm" title="删除页面" message="确定删除该页面？此操作不可撤销。" confirm-text="删除" cancel-text="取消" danger @confirm="onDeleteSlideConfirm" @cancel="deleteSlideConfirm = null" />
-  <AiImageModal
-    v-if="layoutMode === 'result'"
-    ref="aiImageModalRef"
-    :open="aiImageOpen"
-    :image-loading="imageLoading"
-    :quota-remaining="quota.remaining"
-    :quota-total="quota.total"
-    :canvas-viewport-id="effectiveViewportId"
-    @close="aiImageOpen = false; resultRailRef?.clearAiHighlight?.()"
-    @generate-image="onGenerateImage"
-    @add-image-to-page="onAddImageToPage"
-  />
   <AdminPresetSaveDialog
     v-if="adminPresetId"
     :open="presetSaveOpen"
@@ -313,6 +319,7 @@
 </template>
 
 <script setup>
+/** 编辑器外壳：layoutMode=studio 用 EditorPhoneCanvas；layoutMode=result 用 ResultSlidesOverview + 浮动 EditorContextLayer。 */
 import { ref, toRef, watch, computed } from 'vue'
 import { getViewportPreset, DEFAULT_WEB_VIEWPORT_ID } from '../constants/editorPresets.js'
 import { useDeckEditor } from '../composables/useDeckEditor.js'
@@ -335,7 +342,6 @@ import EmptyState from './EmptyState.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
 import ResultEditRail from './create/ResultEditRail.vue'
 import DeckRevealBrush from './create/DeckRevealBrush.vue'
-import AiImageModal from './create/AiImageModal.vue'
 import AdminPresetSaveDialog from './admin/AdminPresetSaveDialog.vue'
 import AdminLayoutSaveDialog from './admin/AdminLayoutSaveDialog.vue'
 import ThemeSidebarDrawer from './create/ThemeSidebarDrawer.vue'
@@ -432,8 +438,7 @@ const {
   onEditChartStack,
   imageLoading,
   aiPanelRef,
-  aiImageModalRef,
-  aiImageOpen,
+  resultRailRef,
   quota,
   onGenerateImage,
   onAddImageToPage,
@@ -443,6 +448,7 @@ const {
   wordCloudEditContent,
   chartStackOpen,
   chartStackEditContent,
+  chartEditMode,
   onInsertDialogue,
   onInsertWordCloud,
   onInsertWordCloudImage,
@@ -509,7 +515,6 @@ function tryStartReveal() {
   reveal.startReveal({
     slides: project.value.slides,
     getElements: getSlideElementsForReveal,
-    scrollToSlide: (id) => overviewRef.value?.scrollToSlide?.(id, false),
     onComplete: () => {
       emit('reveal-complete')
     },
@@ -524,8 +529,35 @@ const selectedElementForToolbar = computed(() => {
 const showMediaPanel = computed(
   () =>
     !reveal.isRevealing.value &&
+    !chartStackOpen.value &&
     selectedElementForToolbar.value?.type === 'image' &&
     !textEditingId.value,
+)
+
+const chartEditorColor = computed(() => {
+  const el = selectedElementForToolbar.value
+  if (el?.type === 'chart' || el?.type === 'chartStack') {
+    return el.style?.chartColor || '#005daa'
+  }
+  return '#005daa'
+})
+
+function closeChartEditor() {
+  chartStackOpen.value = false
+  chartStackEditContent.value = null
+}
+
+watch(
+  () => selectedElementForToolbar.value?.id,
+  () => {
+    if (props.layoutMode !== 'result') return
+    const el = selectedElementForToolbar.value
+    if (el?.type === 'chart' || el?.type === 'chartStack') {
+      onEditChartStack(el)
+    } else if (chartStackOpen.value) {
+      closeChartEditor()
+    }
+  }
 )
 
 const overviewRef = ref(null)
@@ -534,7 +566,6 @@ const overviewScrollRoot = computed(() => {
   if (!exposed) return null
   return exposed.value ?? exposed
 })
-const resultRailRef = ref(null)
 const generatePanelSlideId = ref(null)
 const generateCardAfterSlideId = ref(null)
 const resultDisplayViewport = computed(() =>
@@ -558,7 +589,7 @@ async function onOpenGenerateCard(afterSlideId) {
   if (slide) {
     await selectSlide(slide)
   }
-  overviewRef.value?.scrollToSlide?.(afterSlideId)
+  await overviewRef.value?.scrollToGapAfter?.(afterSlideId)
 }
 
 function onCloseGeneratePanel() {

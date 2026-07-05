@@ -2,7 +2,6 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from passlib.context import CryptContext
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.deps.auth import get_current_user, is_admin_user
+from app.deps.security import pwd_context
 from app.models import User
 from app.services.captcha import verify_captcha_ticket
 from app.services.captcha.base import CaptchaError
@@ -19,7 +19,6 @@ from app.services.sms.base import SmsError
 from app.services.sms.code_store import create_and_store_code, is_phone_account
 
 router = APIRouter(prefix="/api/v1/认证", tags=["认证"])
-pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 
 class CaptchaConfigOut(BaseModel):

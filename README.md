@@ -183,6 +183,9 @@ cd frontend && npm install && npm run dev
 
 | 文档 | 说明 |
 |------|------|
+| [`docs/系统架构.md`](docs/系统架构.md) | 单体架构、请求生命周期、H5 vs ppt-master |
+| [`docs/模块与文件映射.md`](docs/模块与文件映射.md) | 业务域与关键文件对照 |
+| [`docs/废弃与待清理.md`](docs/废弃与待清理.md) | 弃用代码 registry |
 | [`docs/部署说明.md`](docs/部署说明.md) | Docker、EC2、分享链接、Nginx |
 | [`docs/Push与发布规范.md`](docs/Push与发布规范.md) | push 前检查、分支约定、EC2 发布 |
 | [`docs/CI-CD与分支策略.md`](docs/CI-CD与分支策略.md) | GitHub Actions、分支与 Secrets |

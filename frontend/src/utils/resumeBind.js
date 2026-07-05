@@ -91,13 +91,13 @@ export function mergeCellStyle(visualDocument, bind) {
 export function setCellStyle(visualDocument, bind, patch) {
   const doc = visualDocument && typeof visualDocument === 'object'
     ? { ...visualDocument, styles: { ...(visualDocument.styles || {}) } }
-    : { template_id: 'classic-blue', photo_file_id: null, styles: {} }
+    : { template_id: 'template1', photo_file_id: null, styles: {} }
   doc.styles[bind] = { ...(doc.styles[bind] || {}), ...patch }
   return doc
 }
 
 export function defaultVisualDocument() {
-  return { template_id: 'classic-blue', photo_file_id: null, styles: {} }
+  return { template_id: 'template1', photo_file_id: null, styles: {} }
 }
 
 export function defaultStructured() {

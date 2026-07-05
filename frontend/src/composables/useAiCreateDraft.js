@@ -39,6 +39,24 @@ export function syncPageContents(pageContents, pageCount) {
   return arr
 }
 
+export function normalizeDeckReviewDraftState(draft) {
+  const d = { ...DEFAULT_DRAFT, ...(draft || {}) }
+  const pageCount = d.pageCount || DEFAULT_DRAFT.pageCount
+  return {
+    pageCount,
+    textDensity: d.textDensity || DEFAULT_DRAFT.textDensity,
+    audience: d.audience || '',
+    tone: d.tone || DEFAULT_DRAFT.tone,
+    language: d.language || DEFAULT_DRAFT.language,
+    themeId: d.themeId || DEFAULT_DRAFT.themeId,
+    extraContent: d.extraContent || d.topic || '',
+    extraInstructions: d.extraInstructions || '',
+    contentMode: d.contentMode || DEFAULT_DRAFT.contentMode,
+    cardSplitMode: d.cardSplitMode || null,
+    pageContents: syncPageContents(d.pageContents || [], pageCount),
+  }
+}
+
 export function loadDraft() {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY)

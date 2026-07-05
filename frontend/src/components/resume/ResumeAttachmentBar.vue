@@ -1,45 +1,24 @@
 <template>
   <div class="space-y-2">
-    <div class="flex items-stretch gap-3 min-h-[5.5rem]">
-      <button
-        type="button"
-        class="shrink-0 w-[7.5rem] flex flex-col items-center justify-center gap-1.5 rounded-xl border border-outline-variant bg-white px-3 py-3 text-sm hover:bg-surface-container-low transition-colors disabled:opacity-50"
-        :disabled="resumeUploading"
-        @click="openResumePicker"
-      >
-        <span class="material-symbols-outlined text-[22px] text-primary">description</span>
-        <span class="text-xs font-medium text-on-surface">{{ resumeUploading ? '上传中…' : '上传简历' }}</span>
-      </button>
-
-      <div class="flex-1 min-w-0 flex flex-col items-center justify-center gap-2 px-1">
-        <template v-if="resumeFileName || jdFileName">
-          <ResumeAttachmentChip
-            v-if="resumeFileName"
-            :file-name="resumeFileName"
-            :uploading="resumeUploading"
-            @remove="emit('remove-resume')"
-          />
-          <ResumeAttachmentChip
-            v-if="jdFileName"
-            :file-name="jdFileName"
-            :uploading="jdUploading"
-            @remove="emit('remove-jd')"
-          />
-        </template>
-        <p v-else class="text-xs text-on-surface-variant/70 text-center leading-snug">
-          在左侧上传简历，右侧上传工作描述
-        </p>
-      </div>
-
-      <button
-        type="button"
-        class="shrink-0 w-[7.5rem] flex flex-col items-center justify-center gap-1.5 rounded-xl border border-outline-variant bg-white px-3 py-3 text-sm hover:bg-surface-container-low transition-colors disabled:opacity-50"
-        :disabled="jdUploading"
-        @click="openJdPicker"
-      >
-        <span class="material-symbols-outlined text-[22px] text-primary">work</span>
-        <span class="text-xs font-medium text-on-surface">{{ jdUploading ? '上传中…' : '上传工作描述' }}</span>
-      </button>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <ResumeUploadCard
+        label="上传简历"
+        icon="description"
+        :file-name="resumeFileName"
+        :uploading="resumeUploading"
+        :preview-file="resumeFile"
+        @pick="openResumePicker"
+        @remove="emit('remove-resume')"
+      />
+      <ResumeUploadCard
+        label="上传工作描述"
+        icon="work"
+        :file-name="jdFileName"
+        :uploading="jdUploading"
+        :preview-file="jdFile"
+        @pick="openJdPicker"
+        @remove="emit('remove-jd')"
+      />
     </div>
 
     <input ref="resumeInputRef" type="file" :accept="RESUME_FILE_ACCEPT" class="hidden" @change="onResumePick" />
@@ -52,12 +31,14 @@
 
 <script setup>
 import { ref } from 'vue'
-import ResumeAttachmentChip from './ResumeAttachmentChip.vue'
+import ResumeUploadCard from './ResumeUploadCard.vue'
 import { RESUME_FILE_ACCEPT, validateResumeFile } from '../../utils/resumeFileValidate.js'
 
 defineProps({
   resumeFileName: { type: String, default: '' },
   jdFileName: { type: String, default: '' },
+  resumeFile: { type: Object, default: null },
+  jdFile: { type: Object, default: null },
   resumeUploading: { type: Boolean, default: false },
   jdUploading: { type: Boolean, default: false },
   resumeError: { type: String, default: '' },

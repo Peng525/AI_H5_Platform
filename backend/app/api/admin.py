@@ -7,7 +7,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.auth import pwd_context
+from app.deps.security import pwd_context
 from app.database import get_db
 from app.deps.auth import is_admin_user, require_admin
 from app.models import GenerationLog, Order, Project, User

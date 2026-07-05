@@ -9,6 +9,9 @@ from typing import Any
 from PIL import Image, ImageDraw, ImageFont
 
 from app.config import settings
+from app.models import ResumeProfile
+from app.services.resume.file_storage import delete_file
+from app.services.resume.template_catalog import normalize_template_id
 from app.services.resume.visual_compiler import normalize_structured
 
 WIDTH = 360
@@ -17,8 +20,22 @@ MARGIN = 24
 BG = (255, 255, 255)
 TITLE_COLOR = (22, 28, 45)
 BODY_COLOR = (71, 85, 105)
-ACCENT = (37, 99, 235)
 LINE_COLOR = (226, 232, 240)
+
+_TEMPLATE_ACCENTS: dict[str, tuple[int, int, int]] = {
+    "template1": (37, 99, 235),
+    "template2": (15, 118, 110),
+    "template3": (79, 70, 229),
+    "template4": (17, 24, 39),
+    "template5": (30, 64, 175),
+    "template6": (190, 24, 93),
+    "template7": (22, 163, 74),
+}
+
+
+def _accent_for(visual: dict[str, Any] | None) -> tuple[int, int, int]:
+    tid = normalize_template_id((visual or {}).get("template_id")) or "template1"
+    return _TEMPLATE_ACCENTS.get(tid, (37, 99, 235))
 
 
 def _data_root() -> Path:
@@ -72,6 +89,7 @@ def _draw_wrapped(
 
 def render_thumbnail_png(structured: dict[str, Any], visual: dict[str, Any] | None = None) -> bytes:
     data = normalize_structured(structured)
+    ACCENT = _accent_for(visual)
     img = Image.new("RGB", (WIDTH, HEIGHT), BG)
     draw = ImageDraw.Draw(img)
     draw.rectangle([0, 0, WIDTH, 4], fill=ACCENT)

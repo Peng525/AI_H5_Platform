@@ -39,5 +39,7 @@
 | [`evaluation-rubric.md`](./evaluation-rubric.md) | 评分标准 |
 | [`results-template.md`](./results-template.md) | 单次记录表 |
 | [`results/`](./results/) | 实测结果目录 |
+| [`h5-premium-workflow.md`](./h5-premium-workflow.md) | H5 高质量：ppt-master → 导入 SOP |
+| [`h5-vs-ppt-master-compare.md`](./h5-vs-ppt-master-compare.md) | H5 直出 vs 导入对照 benchmark 用例 |
 
 方案详表见 [AI-PPT生成方案对比.md](../AI-PPT生成方案对比.md)。

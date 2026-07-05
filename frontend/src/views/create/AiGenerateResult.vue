@@ -11,23 +11,59 @@
       @back-to-review="goReviewFromHeader"
     />
 
-    <div
-      v-if="generateError"
-      class="shrink-0 px-4 py-3 bg-red-50 border-b border-red-200 text-sm text-red-800 flex items-center justify-between gap-3 flex-wrap"
-    >
-      <span class="min-w-0">生成失败：{{ displayGenerateError }}</span>
-      <div class="flex items-center gap-3 shrink-0">
-        <button
-          v-if="isPendingRoute && canRetryGenerate"
-          type="button"
-          class="text-xs font-medium underline"
-          @click="retryPendingGeneration"
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="generateError"
+          class="fixed inset-0 z-[110] flex items-center justify-center bg-black/35 px-4 py-6"
+          role="presentation"
         >
-          重试
-        </button>
-        <button type="button" class="text-xs font-medium underline" @click="goReview">返回编辑</button>
-      </div>
-    </div>
+          <div
+            class="w-full max-w-[28rem] overflow-hidden rounded-xl border border-red-100 bg-white shadow-elevated"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="generate-error-title"
+            aria-describedby="generate-error-message"
+          >
+            <div class="p-6">
+              <div class="flex items-start gap-3">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600">
+                  <span class="material-symbols-outlined text-[24px]">error</span>
+                </div>
+                <div class="min-w-0">
+                  <h2 id="generate-error-title" class="text-base font-semibold text-on-surface">
+                    生成失败
+                  </h2>
+                  <p
+                    id="generate-error-message"
+                    class="mt-2 max-h-40 overflow-y-auto break-words text-sm leading-6 text-on-surface-variant"
+                  >
+                    {{ displayGenerateError }}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-col-reverse gap-2 border-t border-outline-variant bg-surface-container-low px-6 py-4 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                class="rounded-lg border border-outline-variant bg-white px-4 py-2 text-sm font-medium text-on-surface hover:bg-surface-container-high"
+                @click="goReview"
+              >
+                返回编辑
+              </button>
+              <button
+                v-if="isPendingRoute && canRetryGenerate"
+                type="button"
+                class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:bg-primary/90"
+                @click="retryPendingGeneration"
+              >
+                重试
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <div
       v-if="pageLoadError && !isPendingRoute"
@@ -202,16 +238,26 @@ function clearWorkspaceError() {
   workspaceError.value = ''
 }
 
+function clearResultTransientState() {
+  generateError.value = ''
+  pageLoadError.value = ''
+  footerError.value = false
+  footerMessage.value = ''
+  workspaceError.value = ''
+}
+
 function goReview() {
+  clearResultTransientState()
   clearGenerateJob()
-  router.push('/create/generate/review')
+  router.replace('/create/generate/review')
 }
 
 function goReviewFromHeader() {
+  clearResultTransientState()
   if (!isPendingRoute.value) {
     markReturnToResult(routePublicId.value)
   }
-  router.push('/create/generate/review')
+  router.replace('/create/generate/review')
 }
 
 async function runPendingGeneration() {
@@ -469,3 +515,15 @@ watch(
   { immediate: true }
 )
 </script>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.18s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,53 +11,34 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy import inspect as sa_inspect
 
 from app.config import settings
 from app.models import GenerationLog, ResumeFile, ResumeMessage, ResumeProfile, ResumeSidecar, ResumeVersion, User
 from app.services.deck_generator import new_public_id
 from app.services.llm.provider import chat_completion, extract_json
-from app.services.ocr.paddle_provider import extract_text_from_file
+from app.services.ocr.paddle_provider import OcrUnavailableError, extract_text_from_file
 from app.services.prompt_template_service import render_template
 from app.services.quota import QuotaExceeded, check_and_consume
 from app.services.resume import file_storage
 from app.services.resume.file_storage import delete_file
 from app.services.resume.thumbnail_service import refresh_profile_thumbnail
+from app.services.resume.template_catalog import (
+    INDUSTRIES,
+    RESUME_TEMPLATES,
+    VISUAL_TEMPLATES,
+    ALLOWED_VISUAL_TEMPLATE_IDS,
+    filter_resume_templates,
+    filter_visual_templates,
+    get_industry_snippet,
+    normalize_template_id,
+)
 from app.services.resume.visual_compiler import (
-    TEMPLATE_CLASSIC_BLUE,
     compile_visual_document,
     normalize_structured,
 )
 
-RESUME_TEMPLATES = [
-    {
-        "id": "general",
-        "title": "通用求职",
-        "description": "适合大多数社招岗位",
-        "prompt_hint": "目标岗位：\n优化方向：突出项目成果与量化数据",
-    },
-    {
-        "id": "campus",
-        "title": "校招应届",
-        "description": "实习与校园经历为主",
-        "prompt_hint": "目标岗位：\n优化方向：突出实习、竞赛与学习能力",
-    },
-    {
-        "id": "product",
-        "title": "产品经理",
-        "description": "强调需求分析与跨部门协作",
-        "prompt_hint": "目标岗位：产品经理\n优化方向：STAR 法则描述需求落地与数据结果",
-    },
-]
-
-VISUAL_TEMPLATES = [
-    {
-        "id": TEMPLATE_CLASSIC_BLUE,
-        "title": "蓝白经典",
-        "description": "分区蓝条标题，含基本信息、求职意向与技能进度条",
-    },
-]
-
-ALLOWED_VISUAL_TEMPLATE_IDS = {t["id"] for t in VISUAL_TEMPLATES}
+logger = logging.getLogger(__name__)
 
 FORBIDDEN_PATTERNS = [
     r"制作.*炸弹",
@@ -81,11 +63,19 @@ def _check_content(text: str) -> None:
     t = (text or "").lower()
     for pat in FORBIDDEN_PATTERNS:
         if re.search(pat, t, re.I):
-            raise ContentPolicyError("Input violates content policy")
+            raise ContentPolicyError("内容不符合规范，请修改后重试")
 
 
 def _default_structured() -> dict[str, Any]:
     return normalize_structured({})
+
+
+def _profile_versions(profile: ResumeProfile) -> list[ResumeVersion]:
+    """Avoid async lazy-load when versions were not eager-loaded."""
+    state = sa_inspect(profile)
+    if "versions" in state.unloaded:
+        return []
+    return list(profile.versions)
 
 
 async def count_user_profiles(db: AsyncSession, user_id: int) -> int:
@@ -105,9 +95,9 @@ async def get_owned_profile(db: AsyncSession, user_id: int, public_id: str) -> R
     )
     profile = r.scalar_one_or_none()
     if not profile:
-        raise ResumeNotFoundError("Resume not found")
+        raise ResumeNotFoundError("简历不存在或无权访问")
     if file_storage.is_expired(profile.expires_at):
-        raise ResumeNotFoundError("Resume expired")
+        raise ResumeNotFoundError("简历已过期，请重新创建")
     return profile
 
 
@@ -122,7 +112,7 @@ async def save_uploaded_file(db: AsyncSession, user_id: int, filename: str, cont
 async def _assert_owned_file(db: AsyncSession, user_id: int, file_id: int) -> None:
     fr = await db.get(ResumeFile, file_id)
     if not fr or fr.user_id != user_id:
-        raise ResumeNotFoundError("File not found")
+        raise ResumeNotFoundError("附件不存在或无权访问")
 
 
 async def _file_source_text(db: AsyncSession, user_id: int, file_id: int, label: str) -> str:
@@ -145,17 +135,15 @@ async def create_profile(
 ) -> ResumeProfile:
     count = await count_user_profiles(db, user.id)
     if count >= settings.resume_max_per_user:
-        raise ResumeLimitExceeded(f"Maximum {settings.resume_max_per_user} resumes per user")
+        raise ResumeLimitExceeded(
+            f"最多保存 {settings.resume_max_per_user} 份简历，请先在「个人简历」中删除旧简历"
+        )
     if prompt:
         _check_content(prompt)
+    if template_id:
+        template_id = normalize_template_id(template_id)
     if template_id and template_id not in ALLOWED_VISUAL_TEMPLATE_IDS:
-        raise ValueError(f"Unknown visual template: {template_id}")
-    is_blank_edit = (
-        bool(template_id)
-        and not (prompt and prompt.strip())
-        and not file_id
-        and not jd_file_id
-    )
+        raise ValueError(f"未知简历模板：{template_id}")
     profile = ResumeProfile(
         public_id=new_public_id(),
         user_id=user.id,
@@ -180,10 +168,11 @@ async def create_profile(
         await _assert_owned_file(db, user.id, file_id)
     if jd_file_id:
         await _assert_owned_file(db, user.id, jd_file_id)
-    if is_blank_edit:
+    if template_id:
         structured = _default_structured()
-        visual = compile_visual_document(structured, template_id=template_id)
-        ver = _write_version(profile, structured, visual, version_no=1)
+        tid = normalize_template_id(template_id) or "template1"
+        visual = compile_visual_document(structured, template_id=tid)
+        ver = _write_version(profile, structured, visual, version_no=1, source_file_id=file_id)
         db.add(ver)
         profile.status = "draft"
         refresh_profile_thumbnail(profile, structured, visual)
@@ -202,12 +191,20 @@ async def _load_source_text(
     if prompt and prompt.strip():
         parts.append(prompt.strip())
     if file_id:
-        parts.append(await _file_source_text(db, user_id, file_id, "简历原文"))
+        try:
+            parts.append(await _file_source_text(db, user_id, file_id, "简历原文"))
+        except OcrUnavailableError:
+            logger.warning("resume file OCR unavailable file_id=%s", file_id)
     if jd_file_id:
-        parts.append(await _file_source_text(db, user_id, jd_file_id, "工作描述"))
+        try:
+            parts.append(await _file_source_text(db, user_id, jd_file_id, "工作描述"))
+        except OcrUnavailableError:
+            logger.warning("JD file OCR unavailable file_id=%s", jd_file_id)
     text = "\n\n".join(p for p in parts if p).strip()
     if not text:
-        raise ValueError("Prompt or file required")
+        if file_id or jd_file_id:
+            raise OcrUnavailableError("请提供可识别的简历内容（上传 PDF、纯文本或填写提示词）")
+        raise ValueError("请填写提示词或上传简历文件")
     _check_content(text)
     return text
 
@@ -233,13 +230,21 @@ async def _diagnose(structured: dict[str, Any], prompt: str, tier: str) -> str:
     return text.strip()
 
 
-async def _generate_resume(structured: dict[str, Any], diagnosis: str, prompt: str, tier: str) -> dict[str, Any]:
+async def _generate_resume(
+    structured: dict[str, Any],
+    diagnosis: str,
+    prompt: str,
+    tier: str,
+    *,
+    industry_snippet: str = "",
+) -> dict[str, Any]:
     messages = render_template(
         "resume_generate.yaml",
         {
             "structured_json": json.dumps(structured, ensure_ascii=False),
             "diagnosis": diagnosis,
             "user_prompt": prompt,
+            "industry_snippet": industry_snippet or "突出量化成就与岗位关键词对齐。",
         },
     )
     raw, _, _ = await chat_completion(messages, tier=tier)
@@ -288,21 +293,56 @@ async def run_generate(
     prompt: str | None = None,
     file_id: int | None = None,
     jd_file_id: int | None = None,
+    template_id: str | None = None,
+    prompt_template_id: str | None = None,
+    industry_id: str | None = None,
 ) -> dict[str, Any]:
+    tid = normalize_template_id(template_id)
+    if not tid:
+        raise ValueError("请选择简历模板")
+    if tid not in ALLOWED_VISUAL_TEMPLATE_IDS:
+        raise ValueError(f"未知简历模板：{tid}")
     profile = await get_owned_profile(db, user.id, public_id)
     tier = user.tier or "free"
     source_text = await _load_source_text(db, user.id, prompt, file_id, jd_file_id)
+    industry_snippet = get_industry_snippet(prompt_template_id)
 
     try:
         structured_in = await _parse_structured(source_text, tier)
         diagnosis = await _diagnose(structured_in, source_text, tier)
-        structured_out = normalize_structured(await _generate_resume(structured_in, diagnosis, source_text, tier))
+        structured_out = normalize_structured(
+            await _generate_resume(structured_in, diagnosis, source_text, tier, industry_snippet=industry_snippet)
+        )
         advice, next_steps = await _sidecar_from_llm(structured_out, diagnosis, tier)
 
-        prev_visual = _latest_visual(profile) if profile.versions else {}
-        version_no = max((v.version_no for v in profile.versions), default=0) + 1
+        prev_visual = _latest_visual(profile) if _profile_versions(profile) else {}
+        prev_visual = {**prev_visual, "template_id": tid}
+        version_no = max((v.version_no for v in _profile_versions(profile)), default=0) + 1
         ver = _write_version(profile, structured_out, prev_visual, version_no=version_no, source_file_id=file_id)
         db.add(ver)
+
+        if prompt and prompt.strip():
+            db.add(
+                ResumeMessage(
+                    profile_id=profile.id,
+                    role="user",
+                    content=prompt.strip(),
+                    message_type="prompt",
+                )
+            )
+        if industry_id or prompt_template_id:
+            meta = json.dumps(
+                {"industry_id": industry_id, "prompt_template_id": prompt_template_id, "template_id": tid},
+                ensure_ascii=False,
+            )
+            db.add(
+                ResumeMessage(
+                    profile_id=profile.id,
+                    role="system",
+                    content=meta,
+                    message_type="meta",
+                )
+            )
 
         db.add(
             ResumeMessage(
@@ -326,7 +366,7 @@ async def run_generate(
             profile.sidecar.next_steps_json = json.dumps(next_steps, ensure_ascii=False)
         profile.status = "ready"
         profile.updated_at = datetime.now(timezone.utc)
-        visual_doc = compile_visual_document(structured_out, prev_visual)
+        visual_doc = compile_visual_document(structured_out, {**prev_visual, "template_id": tid})
         refresh_profile_thumbnail(profile, structured_out, visual_doc)
         await check_and_consume(db, user.id, tier)
         await _log_generation(db, user.id, True, f"generate {public_id} v{version_no}")
@@ -343,12 +383,12 @@ async def run_generate(
 
 async def run_optimize(db: AsyncSession, user: User, public_id: str, prompt: str) -> dict[str, Any]:
     if not prompt or not prompt.strip():
-        raise ValueError("prompt required")
+        raise ValueError("请填写优化说明")
     _check_content(prompt)
     profile = await get_owned_profile(db, user.id, public_id)
     tier = user.tier or "free"
 
-    current = max(profile.versions, key=lambda v: v.version_no, default=None)
+    current = max(_profile_versions(profile), key=lambda v: v.version_no, default=None)
     structured = _default_structured()
     if current:
         try:
@@ -379,7 +419,7 @@ async def run_optimize(db: AsyncSession, user: User, public_id: str, prompt: str
         advice, next_steps = await _sidecar_from_llm(structured_out, diagnosis, tier)
 
         prev_visual = _latest_visual(profile)
-        version_no = max((v.version_no for v in profile.versions), default=0) + 1
+        version_no = max((v.version_no for v in _profile_versions(profile)), default=0) + 1
         ver = _write_version(profile, structured_out, prev_visual, version_no=version_no)
         db.add(ver)
         db.add(
@@ -410,9 +450,10 @@ async def run_optimize(db: AsyncSession, user: User, public_id: str, prompt: str
 
 
 def _latest_visual(profile: ResumeProfile) -> dict[str, Any]:
-    if not profile.versions:
+    versions = _profile_versions(profile)
+    if not versions:
         return compile_visual_document(_default_structured())
-    ver = max(profile.versions, key=lambda v: v.version_no)
+    ver = max(versions, key=lambda v: v.version_no)
     structured = _latest_structured(profile)
     if ver.visual_document_json:
         try:
@@ -437,7 +478,7 @@ def _write_version(
     payload = json.dumps(structured_norm, ensure_ascii=False)
     visual_payload = json.dumps(visual_doc, ensure_ascii=False)
     if version_no is None:
-        version_no = max((v.version_no for v in profile.versions), default=0) + 1
+        version_no = max((v.version_no for v in _profile_versions(profile)), default=0) + 1
     ver = ResumeVersion(
         profile_id=profile.id,
         version_no=version_no,
@@ -445,7 +486,8 @@ def _write_version(
         visual_document_json=visual_payload,
         source_file_id=source_file_id,
     )
-    db_ver = max(profile.versions, key=lambda v: v.version_no, default=None)
+    versions = _profile_versions(profile)
+    db_ver = max(versions, key=lambda v: v.version_no, default=None) if versions else None
     if db_ver and version_no == db_ver.version_no:
         db_ver.structured_json = payload
         db_ver.visual_document_json = visual_payload
@@ -456,9 +498,10 @@ def _write_version(
 
 
 def _latest_structured(profile: ResumeProfile) -> dict[str, Any]:
-    if not profile.versions:
+    versions = _profile_versions(profile)
+    if not versions:
         return _default_structured()
-    ver = max(profile.versions, key=lambda v: v.version_no)
+    ver = max(versions, key=lambda v: v.version_no)
     try:
         data = json.loads(ver.structured_json or "{}")
         return normalize_structured(data if isinstance(data, dict) else {})
@@ -479,7 +522,7 @@ def _profile_payload(profile: ResumeProfile) -> dict[str, Any]:
             next_steps = json.loads(sidecar.next_steps_json or "[]")
         except json.JSONDecodeError:
             next_steps = []
-    ver = max(profile.versions, key=lambda v: v.version_no, default=None)
+    ver = max(_profile_versions(profile), key=lambda v: v.version_no, default=None)
     return {
         "public_id": profile.public_id,
         "title": profile.title,
@@ -505,7 +548,7 @@ async def save_profile(
     if title:
         profile.title = title.strip()[:255]
     if structured is not None or visual_document is not None:
-        ver = max(profile.versions, key=lambda v: v.version_no, default=None)
+        ver = max(_profile_versions(profile), key=lambda v: v.version_no, default=None)
         cur_structured = normalize_structured(_latest_structured(profile) if structured is None else structured)
         cur_visual = visual_document if visual_document is not None else _latest_visual(profile)
         if ver:

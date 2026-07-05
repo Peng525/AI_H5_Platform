@@ -1,10 +1,11 @@
 """AI 智能 H5 演示平台 — FastAPI 入口。"""
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api import admin, auth, bgm, commerce, deck_prompt_templates, image_prompt_templates, layout_blocks, projects, resume, settings, standalone_image, templates_catalog
@@ -18,6 +19,8 @@ STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 # 个人收款码放此目录，不会被前端 build 清空（Docker 可挂载）
 PAY_ASSETS_DIR = Path(__file__).resolve().parents[1] / "pay_assets"
 MEDIA_DIR = Path(__file__).resolve().parents[1] / "media"
+
+logger = logging.getLogger(__name__)
 
 
 def _wechat_qr_image_path() -> Path | None:
@@ -64,6 +67,18 @@ app.include_router(image_prompt_templates.router)
 app.include_router(deck_prompt_templates.router)
 app.include_router(standalone_image.router)
 app.include_router(resume.router)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    if isinstance(exc, HTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers=getattr(exc, "headers", None) or {},
+        )
+    logger.exception("Unhandled error path=%s", request.url.path)
+    return JSONResponse(status_code=500, content={"detail": "服务器内部错误，请稍后重试"})
 
 
 @app.get("/api/v1/健康", tags=["系统"])

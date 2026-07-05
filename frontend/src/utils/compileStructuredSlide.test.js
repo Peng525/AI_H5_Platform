@@ -10,6 +10,7 @@ import { getLayoutCanvasSize } from '../constants/editorPresets.js'
 
 const VP_WIDE = 'web-wide-1024'
 const THEME = 'zjy-minimal'
+const THEME_DARK = 'tech-blue'
 
 function maxRight(elements) {
   if (!elements?.length) return 0
@@ -50,6 +51,10 @@ function bodyInsideCard(elements) {
   )
 }
 
+function cardBackgrounds(elements) {
+  return cardShapes(elements).map((el) => el.style?.background).filter(Boolean)
+}
+
 const fourModules = [
   { icon: 'target', title: '核心痛点', body: '将错误数据转化为可行洞察。' },
   { icon: 'groups', title: '用户群体', body: '学生、教师与管理者三重受益。' },
@@ -69,6 +74,27 @@ describe('compileStructuredSlide layout', () => {
     expect(maxRight(elements)).toBeGreaterThan(W * 0.7)
     const xs = cardShapes(elements).map((c) => c.x)
     expect(new Set(xs).size).toBeGreaterThanOrEqual(2)
+  })
+
+  it('normalizes generated lucide-style icon names to Material Symbols', () => {
+    const elements = compileStructuredSlide(
+      {
+        template: 'grid_2x2',
+        title: '图标归一化',
+        modules: [
+          { icon: 'zap', title: '平台定位', body: '说明' },
+          { icon: 'users', title: '利益相关方', body: '说明' },
+          { icon: 'trending-up', title: '战略前提', body: '说明' },
+          { icon: 'bar-chart-2', title: '价值回报', body: '说明' },
+        ],
+      },
+      VP_WIDE,
+      THEME
+    )
+    const iconNames = elements.filter((el) => el.type === 'icon').map((el) => el.content)
+    expect(iconNames).toEqual(['bolt', 'groups', 'trending_up', 'bar_chart'])
+    expect(iconNames).not.toContain('zap')
+    expect(iconNames).not.toContain('bar-chart-2')
   })
 
   it('grid_2x2 with padded modules fills width', () => {
@@ -120,6 +146,27 @@ describe('compileStructuredSlide layout', () => {
     expect(bodyInsideCard(elements)).toBe(true)
   })
 
+  it('grid and cards_row use consistent card surface on dark theme', () => {
+    const grid = compileStructuredSlide(
+      { template: 'grid_2x2', title: '四宫格', modules: fourModules },
+      VP_WIDE,
+      THEME_DARK
+    )
+    const row = compileStructuredSlide(
+      {
+        template: 'cards_row',
+        title: '横排',
+        modules: fourModules.slice(0, 3),
+      },
+      VP_WIDE,
+      THEME_DARK
+    )
+    const gridBg = cardBackgrounds(grid)[0]
+    const rowBg = cardBackgrounds(row)[0]
+    expect(gridBg).toBe(rowBg)
+    expect(gridBg).toBe('#152238')
+  })
+
   it('recompiles when viewport switches from mobile to wide', () => {
     const structured = { template: 'grid_2x2', title: '测试', modules: fourModules }
     const slide = {
@@ -164,7 +211,43 @@ describe('compileStructuredSlide layout', () => {
     expect(maxBottom).toBeLessThanOrEqual(H + 2)
   })
 
-  it('split_lr uses scene image instead of chart placeholder by default', () => {
+  it('cover uses theme-first layout without side panel by default', () => {
+    const elements = compileStructuredSlide(
+      {
+        template: 'cover',
+        title: 'Academic Curator 数字学习支持平台',
+        subtitle: '为香港中学构建的 B2B2C 智能错题管理系统',
+        image_intent: 'none',
+      },
+      VP_WIDE,
+      THEME
+    )
+    expect(elements.some((el) => el.type === 'image')).toBe(false)
+    expect(elements.some((el) => el.type === 'shape' && (el.width ?? 0) > 400)).toBe(false)
+    const { width: W, height: H } = getLayoutCanvasSize(VP_WIDE)
+    expect(elements.every((el) => (el.x ?? 0) + (el.width ?? 0) <= W + 2)).toBe(true)
+    expect(elements.every((el) => (el.y ?? 0) + (el.height ?? 0) <= H + 2)).toBe(true)
+  })
+
+  it('cover renders full-bleed image only with cover_bg intent and url', () => {
+    const elements = compileStructuredSlide(
+      {
+        template: 'cover',
+        title: 'Academic Curator',
+        subtitle: '平台介绍',
+        image_intent: 'cover_bg',
+        image_url: 'https://example.com/cover.jpg',
+      },
+      VP_WIDE,
+      THEME
+    )
+    const imgs = elements.filter((el) => el.type === 'image')
+    expect(imgs.length).toBe(1)
+    expect(imgs[0].width).toBeGreaterThan(900)
+    expect(imgs[0].content).toContain('example.com')
+  })
+
+  it('split_lr without scene url uses full-width text without placeholder image', () => {
     const elements = compileStructuredSlide(
       {
         template: 'split_lr',
@@ -172,29 +255,51 @@ describe('compileStructuredSlide layout', () => {
         title: '盈利策略',
         modules: [
           { role: 'text', title: '双轨定价策略', body: '基于资源用量的定价模型。' },
-          { role: 'scene_image', title: '场景', image_prompt: '管理者查看仪表盘' },
+          { role: 'text', title: '补充说明', body: '右侧纯文字。' },
         ],
       },
       VP_WIDE,
       THEME
     )
-    expect(elements.some((el) => el.type === 'image')).toBe(true)
+    expect(elements.some((el) => el.type === 'image')).toBe(false)
     expect(elements.some((el) => el.type === 'chartPlaceholder')).toBe(false)
   })
 
-  it('cover title fits in narrow panel', () => {
+  it('split_lr renders image when scene intent and image_url are set', () => {
     const elements = compileStructuredSlide(
       {
-        template: 'cover',
-        title: 'Academic Curator 数字学习支持平台',
-        subtitle: '为香港中学构建的 B2B2C 智能错题管理系统',
-        image_prompt: '香港中学智慧教室',
+        template: 'split_lr',
+        title: '盈利策略',
+        modules: [
+          { role: 'text', title: '左栏', body: '说明' },
+          { role: 'scene_image', image_intent: 'scene', image_url: 'https://example.com/scene.jpg' },
+        ],
       },
       VP_WIDE,
       THEME
     )
-    const { width: W, height: H } = getLayoutCanvasSize(VP_WIDE)
-    expect(elements.every((el) => (el.x ?? 0) + (el.width ?? 0) <= W + 2)).toBe(true)
-    expect(elements.every((el) => (el.y ?? 0) + (el.height ?? 0) <= H + 2)).toBe(true)
+    expect(elements.some((el) => el.type === 'image' && el.content?.includes('example.com'))).toBe(true)
+  })
+
+  it('steps renders roadmap image at bottom when image_intent is roadmap', () => {
+    const elements = compileStructuredSlide(
+      {
+        template: 'steps',
+        title: '实施路径',
+        image_intent: 'roadmap',
+        image_url: 'https://example.com/roadmap.jpg',
+        modules: [
+          { title: '步骤一' },
+          { title: '步骤二' },
+          { title: '步骤三' },
+        ],
+      },
+      VP_WIDE,
+      THEME
+    )
+    const img = elements.find((el) => el.type === 'image')
+    expect(img?.content).toContain('example.com')
+    const { height: H } = getLayoutCanvasSize(VP_WIDE)
+    expect((img?.y ?? 0) + (img?.height ?? 0)).toBeLessThanOrEqual(H + 2)
   })
 })

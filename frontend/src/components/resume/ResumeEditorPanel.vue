@@ -1,6 +1,6 @@
 <template>
   <div class="h-full overflow-y-auto p-4 bg-surface-container-low relative">
-    <div ref="canvasRef" class="relative space-y-6">
+    <div ref="canvasRef" class="relative space-y-6" :class="{ 'opacity-60': readonly }">
       <section
         v-for="(page, index) in pages"
         :key="page.id"
@@ -10,21 +10,22 @@
           第 {{ index + 1 }} 页
         </p>
         <div :ref="(el) => setPageRef(index, el)" class="relative">
-          <ClassicBlueTemplate
+          <component
+            :is="activeTemplate"
             :structured="page.structured"
             :selected-bind="selectedBind"
             :editing-bind="editingBind"
             :photo-url="photoUrl"
             :cell-value="(bind) => cellValue(bind, index)"
             :cell-style="(bind) => cellStyle(bind, index)"
-            @select="(bind) => startEdit(bind, index)"
-            @edit="(bind) => startEdit(bind, index)"
+            @select="(bind) => onStartEdit(bind, index)"
+            @edit="(bind) => onStartEdit(bind, index)"
             @blur="stopEdit"
             @update-value="(bind, val) => onUpdateValue(bind, val, index)"
             @photo-click="onPhotoClick"
           />
         </div>
-        <div class="flex justify-center items-center gap-3 mt-4">
+        <div v-if="!readonly" class="flex justify-center items-center gap-3 mt-4">
           <button
             type="button"
             class="inline-flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg border border-outline-variant bg-white hover:bg-surface-container-low transition-colors"
@@ -49,8 +50,15 @@
         </div>
       </section>
     </div>
+    <div
+      v-if="readonly"
+      class="absolute inset-0 z-20 flex items-center justify-center bg-white/50 pointer-events-auto"
+    >
+      <PageLoading message="生成中…" />
+    </div>
     <input ref="photoInputRef" type="file" accept="image/*" class="hidden" @change="onPhotoPicked" />
     <ResumeFormatToolbar
+      v-if="!readonly"
       :selected="toolbarSelected"
       :resolve-element-el="resolveCellEl"
       :scroll-root-ref="canvasRef"
@@ -60,16 +68,18 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, ref, watch } from 'vue'
-import ClassicBlueTemplate from './ClassicBlueTemplate.vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import ResumeFormatToolbar from './ResumeFormatToolbar.vue'
+import PageLoading from '../PageLoading.vue'
 import { useResumeEditor } from '../../composables/useResumeEditor.js'
+import { resolveTemplateComponent } from '../../utils/resumeTemplateRegistry.js'
 import { api } from '../../api/client.js'
 
 const props = defineProps({
   structured: { type: Object, default: () => ({}) },
   visualDocument: { type: Object, default: () => ({}) },
   publicId: { type: String, default: '' },
+  readonly: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:structured', 'update:visualDocument'])
@@ -107,15 +117,27 @@ watch(
 watch(structured, (v) => emit('update:structured', v), { deep: true })
 watch(visualDocument, (v) => emit('update:visualDocument', v), { deep: true })
 
+const activeTemplate = computed(() =>
+  resolveTemplateComponent(visualDocument.value?.template_id),
+)
+
 function onUpdateValue(bind, value, pageIndex) {
+  if (props.readonly) return
   updateCellValue(bind, value, pageIndex)
 }
 
+function onStartEdit(bind, pageIndex) {
+  if (props.readonly) return
+  startEdit(bind, pageIndex)
+}
+
 function onPhotoClick() {
+  if (props.readonly) return
   photoInputRef.value?.click()
 }
 
 async function onPhotoPicked(e) {
+  if (props.readonly) return
   const file = e.target.files?.[0]
   if (!file || !props.publicId) return
   const fd = new FormData()
