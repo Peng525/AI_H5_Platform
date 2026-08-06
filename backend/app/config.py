@@ -113,6 +113,11 @@ class Settings(BaseSettings):
 
     # ppt-master 子项目根目录（默认 develop/ppt-master-main）
     ppt_master_root: str = ""
+    ppt_master_workspace: str = "./data/ppt_master_projects"
+    ppt_master_max_concurrent: int = 1
+    ppt_master_skip_images: bool = True
+    ppt_master_job_timeout_sec: float = 1800.0
+    imported_deck_templates_dir: str = "./data/imported_deck_templates"
 
 
 settings = Settings()

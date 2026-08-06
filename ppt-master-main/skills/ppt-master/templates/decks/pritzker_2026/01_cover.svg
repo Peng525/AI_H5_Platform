@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="1280" height="720" viewBox="0 0 1280 720"><defs><linearGradient id="ggrad1" x1="0.5" y1="0" x2="0.5" y2="1"><stop offset="0" stop-color="#0A0A0A" stop-opacity="0.55"/><stop offset="0.45" stop-color="#0A0A0A" stop-opacity="0.2"/><stop offset="1" stop-color="#0A0A0A" stop-opacity="0.75"/></linearGradient></defs><rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+<g id="shape-4" data-name="Group 4">
+<g id="shape-2" data-name="Image 2">
+<svg x="0" y="0" width="1280" height="720" viewBox="0 0.12518 1 0.74964" preserveAspectRatio="none"><image href="../assets/image_3c5852ec8aadc3de.png" x="0" y="0" width="1" height="1" preserveAspectRatio="none"/></svg>
+</g>
+<g id="shape-3" data-name="Rectangle 3">
+<rect x="0" y="0" width="1280" height="720" fill="url(#ggrad1)" stroke="none"/>
+</g>
+</g>
+<g id="shape-7" data-name="Group 7">
+<g id="shape-5" data-name="Line 5">
+<path d="M 60 100 L 160 100" fill="none" stroke-width="2" stroke="#B8935A"/>
+</g>
+<g id="shape-6" data-name="TextBox 6">
+<rect x="178.2" y="90.7" width="216.81" height="28.8" fill="none" stroke="none"/>
+<text x="178.2" y="106" text-anchor="start" xml:space="preserve" font-family="Georgia, &quot;Microsoft YaHei&quot;, sans-serif" font-size="18" fill="#B8935A"><tspan fill="#B8935A" font-size="18">PRITZKER PRIZE · 2026</tspan></text>
+</g>
+</g>
+<g id="shape-10" data-name="Group 10">
+<g id="shape-8" data-name="TextBox 8">
+<rect x="52.8" y="278.8" width="927.27" height="115.2" fill="none" stroke="none"/>
+<text x="52.8" y="340" text-anchor="start" xml:space="preserve" font-family="Georgia, &quot;Microsoft YaHei&quot;, sans-serif" font-size="72" fill="#F5F2EC" font-weight="bold"><tspan fill="#F5F2EC" font-size="72" font-weight="bold">2026 普利兹克奖大师季</tspan></text>
+</g>
+<g id="shape-9" data-name="TextBox 9">
+<rect x="55.6" y="382.6" width="456.61" height="70.4" fill="none" stroke="none"/>
+<text x="55.6" y="420" text-anchor="start" xml:space="preserve" font-family="Georgia, KaiTi, sans-serif" font-size="44" fill="#E8C788" font-style="italic"><tspan fill="#E8C788" font-size="44" font-style="italic">8 座新作 · 8 种深耕</tspan></text>
+</g>
+</g>
+<g id="shape-15" data-name="Group 15">
+<g id="shape-11" data-name="Line 11">
+<path d="M 60 490 L 60 600" fill="none" stroke-width="2" stroke="#B8935A"/>
+</g>
+<g id="shape-12" data-name="TextBox 12">
+<rect x="77.8" y="491.3" width="257.4" height="35.2" fill="none" stroke="none"/>
+<text x="77.8" y="510" text-anchor="start" xml:space="preserve" font-family="&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="22" fill="#F5F2EC"><tspan fill="#F5F2EC" font-size="22">从苏州河畔到沙漠腹地</tspan></text>
+</g>
+<g id="shape-13" data-name="TextBox 13">
+<rect x="77.8" y="527.3" width="333.3" height="35.2" fill="none" stroke="none"/>
+<text x="77.8" y="546" text-anchor="start" xml:space="preserve" font-family="&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="22" fill="#F5F2EC"><tspan fill="#F5F2EC" font-size="22">读懂顶级建筑师的思考与坚守</tspan></text>
+</g>
+<g id="shape-14" data-name="TextBox 14">
+<rect x="78.5" y="579.25" width="402.34" height="24" fill="none" stroke="none"/>
+<text x="78.5" y="592" text-anchor="start" xml:space="preserve" font-family="&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="15" fill="#D4CFC4"><tspan fill="#D4CFC4" font-size="15">不同于网红建筑的转瞬即逝 · 是岁月沉淀的匠心深耕</tspan></text>
+</g>
+</g>
+<g id="shape-19" data-name="Group 19">
+<g id="shape-16" data-name="Line 16">
+<path d="M 60 670 L 1220 670" fill="none" stroke-width="1" stroke="#B8935A" stroke-opacity="0.4"/>
+</g>
+<g id="shape-17" data-name="TextBox 17">
+<rect x="58.7" y="683.95" width="173.78" height="20.8" fill="none" stroke="none"/>
+<text x="58.7" y="695" text-anchor="start" xml:space="preserve" font-family="&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="13" fill="#D4CFC4"><tspan fill="#D4CFC4" font-size="13">资料来源 · 公众号 孙琬童</tspan></text>
+</g>
+<g id="shape-18" data-name="TextBox 18">
+<rect x="1062.47" y="683.95" width="158.83" height="20.8" fill="none" stroke="none"/>
+<text x="1221.3" y="695" text-anchor="end" xml:space="preserve" font-family="Georgia, &quot;Microsoft YaHei&quot;, sans-serif" font-size="13" fill="#D4CFC4"><tspan fill="#D4CFC4" font-size="13">PPT MASTER · 2026.05</tspan></text>
+</g>
+</g></svg>

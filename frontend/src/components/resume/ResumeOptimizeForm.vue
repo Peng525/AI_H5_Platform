@@ -26,8 +26,7 @@
       @update:model-value="emit('update:prompt', $event)"
       @paste="emit('paste')"
     />
-    <p v-if="error" class="text-xs text-red-600 px-1">{{ error }}</p>
-    <div v-if="canGenerate" class="flex justify-center pt-1 relative">
+    <div v-if="canGenerate" class="flex justify-center pt-1 pb-2 relative">
       <slot name="generate-hint" />
       <button
         type="button"
@@ -39,6 +38,9 @@
         {{ generating ? '生成中…' : '生成' }}
       </button>
     </div>
+    <p v-if="error" class="text-xs text-red-600 px-1">{{ error }}</p>
+    <hr class="border-0 border-t border-outline-variant/50" />
+    <slot name="after-prompt" />
   </div>
 </template>
 

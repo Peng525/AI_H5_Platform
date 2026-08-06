@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import admin, auth, bgm, commerce, deck_prompt_templates, image_prompt_templates, layout_blocks, projects, resume, settings, standalone_image, templates_catalog
+from app.api import admin, auth, bgm, commerce, deck_ppt_templates, deck_prompt_templates, image_prompt_templates, layout_blocks, projects, resume, settings, standalone_image, templates_catalog
 from app.services.bgm_service import resolve_bgm_dir
 from app.config import settings as app_settings
 from app.database import init_db
@@ -65,6 +65,7 @@ app.include_router(bgm.router)
 app.include_router(layout_blocks.router)
 app.include_router(image_prompt_templates.router)
 app.include_router(deck_prompt_templates.router)
+app.include_router(deck_ppt_templates.router)
 app.include_router(standalone_image.router)
 app.include_router(resume.router)
 
@@ -91,6 +92,14 @@ if STATIC_DIR.exists():
     assets_dir = STATIC_DIR / "assets"
     if assets_dir.exists():
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    resume_tpl_dir = STATIC_DIR / "resume-templates"
+    if resume_tpl_dir.is_dir():
+        app.mount("/resume-templates", StaticFiles(directory=resume_tpl_dir), name="resume_templates")
+
+    deck_tpl_dir = STATIC_DIR / "deck-templates"
+    if deck_tpl_dir.is_dir():
+        app.mount("/deck-templates", StaticFiles(directory=deck_tpl_dir), name="deck_templates")
 
     @app.get("/static/wechat-pay-qr.png", include_in_schema=False)
     async def wechat_pay_qr_image():

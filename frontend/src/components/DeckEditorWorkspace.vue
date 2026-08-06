@@ -320,7 +320,7 @@
 
 <script setup>
 /** 编辑器外壳：layoutMode=studio 用 EditorPhoneCanvas；layoutMode=result 用 ResultSlidesOverview + 浮动 EditorContextLayer。 */
-import { ref, toRef, watch, computed } from 'vue'
+import { ref, toRef, watch, computed, nextTick } from 'vue'
 import { getViewportPreset, DEFAULT_WEB_VIEWPORT_ID } from '../constants/editorPresets.js'
 import { useDeckEditor } from '../composables/useDeckEditor.js'
 import { useDeckRevealAnimation } from '../composables/useDeckRevealAnimation.js'
@@ -620,8 +620,10 @@ async function onThemeDrawerSelect(themeId) {
 watch(
   [projectLoading, loadError, project],
   ([loading, err, p]) => {
-    if (!loading && err) emit('project-load-error', err)
-    else if (!loading && !err && p) {
+    // _pending 占位ID的加载错误是预期的，不向上传递
+    if (!loading && err && props.projectId !== '_pending') {
+      emit('project-load-error', err)
+    } else if (!loading && !err && p) {
       emit('project-loaded', p)
       tryStartReveal()
     }
@@ -634,6 +636,20 @@ watch(
   () => {
     revealStarted = false
     reveal.resetReveal()
+  }
+)
+
+// reveal 期间自动滚动：当前正在绘制的幻灯片保持在视口中央
+watch(
+  () => reveal.currentSlideIndex.value,
+  (slideIdx) => {
+    if (!reveal.isRevealing.value || slideIdx < 0) return
+    const slide = project.value?.slides?.[slideIdx]
+    if (slide?.id) {
+      nextTick(() => {
+        overviewRef.value?.scrollToSlide?.(slide.id)
+      })
+    }
   }
 )
 

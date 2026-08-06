@@ -42,6 +42,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': { target: 'http://127.0.0.1:8080', changeOrigin: true },
+      '/deck-templates': { target: 'http://127.0.0.1:8080', changeOrigin: true },
       '/static/wechat-pay-qr.png': { target: 'http://127.0.0.1:8080', changeOrigin: true },
       '/static/bgm': { target: 'http://127.0.0.1:8080', changeOrigin: true },
     },

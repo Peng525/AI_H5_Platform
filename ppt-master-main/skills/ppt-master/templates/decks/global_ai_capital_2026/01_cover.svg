@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="1280" height="720" viewBox="0 0 1280 720"><defs><linearGradient id="ggrad1" x1="0.5" y1="1" x2="0.5" y2="0"><stop offset="0" stop-color="#0E1116" stop-opacity="0.95"/><stop offset="0.55" stop-color="#0E1116" stop-opacity="0.55"/><stop offset="1" stop-color="#0E1116" stop-opacity="0.05"/></linearGradient></defs><rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+<g id="shape-5" data-name="Group 5">
+<g id="shape-2" data-name="Rectangle 2">
+<rect x="0" y="0" width="1280" height="720" fill="#0E1116" stroke="none"/>
+</g>
+<g id="shape-3" data-name="Image 3">
+<image href="../assets/image_3b4b49a31040d38f.png" x="0" y="0" width="1280" height="720" preserveAspectRatio="none"/>
+</g>
+<g id="shape-4" data-name="Rectangle 4">
+<rect x="0" y="0" width="1280" height="720" fill="url(#ggrad1)" stroke="none"/>
+</g>
+</g>
+<g id="shape-8" data-name="Group 8">
+<g id="shape-6" data-name="TextBox 6">
+<rect x="58.9" y="46.65" width="171.08" height="17.6" fill="none" stroke="none"/>
+<text x="58.9" y="56" text-anchor="start" xml:space="preserve" font-family="Cambria, &quot;Microsoft YaHei&quot;, sans-serif" font-size="11" fill="#8A857E"><tspan fill="#8A857E" font-size="11">INDUSTRY BRIEFING · 2026.05</tspan></text>
+</g>
+<g id="shape-7" data-name="Line 7">
+<path d="M 60 72 L 200 72" fill="none" stroke-width="1" stroke="#E63946"/>
+</g>
+</g>
+<g id="shape-11" data-name="Group 11">
+<g id="shape-9" data-name="TextBox 9">
+<rect x="52.8" y="378.8" width="879.45" height="115.2" fill="none" stroke="none"/>
+<text x="52.8" y="440" text-anchor="start" xml:space="preserve" font-family="Cambria, &quot;Microsoft YaHei&quot;, sans-serif" font-size="72" fill="#E8E6E1" font-weight="bold"><tspan fill="#E8E6E1" font-size="72" font-weight="bold">2026 全球 AI 资本格局</tspan></text>
+</g>
+<g id="shape-10" data-name="TextBox 10">
+<rect x="57.2" y="466.2" width="602.91" height="44.8" fill="none" stroke="none"/>
+<text x="57.2" y="490" text-anchor="start" xml:space="preserve" font-family="Cambria, &quot;Microsoft YaHei&quot;, sans-serif" font-size="28" fill="#C9C5BE" font-style="italic"><tspan fill="#C9C5BE" font-size="28" font-style="italic">Capital, Compute, and the Closed Loop</tspan></text>
+</g>
+</g>
+<g id="shape-17" data-name="Group 17">
+<g id="shape-12" data-name="Line 12">
+<path d="M 60 540 L 1220 540" fill="none" stroke-width="1" stroke="#2A2F36"/>
+</g>
+<g id="shape-13" data-name="TextBox 13">
+<rect x="58.6" y="568.1" width="518.81" height="22.4" fill="none" stroke="none"/>
+<text x="58.6" y="580" text-anchor="start" xml:space="preserve" font-family="Arial, &quot;Microsoft YaHei&quot;, sans-serif" font-size="14" fill="#8A857E"><tspan fill="#8A857E" font-size="14">作者 · PPT Master 行业洞察 / Author · PPT Master Industry Insight</tspan></text>
+</g>
+<g id="shape-14" data-name="TextBox 14">
+<rect x="58.6" y="596.1" width="255.57" height="22.4" fill="none" stroke="none"/>
+<text x="58.6" y="608" text-anchor="start" xml:space="preserve" font-family="Arial, &quot;Microsoft YaHei&quot;, sans-serif" font-size="14" fill="#8A857E"><tspan fill="#8A857E" font-size="14">数据截至 / Data as of </tspan><tspan fill="#E8E6E1" font-size="14" font-weight="bold">2026-05-15</tspan></text>
+</g>
+<g id="shape-15" data-name="TextBox 15">
+<rect x="1118.33" y="570.65" width="102.77" height="17.6" fill="none" stroke="none"/>
+<text x="1221.1" y="580" text-anchor="end" xml:space="preserve" font-family="Cambria, SimSun, sans-serif" font-size="11" fill="#5C5852"><tspan fill="#5C5852" font-size="11">VOL. 01 · NO. 05</tspan></text>
+</g>
+<g id="shape-16" data-name="TextBox 16">
+<rect x="1052.93" y="596.1" width="168.47" height="22.4" fill="none" stroke="none"/>
+<text x="1221.4" y="608" text-anchor="end" xml:space="preserve" font-family="Arial, &quot;Microsoft YaHei&quot;, sans-serif" font-size="14" fill="#E63946" font-weight="bold"><tspan fill="#E63946" font-size="14" font-weight="bold">$297B · 81% · 4 deals</tspan></text>
+</g>
+</g>
+<g id="shape-20" data-name="Group 20">
+<g id="shape-18" data-name="TextBox 18">
+<rect x="59" y="681.5" width="421.75" height="16" fill="none" stroke="none"/>
+<text x="59" y="690" text-anchor="start" xml:space="preserve" font-family="Arial, &quot;Microsoft YaHei&quot;, sans-serif" font-size="10" fill="#5C5852"><tspan fill="#5C5852" font-size="10">Sources: Crunchbase · Bloomberg · CNBC · TechCrunch · Anthropic · OpenAI</tspan></text>
+</g>
+<g id="shape-19" data-name="TextBox 19">
+<rect x="1183.35" y="681.5" width="37.65" height="16" fill="none" stroke="none"/>
+<text x="1221" y="690" text-anchor="end" xml:space="preserve" font-family="Cambria, SimSun, sans-serif" font-size="10" fill="#5C5852"><tspan fill="#5C5852" font-size="10">01 / 20</tspan></text>
+</g>
+</g></svg>

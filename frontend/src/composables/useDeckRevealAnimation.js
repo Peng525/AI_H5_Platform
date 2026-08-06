@@ -1,9 +1,11 @@
 import { computed, ref } from 'vue'
 
-/** 每个组件 reveal 间隔（毫秒） */
-const ELEMENT_REVEAL_MS = 500
+/** 每个组件 reveal 间隔（毫秒）— 控制绘制速度 */
+const ELEMENT_REVEAL_MS = 800
+/** 进入新页面前的暂停（给用户感知"开始绘制新页"） */
+const SLIDE_INTRO_MS = 1000
 /** 切到下一页前的短过渡 */
-const SLIDE_TRANSITION_MS = 80
+const SLIDE_TRANSITION_MS = 120
 
 function pageElementStepMs(_elementCount) {
   return ELEMENT_REVEAL_MS
@@ -55,7 +57,8 @@ export function useDeckRevealAnimation() {
     visibleSlideCount.value = slideIndex + 2
     currentSlideIndex.value = slideIndex + 1
     currentElementIndex.value = 0
-    schedule(SLIDE_TRANSITION_MS, () => {
+    // 新页面进入前暂停，让用户感知"开始绘制新页"
+    schedule(SLIDE_INTRO_MS, () => {
       void revealElementBatch(slideIndex + 1)
     })
   }

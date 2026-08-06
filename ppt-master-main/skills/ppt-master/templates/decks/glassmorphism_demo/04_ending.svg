@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="1280" height="720" viewBox="0 0 1280 720"><defs><linearGradient id="ggrad1" x1="0.5" y1="0" x2="0.5" y2="1"><stop offset="0" stop-color="#0A0E27" stop-opacity="0.7"/><stop offset="0.5" stop-color="#0A0E27" stop-opacity="0.35"/><stop offset="1" stop-color="#0A0E27" stop-opacity="0.78"/></linearGradient><radialGradient id="ggrad2" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#0A0E27" stop-opacity="0"/><stop offset="1" stop-color="#0A0E27" stop-opacity="0.45"/></radialGradient><linearGradient id="ggrad3" x1="0" y1="0.5" x2="1" y2="0.5"><stop offset="0" stop-color="#5B8DEF"/><stop offset="0.5" stop-color="#A26BFA"/><stop offset="1" stop-color="#3DDDFC"/></linearGradient><linearGradient id="ggrad4" x1="0.5" y1="0" x2="0.5" y2="1"><stop offset="0" stop-color="#5B8DEF" stop-opacity="0.22"/><stop offset="1" stop-color="#A26BFA" stop-opacity="0.12"/></linearGradient></defs><rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+<g id="shape-6" data-name="Group 6">
+<g id="shape-2" data-name="Rectangle 2">
+<rect x="0" y="0" width="1280" height="720" fill="#0A0E27" stroke="none"/>
+</g>
+<g id="shape-3" data-name="Image 3">
+<image href="../assets/image_0e459a410938de29.png" x="0" y="0" width="1280" height="720" preserveAspectRatio="none"/>
+</g>
+<g id="shape-4" data-name="Rectangle 4">
+<rect x="0" y="0" width="1280" height="720" fill="url(#ggrad1)" stroke="none"/>
+</g>
+<g id="shape-5" data-name="Rectangle 5">
+<rect x="0" y="0" width="1280" height="720" fill="url(#ggrad2)" stroke="none"/>
+</g>
+</g>
+<g id="shape-10" data-name="Group 10">
+<g id="shape-7" data-name="Line 7">
+<path d="M 640 165 L 608 165" fill="none" stroke-width="2" stroke-linecap="round" stroke="#3DDDFC"/>
+</g>
+<g id="shape-8" data-name="TextBox 8">
+<rect x="600.24" y="158.95" width="79.52" height="20.8" fill="none" stroke="none"/>
+<text x="640" y="170" text-anchor="middle" xml:space="preserve" font-family="&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="13" fill="#3DDDFC" font-weight="bold"><tspan fill="#3DDDFC" font-size="13" font-weight="bold">YOUR TURN</tspan></text>
+</g>
+<g id="shape-9" data-name="Line 9">
+<path d="M 640 165 L 672 165" fill="none" stroke-width="2" stroke-linecap="round" stroke="#3DDDFC"/>
+</g>
+</g>
+<g id="shape-13" data-name="Group 13">
+<g id="shape-11" data-name="TextBox 11">
+<rect x="369.81" y="228.8" width="540.39" height="115.2" fill="none" stroke="none"/>
+<text x="640" y="290" text-anchor="middle" xml:space="preserve" font-family="&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="72" fill="#E8ECFF" font-weight="bold"><tspan fill="#E8ECFF" font-size="72" font-weight="bold">下一个 Agent</tspan></text>
+</g>
+<g id="shape-12" data-name="TextBox 12">
+<rect x="371.98" y="314.8" width="536.04" height="115.2" fill="none" stroke="none"/>
+<text x="640" y="376" text-anchor="middle" xml:space="preserve" font-family="&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="72" fill="#000000" font-weight="bold"><tspan fill="#000000" font-size="72" font-weight="bold">从工程化开始</tspan></text>
+</g>
+</g>
+<g id="shape-15" data-name="Group 15">
+<g id="shape-14" data-name="TextBox 14">
+<rect x="406.94" y="429.3" width="466.13" height="35.2" fill="none" stroke="none"/>
+<text x="640" y="448" text-anchor="middle" xml:space="preserve" font-family="&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="22" fill="#A8B0D0"><tspan fill="#A8B0D0" font-size="22">不是&quot;加个 LLM&quot;,是把 LLM 真正装进系统</tspan></text>
+</g>
+</g>
+<g id="shape-28" data-name="Group 28">
+<g id="shape-21" data-name="Group 21">
+<g id="shape-16" data-name="Rectangle 16">
+<rect x="380" y="510" width="280" height="68" rx="34" ry="34" fill="url(#ggrad3)" stroke="none"/>
+</g>
+<g id="shape-19" data-name="Group 19">
+<g id="shape-17" data-name="Freeform 17">
+<path d="M 419.85 552 L 416.17 554.78 C 415.9 555 415.54 555.06 415.21 554.94 C 414.89 554.83 414.64 554.55 414.57 554.22 L 413.02 547.26 C 412.96 546.96 413.03 546.64 413.23 546.4 L 417.02 541.86 C 416.88 544.78 417.59 548.18 419.85 552 Z M 434.77 546.4 L 430.98 541.86 C 431.13 544.78 430.41 548.18 428.15 552 L 431.83 554.78 C 432.1 555 432.46 555.06 432.79 554.94 C 433.11 554.83 433.36 554.55 433.43 554.22 L 434.98 547.26 C 435.04 546.96 434.97 546.64 434.77 546.4 Z" fill="#FFFFFF" fill-opacity="0.2" stroke="none"/>
+</g>
+<g id="shape-18" data-name="Freeform 18">
+<path d="M 427 556 C 427 556.55 426.55 557 426 557 L 422 557 C 421.45 557 421 556.55 421 556 C 421 555.45 421.45 555 422 555 L 426 555 C 426.55 555 427 555.45 427 556 Z M 424 542 C 424.83 542 425.5 541.33 425.5 540.5 C 425.5 539.67 424.83 539 424 539 C 423.17 539 422.5 539.67 422.5 540.5 C 422.5 541.33 423.17 542 424 542 Z M 435.95 547.48 L 434.41 554.43 C 434.26 555.1 433.78 555.65 433.13 555.88 C 432.48 556.11 431.76 556 431.22 555.57 L 427.81 553 L 420.19 553 L 416.78 555.57 C 416.24 556 415.52 556.11 414.87 555.88 C 414.22 555.65 413.74 555.1 413.59 554.43 L 412.05 547.48 C 411.91 546.87 412.07 546.24 412.46 545.77 L 416.03 541.48 C 416.15 539.91 416.51 538.36 417.1 536.9 C 418.72 532.86 421.6 530.32 422.78 529.42 C 423.5 528.86 424.5 528.86 425.23 529.42 C 426.39 530.32 429.28 532.86 430.9 536.9 C 431.49 538.36 431.85 539.91 431.97 541.48 L 435.54 545.77 C 435.93 546.24 436.09 546.87 435.95 547.48 Z M 420.43 551 L 427.57 551 C 430.21 546.31 430.71 541.82 429.04 537.64 C 427.57 533.96 424.81 531.62 424 531 C 423.19 531.62 420.43 533.96 418.96 537.64 C 417.3 541.82 417.79 546.31 420.43 551 Z M 418.55 551.73 C 417.21 549.29 416.39 546.88 416.1 544.52 L 414 547.05 L 415.55 554 L 415.57 553.98 Z M 434 547.05 L 431.9 544.52 C 431.61 546.88 430.8 549.28 429.45 551.73 L 432.43 553.98 L 432.46 554 Z" fill="#FFFFFF" stroke="none"/>
+</g>
+</g>
+<g id="shape-20" data-name="TextBox 20">
+<rect x="425.17" y="535" width="205.65" height="32" fill="none" stroke="none"/>
+<text x="528" y="552" text-anchor="middle" xml:space="preserve" font-family="&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="20" fill="#FFFFFF" font-weight="bold"><tspan fill="#FFFFFF" font-size="20" font-weight="bold">开始 Agent 工程化</tspan></text>
+</g>
+</g>
+<g id="shape-27" data-name="Group 27">
+<g id="shape-22" data-name="Rectangle 22">
+<rect x="690" y="510" width="220" height="68" rx="34" ry="34" fill="url(#ggrad4)" stroke-width="1.5" stroke="#3DDDFC" stroke-opacity="0.5"/>
+</g>
+<g id="shape-25" data-name="Group 25">
+<g id="shape-23" data-name="Freeform 23">
+<path d="M 741 547 L 736 552 L 728 550 L 721 545 L 725 537 L 732 535 L 739 537 L 734 537 L 728.29 542.54 C 728.08 542.75 727.97 543.05 728.01 543.35 C 728.04 543.66 728.21 543.93 728.46 544.09 C 730.65 545.49 733.62 545.39 736 543 Z" fill="#3DDDFC" fill-opacity="0.2" stroke="none"/>
+</g>
+<g id="shape-24" data-name="Freeform 24">
+<path d="M 730.97 555.24 C 730.86 555.69 730.46 556 730 556 C 729.92 556 729.83 555.99 729.75 555.97 L 725.75 554.97 C 725.64 554.94 725.53 554.9 725.44 554.83 L 722.44 552.83 C 721.98 552.52 721.85 551.9 722.16 551.44 C 722.47 550.98 723.09 550.86 723.55 551.17 L 726.4 553.07 L 730.23 554.03 C 730.49 554.09 730.72 554.26 730.85 554.48 C 730.99 554.71 731.03 554.98 730.97 555.24 Z M 747.56 543.18 C 747.39 543.69 747.03 544.1 746.56 544.34 L 743.6 545.82 L 736.71 552.71 C 736.46 552.96 736.1 553.06 735.76 552.97 L 727.76 550.97 C 727.64 550.94 727.52 550.89 727.42 550.81 L 720.48 545.86 L 717.45 544.34 C 716.46 543.85 716.06 542.65 716.55 541.66 L 719.66 535.45 L 719.66 535.45 C 720.15 534.46 721.35 534.06 722.34 534.55 L 725.1 535.93 L 731.72 534.04 C 731.9 533.98 732.09 533.98 732.27 534.04 L 738.9 535.93 L 741.66 534.55 C 742.64 534.06 743.84 534.46 744.34 535.45 L 747.44 541.66 C 747.68 542.13 747.72 542.68 747.56 543.18 Z M 741.78 544.8 L 738.38 538 L 734.4 538 L 729 543.25 C 730.58 544.26 733.06 544.54 735.29 542.3 C 735.65 541.93 736.23 541.9 736.62 542.22 L 740.93 545.67 Z M 718.34 542.55 L 720.55 543.66 L 723.66 537.45 L 721.45 536.34 Z M 739.5 547.08 L 736.04 544.31 C 733.59 546.31 730.49 546.57 727.92 544.93 C 727.41 544.61 727.07 544.07 727.01 543.46 C 726.94 542.86 727.15 542.26 727.58 541.83 C 727.59 541.83 727.59 541.82 727.59 541.82 L 733.2 536.38 L 732 536.04 L 725.7 537.84 L 722.28 544.68 L 728.43 549.08 L 735.69 550.89 Z M 745.66 542.55 L 742.55 536.34 L 740.34 537.45 L 743.45 543.66 Z" fill="#3DDDFC" stroke="none"/>
+</g>
+</g>
+<g id="shape-26" data-name="TextBox 26">
+<rect x="775.7" y="535" width="100.6" height="32" fill="none" stroke="none"/>
+<text x="826" y="552" text-anchor="middle" xml:space="preserve" font-family="&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="20" fill="#E8ECFF" font-weight="bold"><tspan fill="#E8ECFF" font-size="20" font-weight="bold">寻求合作</tspan></text>
+</g>
+</g>
+</g>
+<g id="shape-30" data-name="Group 30">
+<g id="shape-29" data-name="TextBox 29">
+<rect x="433.46" y="608.95" width="413.09" height="20.8" fill="none" stroke="none"/>
+<text x="640" y="620" text-anchor="middle" xml:space="preserve" font-family="&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="13" fill="#6B7299" font-weight="bold"><tspan fill="#6B7299" font-size="13" font-weight="bold">架构 · 上下文 · 评估 · 可观测 — 四件事一起做,才叫工程化</tspan></text>
+</g>
+</g>
+<g id="shape-33" data-name="Group 33">
+<g id="shape-31" data-name="TextBox 31">
+<rect x="58.7" y="678.95" width="196.46" height="20.8" fill="none" stroke="none"/>
+<text x="58.7" y="690" text-anchor="start" xml:space="preserve" font-family="&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="13" fill="#A8B0D0" font-weight="bold"><tspan fill="#A8B0D0" font-size="13" font-weight="bold">AI Agent 工程化 · 谢谢观看</tspan></text>
+</g>
+<g id="shape-32" data-name="TextBox 32">
+<rect x="1173.96" y="678.95" width="47.34" height="20.8" fill="none" stroke="none"/>
+<text x="1221.3" y="690" text-anchor="end" xml:space="preserve" font-family="&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="13" fill="#6B7299" font-weight="bold"><tspan fill="#6B7299" font-size="13" font-weight="bold">12 / 12</tspan></text>
+</g>
+</g></svg>

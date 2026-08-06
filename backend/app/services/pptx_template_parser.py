@@ -106,6 +106,17 @@ def _slide_background(slide) -> str:
     return "#FFFFFF"
 
 
+def _iter_shapes(shapes) -> list:
+    """Flatten slide shapes; recurse into GROUP so native ppt-master exports parse."""
+    out = []
+    for shape in shapes:
+        if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+            out.extend(_iter_shapes(shape.shapes))
+        else:
+            out.append(shape)
+    return out
+
+
 def _parse_shape(
     shape,
     slide_idx: int,
@@ -215,9 +226,7 @@ def parse_pptx_bytes(
     for slide_idx, slide in enumerate(prs.slides):
         elements: list[dict[str, Any]] = []
         z = 1
-        for shape in slide.shapes:
-            if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
-                continue
+        for shape in _iter_shapes(slide.shapes):
             el, z = _parse_shape(shape, slide_idx, z, ppt_w, ppt_h, canvas_w, canvas_h)
             if el:
                 elements.append(el)

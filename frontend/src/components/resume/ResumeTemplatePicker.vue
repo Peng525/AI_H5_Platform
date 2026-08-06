@@ -7,24 +7,60 @@
         <PromptTemplateCard
           :title="tpl.title"
           :description="tpl.description"
-          :fields="[]"
-          :preview-url="tpl.preview_url || ''"
+          :fields="showFields ? (tpl.fields || []) : []"
+          :preview-url="isVisual ? resolveResumePreviewUrl(tpl.preview_url) : ''"
+          :show-preview="isVisual"
           :selected="selectedId === tpl.id"
-          @select="$emit('select', tpl)"
+          @select="openPreview(tpl)"
         />
       </li>
     </ul>
+
+    <ResumeTemplatePreviewModal
+      :open="previewOpen"
+      :template="previewTpl"
+      :mode="variant"
+      @confirm="confirmPreview"
+      @cancel="closePreview"
+    />
   </section>
 </template>
 
 <script setup>
+import { computed, ref } from 'vue'
 import PromptTemplateCard from '../create/PromptTemplateCard.vue'
+import ResumeTemplatePreviewModal from './ResumeTemplatePreviewModal.vue'
+import { resolveResumePreviewUrl } from '../../utils/resumePreviewUrl.js'
 
-defineProps({
+const props = defineProps({
   templates: { type: Array, default: () => [] },
   selectedId: { type: String, default: '' },
   heading: { type: String, default: '选择简历模板' },
+  showFields: { type: Boolean, default: false },
+  variant: { type: String, default: 'visual' },
 })
 
-defineEmits(['select'])
+const emit = defineEmits(['select'])
+
+const previewOpen = ref(false)
+const previewTpl = ref(null)
+
+const isVisual = computed(() => props.variant === 'visual')
+
+function openPreview(tpl) {
+  previewTpl.value = tpl
+  previewOpen.value = true
+}
+
+function closePreview() {
+  previewOpen.value = false
+  previewTpl.value = null
+}
+
+function confirmPreview() {
+  if (previewTpl.value) {
+    emit('select', previewTpl.value)
+  }
+  closePreview()
+}
 </script>

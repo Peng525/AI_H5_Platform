@@ -1,7 +1,7 @@
 const DRAFT_KEY = 'ai_resume_draft'
 
 const DEFAULT_DRAFT = {
-  tab: 'resume-optimize',
+  tab: '',
   prompt: '',
   fileId: null,
   fileName: '',
@@ -17,7 +17,7 @@ export function loadResumeDraft() {
     const raw = sessionStorage.getItem(DRAFT_KEY)
     if (!raw) return { ...DEFAULT_DRAFT }
     const parsed = JSON.parse(raw)
-    const tab = parsed.tab === 'resume' ? 'resume-optimize' : (parsed.tab || DEFAULT_DRAFT.tab)
+    const tab = parsed.tab === 'resume' ? 'resume-optimize' : (parsed.tab || '')
     return { ...DEFAULT_DRAFT, ...parsed, tab }
   } catch {
     return { ...DEFAULT_DRAFT }

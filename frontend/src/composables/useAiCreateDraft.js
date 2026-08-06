@@ -28,6 +28,8 @@ export const DEFAULT_DRAFT = {
   cardSplitMode: null,
   pageContents: [],
   themeId: 'zjy-minimal',
+  pptTemplateId: '',
+  pptTemplateKind: '',
 }
 
 /** 将 pageContents 长度对齐到 pageCount（补空或截断） */

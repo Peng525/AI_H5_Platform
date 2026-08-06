@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="1280" height="720" viewBox="0 0 1280 720"><defs><linearGradient id="ggrad1" x1="0.5" y1="0" x2="0.5" y2="1"><stop offset="0" stop-color="#0A0E27" stop-opacity="0"/><stop offset="0.5" stop-color="#0A0E27" stop-opacity="0.35"/><stop offset="1" stop-color="#0A0E27" stop-opacity="0.7"/></linearGradient><linearGradient id="ggrad2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5B8DEF" stop-opacity="0.22"/><stop offset="1" stop-color="#A26BFA" stop-opacity="0.08"/></linearGradient><linearGradient id="ggrad3" x1="0" y1="0.5" x2="1" y2="0.5"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/><stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.4"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient><linearGradient id="ggrad4" x1="0" y1="0.5" x2="1" y2="0.5"><stop offset="0" stop-color="#5B8DEF"/><stop offset="0.5" stop-color="#A26BFA"/><stop offset="1" stop-color="#3DDDFC"/></linearGradient></defs><rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+<g id="shape-5" data-name="Group 5">
+<g id="shape-2" data-name="Rectangle 2">
+<rect x="0" y="0" width="1280" height="720" fill="#0A0E27" stroke="none"/>
+</g>
+<g id="shape-3" data-name="Image 3">
+<image href="../assets/image_30f1b551f3f67e45.png" x="0" y="0" width="1280" height="720" preserveAspectRatio="none"/>
+</g>
+<g id="shape-4" data-name="Rectangle 4">
+<rect x="0" y="0" width="1280" height="720" fill="url(#ggrad1)" stroke="none"/>
+</g>
+</g>
+<g id="shape-10" data-name="Group 10">
+<g id="shape-6" data-name="Ellipse 6">
+<ellipse cx="64" cy="60" rx="4" ry="4" fill="#3DDDFC" stroke="none"/>
+</g>
+<g id="shape-7" data-name="Ellipse 7">
+<ellipse cx="76" cy="60" rx="4" ry="4" fill="#5B8DEF" fill-opacity="0.7" stroke="none"/>
+</g>
+<g id="shape-8" data-name="Ellipse 8">
+<ellipse cx="88" cy="60" rx="4" ry="4" fill="#A26BFA" fill-opacity="0.55" stroke="none"/>
+</g>
+<g id="shape-9" data-name="TextBox 9">
+<rect x="104.7" y="53.95" width="128.96" height="20.8" fill="none" stroke="none"/>
+<text x="104.7" y="65" text-anchor="start" xml:space="preserve" font-family="&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="13" fill="#A8B0D0" font-weight="bold"><tspan fill="#A8B0D0" font-size="13" font-weight="bold">TECH TALK · 2026</tspan></text>
+</g>
+</g>
+<g id="shape-14" data-name="Group 14">
+<g id="shape-11" data-name="Rectangle 11">
+<rect x="160" y="240" width="960" height="280" rx="22" ry="22" fill="url(#ggrad2)" stroke-width="1" stroke="#FFFFFF" stroke-opacity="0.2"/>
+</g>
+<g id="shape-12" data-name="Rectangle 12">
+<rect x="178" y="241" width="924" height="1" fill="url(#ggrad3)" stroke="none"/>
+</g>
+<g id="shape-13" data-name="Rectangle 13">
+<rect x="160" y="260" width="6" height="240" rx="3" ry="3" fill="url(#ggrad4)" stroke="none"/>
+</g>
+</g>
+<g id="shape-19" data-name="Group 19">
+<g id="shape-15" data-name="TextBox 15">
+<rect x="198.7" y="298.95" width="280.45" height="20.8" fill="none" stroke="none"/>
+<text x="198.7" y="310" text-anchor="start" xml:space="preserve" font-family="&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="13" fill="#3DDDFC" font-weight="bold"><tspan fill="#3DDDFC" font-size="13" font-weight="bold">AI AGENT · ENGINEERING IN PRODUCTION</tspan></text>
+</g>
+<g id="shape-16" data-name="TextBox 16">
+<rect x="192" y="332" width="711.52" height="128" fill="none" stroke="none"/>
+<text x="192" y="400" text-anchor="start" xml:space="preserve" font-family="&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="80" fill="#000000" font-weight="bold"><tspan fill="#000000" font-size="80" font-weight="bold">AI Agent 工程化</tspan></text>
+</g>
+<g id="shape-17" data-name="TextBox 17">
+<rect x="197.2" y="444.2" width="557.83" height="44.8" fill="none" stroke="none"/>
+<text x="197.2" y="468" text-anchor="start" xml:space="preserve" font-family="&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="28" fill="#E8ECFF"><tspan fill="#E8ECFF" font-size="28">从 Demo 到生产 — 需要的不只是大模型</tspan></text>
+</g>
+<g id="shape-18" data-name="Line 18">
+<path d="M 200 494 L 320 494" fill="none" stroke-width="2" stroke-linecap="round" stroke="#3DDDFC"/>
+</g>
+</g>
+<g id="shape-22" data-name="Group 22">
+<g id="shape-20" data-name="TextBox 20">
+<rect x="58.7" y="676.95" width="149.37" height="20.8" fill="none" stroke="none"/>
+<text x="58.7" y="688" text-anchor="start" xml:space="preserve" font-family="&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="13" fill="#A8B0D0" font-weight="bold"><tspan fill="#A8B0D0" font-size="13" font-weight="bold">2026 · 技术分享系列</tspan></text>
+</g>
+<g id="shape-21" data-name="TextBox 21">
+<rect x="1173.96" y="676.95" width="47.34" height="20.8" fill="none" stroke="none"/>
+<text x="1221.3" y="688" text-anchor="end" xml:space="preserve" font-family="&quot;Segoe UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="13" fill="#6B7299" font-weight="bold"><tspan fill="#6B7299" font-size="13" font-weight="bold">01 / 12</tspan></text>
+</g>
+</g></svg>

@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="1280" height="720" viewBox="0 0 1280 720"><rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/>
+<g id="shape-4" data-name="Group 4">
+<g id="shape-2" data-name="Rectangle 2">
+<rect x="0" y="0" width="1280" height="720" fill="#FFFFFF" stroke="none"/>
+</g>
+<g id="shape-3" data-name="Image 3">
+<image href="../assets/image_99a4b5d2cf39bf7d.png" x="0" y="0" width="1280" height="720" preserveAspectRatio="none"/>
+</g>
+</g>
+<g id="shape-7" data-name="Group 7">
+<g id="shape-5" data-name="TextBox 5">
+<rect x="62.7" y="72.95" width="122.95" height="20.8" fill="none" stroke="none"/>
+<text x="62.7" y="84" text-anchor="start" xml:space="preserve" font-family="Arial, &quot;Microsoft YaHei&quot;, sans-serif" font-size="13" fill="#666666"><tspan fill="#666666" font-size="13">A LECTURE · 2026</tspan></text>
+</g>
+<g id="shape-6" data-name="Line 6">
+<path d="M 64 98 L 180 98" fill="none" stroke-width="1" stroke="#1A1A1A"/>
+</g>
+</g>
+<g id="shape-10" data-name="Group 10">
+<g id="shape-8" data-name="TextBox 8">
+<rect x="55.6" y="428.6" width="422.52" height="134.4" fill="none" stroke="none"/>
+<text x="55.6" y="500" text-anchor="start" xml:space="preserve" font-family="&quot;Arial Black&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="84" fill="#1A1A1A" font-weight="bold"><tspan fill="#1A1A1A" font-size="84" font-weight="bold">网格系统</tspan></text>
+</g>
+<g id="shape-9" data-name="TextBox 9">
+<rect x="60.4" y="523.4" width="574.48" height="57.6" fill="none" stroke="none"/>
+<text x="60.4" y="554" text-anchor="start" xml:space="preserve" font-family="&quot;Arial Black&quot;, &quot;Microsoft YaHei&quot;, sans-serif" font-size="36" fill="#1A1A1A" font-weight="bold"><tspan fill="#1A1A1A" font-size="36" font-weight="bold">The Grid as a Way of Seeing</tspan></text>
+</g>
+</g>
+<g id="shape-14" data-name="Group 14">
+<g id="shape-11" data-name="Line 11">
+<path d="M 64 596 L 64 640" fill="none" stroke-width="3" stroke="#D9251D"/>
+</g>
+<g id="shape-12" data-name="TextBox 12">
+<rect x="82.6" y="604.1" width="297.43" height="22.4" fill="none" stroke="none"/>
+<text x="82.6" y="616" text-anchor="start" xml:space="preserve" font-family="Arial, &quot;Microsoft YaHei&quot;, sans-serif" font-size="14" fill="#1A1A1A"><tspan fill="#1A1A1A" font-size="14">Swiss International Typographic Style</tspan></text>
+</g>
+<g id="shape-13" data-name="TextBox 13">
+<rect x="82.7" y="626.95" width="392.05" height="20.8" fill="none" stroke="none"/>
+<text x="82.7" y="638" text-anchor="start" xml:space="preserve" font-family="Arial, &quot;Microsoft YaHei&quot;, sans-serif" font-size="13" fill="#666666"><tspan fill="#666666" font-size="13">Müller-Brockmann · Helvetica · Univers · 1896 — Today</tspan></text>
+</g>
+</g>
+<g id="shape-15" data-name="TextBox 15">
+<rect x="1178.85" y="678.65" width="38.25" height="17.6" fill="none" stroke="none"/>
+<text x="1217.1" y="688" text-anchor="end" xml:space="preserve" font-family="Arial, &quot;Microsoft YaHei&quot;, sans-serif" font-size="11" fill="#999999"><tspan fill="#999999" font-size="11">01 / 14</tspan></text>
+</g></svg>

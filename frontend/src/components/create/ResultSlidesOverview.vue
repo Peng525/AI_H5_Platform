@@ -7,7 +7,7 @@
     <div
       ref="slidesContainerRef"
       class="mx-auto w-full px-3 sm:px-4 py-3 flex flex-col"
-      :class="isWideViewport ? 'max-w-[1100px]' : 'max-w-[960px]'"
+      :class="isWideViewport ? 'max-w-[1400px]' : 'max-w-[1200px]'"
       :style="slidesContainerStyle"
     >
       <template v-for="(slide, index) in slides" :key="slide.id">
@@ -119,10 +119,10 @@ import { DEFAULT_WEB_VIEWPORT_ID, isWideWebViewport } from '../../constants/edit
 import { resolveSlideCanvasBackground } from '../../utils/slideBackground.js'
 import { clampElementsToViewport, ensureSlideCompiled } from '../../utils/compileStructuredSlide.js'
 
-const OUTER_PADDING_X = 32
-const MAX_SCALE = 0.9
+const OUTER_PADDING_X = 16
+const MAX_SCALE = 1.0
 const MIN_SCALE = 0.24
-const CARD_HEIGHT_FACTOR = 2 / 3
+const CARD_HEIGHT_FACTOR = 0.72
 const CARD_GAP_RATIO = 0.2
 
 const props = defineProps({

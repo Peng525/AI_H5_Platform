@@ -50,14 +50,36 @@ function buildApiError(res, data) {
 
 async function request(path, options = {}) {
   const { authHeaders } = useAuth()
-  const res = await fetch(`${BASE}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders(),
-      ...(options.headers || {}),
-    },
-    ...options,
-  })
+  const { timeoutMs, signal: callerSignal, ...fetchOptions } = options
+  let timeoutId = null
+  let controller = null
+  let signal = callerSignal
+  if (timeoutMs != null && timeoutMs > 0 && !callerSignal) {
+    controller = new AbortController()
+    signal = controller.signal
+    timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+  }
+  let res
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+        ...(fetchOptions.headers || {}),
+      },
+      ...fetchOptions,
+      signal,
+    })
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      const timeoutErr = new Error('生成耗时较长，请稍后刷新页面或重试')
+      timeoutErr.code = 'TIMEOUT'
+      throw timeoutErr
+    }
+    throw err
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId)
+  }
   const data = await parseResponseBody(res)
   if (res.status === 401 && !path.includes('/认证/')) {
     redirectToLogin()
@@ -259,6 +281,8 @@ export const api = {
     }),
   listImagePromptTemplates: () => request('/api/v1/生图提示词'),
   listDeckPromptTemplates: () => request('/api/v1/演示提示词'),
+  listDeckPptTemplates: () => request('/api/v1/演示/ppt-模板'),
+  importDeckPptTemplate: (formData) => uploadForm('/api/v1/演示/ppt-模板/导入', formData),
   listAdminImagePrompts: () => request('/api/v1/管理/生图提示词'),
   getAdminImagePrompt: (id) => request(`/api/v1/管理/生图提示词/${encodeURIComponent(id)}`),
   createAdminImagePrompt: (body) =>
@@ -303,6 +327,7 @@ export const api = {
     request(`/api/v1/resume/${encodeURIComponent(publicId)}/generate`, {
       method: 'POST',
       body: JSON.stringify(body),
+      timeoutMs: 120000,
     }),
   optimizeResume: (publicId, body) =>
     request(`/api/v1/resume/${encodeURIComponent(publicId)}/optimize`, {

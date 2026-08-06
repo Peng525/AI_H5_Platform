@@ -33,7 +33,7 @@ class SlideOut(BaseModel):
         structured = None
         try:
             parsed_struct = json.loads(getattr(slide, "structured_json", None) or "{}")
-            if isinstance(parsed_struct, dict) and (parsed_struct.get("template") or parsed_struct.get("layout_id")):
+            if isinstance(parsed_struct, dict) and (parsed_struct.get("template") or parsed_struct.get("layout_id") or parsed_struct.get("template_type")):
                 structured = parsed_struct
         except json.JSONDecodeError:
             structured = None
@@ -161,6 +161,9 @@ class AiDeckGenerateRequest(BaseModel):
     channel: str | None = Field(None, description="LLM 通道")
     tier: str | None = Field(None, description="free|pro")
     model: str | None = Field(None, max_length=64, description="覆盖默认文稿模型，如 gpt-5.5")
+    ppt_template_id: str | None = Field(None, max_length=128, description="ppt-master 模板 id，如 layout:academic_defense")
+    ppt_template_kind: str | None = Field(None, max_length=16, description="layout|deck")
+    strict_template_mode: bool = Field(True, description="启用严格PPT模板约束模式（仅4种模板类型）")
 
     @field_validator("content_mode")
     @classmethod
@@ -176,8 +179,17 @@ class AiDeckGenerateRequest(BaseModel):
 class DeckPremiumJobOut(BaseModel):
     job_id: int
     status: str
+    stage: str | None = None
+    progress: int = 0
+    stage_label: str | None = None
+    current_page: int = 0
+    total_pages: int = 0
+    project_public_id: str | None = None
+    error: str | None = None
     topic: str | None = None
     page_count: int | None = None
+    ppt_template_id: str | None = None
+    ppt_template_kind: str | None = None
     pipeline_available: bool = False
     workflow_doc: str = ""
     import_endpoint: str = ""

@@ -3,6 +3,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.resume.industry_prompts import (
+    GLOBAL_WRITING_RULES,
+    build_prompt_full,
+    build_system_snippet,
+    prompt_fields,
+)
+
 # Industry chips (Polebrief-style primary filter)
 INDUSTRIES: list[dict[str, str]] = [
     {"id": "all", "label": "全部"},
@@ -19,108 +26,37 @@ INDUSTRIES: list[dict[str, str]] = [
     {"id": "campus", "label": "校招"},
 ]
 
-_WRITING_RULES = (
-    "工作经历分点使用「加粗概括：详细描述」格式；尽量量化成就；"
-    "对齐目标岗位 JD 关键词；5 年以内工作经历优先控制在一页。"
-)
+def _resume_row(
+    id: str,
+    industry_id: str,
+    title: str,
+    description: str,
+) -> dict[str, Any]:
+    return {
+        "id": id,
+        "industry_id": industry_id,
+        "title": title,
+        "description": description,
+        "prompt_hint": build_prompt_full(id, title),
+        "prompt_full": build_prompt_full(id, title),
+        "fields": prompt_fields(id),
+        "system_snippet": build_system_snippet(id),
+    }
+
 
 RESUME_TEMPLATES: list[dict[str, Any]] = [
-    {
-        "id": "general",
-        "industry_id": "general",
-        "title": "通用求职",
-        "description": "适合大多数社招岗位",
-        "prompt_hint": "目标岗位：\n优化方向：突出项目成果与量化数据",
-        "system_snippet": f"通用求职简历。{_WRITING_RULES} 技能侧重：沟通协作、项目管理、业务结果。",
-    },
-    {
-        "id": "backend",
-        "industry_id": "tech",
-        "title": "后端工程师",
-        "description": "编程语言、框架、数据库与分布式",
-        "prompt_hint": "目标岗位：后端工程师\n优化方向：突出高并发、系统设计与性能优化数据",
-        "system_snippet": "后端工程师。技能维度：编程语言 / 框架与中间件 / 数据库 / 分布式与高并发 / DevOps。",
-    },
-    {
-        "id": "ai-pm",
-        "industry_id": "product",
-        "title": "AI 产品经理",
-        "description": "LLM 能力、产品方法论与数据能力",
-        "prompt_hint": "目标岗位：AI 产品经理\n优化方向：突出 LLM 落地、需求分析与数据结果",
-        "system_snippet": "AI 产品经理。技能维度：AI/LLM 能力 / 产品方法论 / 数据能力 / 行业认知 / 工具协作。",
-    },
-    {
-        "id": "product",
-        "industry_id": "product",
-        "title": "产品经理",
-        "description": "STAR 法则与跨部门协作",
-        "prompt_hint": "目标岗位：产品经理\n优化方向：STAR 法则描述需求落地与数据结果",
-        "system_snippet": "产品经理。技能维度：需求分析 / 用户研究 / 数据驱动 / 跨部门协作 / 项目管理。",
-    },
-    {
-        "id": "ops-growth",
-        "industry_id": "ops",
-        "title": "C 端运营",
-        "description": "增长、内容与数据分析",
-        "prompt_hint": "目标岗位：用户运营\n优化方向：突出增长实验、内容策划与转化数据",
-        "system_snippet": "C 端运营。技能维度：用户增长 / 内容策划 / 数据分析 / 平台规则 / 工具栈。",
-    },
-    {
-        "id": "design",
-        "industry_id": "design",
-        "title": "视觉设计师",
-        "description": "设计能力与作品集",
-        "prompt_hint": "目标岗位：视觉设计师\n优化方向：突出品牌、UI 项目与作品集链接",
-        "system_snippet": "视觉设计师。技能维度：品牌/插画/动效 / Figma·Sketch / 设计方法论 / 作品集。",
-    },
-    {
-        "id": "marketing",
-        "industry_id": "marketing",
-        "title": "市场营销",
-        "description": "品牌、投放与数据归因",
-        "prompt_hint": "目标岗位：市场营销\n优化方向：突出品牌战役、投放 ROI 与转化",
-        "system_snippet": "市场营销。技能维度：品牌策略 / 内容营销 / 投放渠道 / 数据归因。",
-    },
-    {
-        "id": "finance",
-        "industry_id": "finance",
-        "title": "财务分析师",
-        "description": "建模、估值与 BI 工具",
-        "prompt_hint": "目标岗位：财务分析\n优化方向：突出建模、审计与业务洞察",
-        "system_snippet": "财务分析师。技能维度：财务专业 / 建模与估值 / Excel·SQL·BI / 行业理解。",
-    },
-    {
-        "id": "hr",
-        "industry_id": "hr",
-        "title": "HRBP",
-        "description": "招聘、组织发展与绩效",
-        "prompt_hint": "目标岗位：HRBP\n优化方向：突出组织变革、招聘与人才发展",
-        "system_snippet": "HRBP。技能维度：招聘/OD/绩效/薪酬 / 业务理解 / 数据敏感度。",
-    },
-    {
-        "id": "sales",
-        "industry_id": "sales",
-        "title": "销售/BD",
-        "description": "成单规模与客户资源",
-        "prompt_hint": "目标岗位：销售/BD\n优化方向：突出成单金额、客户开发与续约率",
-        "system_snippet": "销售/BD。技能维度：销售方法论 / 客户类型 / 最大成单规模 / 行业资源。",
-    },
-    {
-        "id": "data-analyst",
-        "industry_id": "data",
-        "title": "数据分析师",
-        "description": "SQL、Python 与可视化",
-        "prompt_hint": "目标岗位：数据分析师\n优化方向：突出分析项目、指标体系建设",
-        "system_snippet": "数据分析师。技能维度：SQL/Python / BI 工具 / 统计分析 / 业务理解 / 可视化。",
-    },
-    {
-        "id": "campus",
-        "industry_id": "campus",
-        "title": "校招应届",
-        "description": "实习与校园经历为主",
-        "prompt_hint": "目标岗位：\n优化方向：突出实习、竞赛与学习能力",
-        "system_snippet": f"校招应届。{_WRITING_RULES} 突出实习、项目、竞赛与学习能力。",
-    },
+    _resume_row("general", "general", "通用求职", "适合大多数社招岗位"),
+    _resume_row("backend", "tech", "后端工程师", "编程语言、框架、数据库与分布式"),
+    _resume_row("ai-pm", "product", "AI 产品经理", "LLM 能力、产品方法论与数据能力"),
+    _resume_row("product", "product", "产品经理", "STAR 法则与跨部门协作"),
+    _resume_row("ops-growth", "ops", "C 端运营", "增长、内容与数据分析"),
+    _resume_row("design", "design", "视觉设计师", "设计能力与作品集"),
+    _resume_row("marketing", "marketing", "市场营销", "品牌、投放与数据归因"),
+    _resume_row("finance", "finance", "财务分析师", "建模、估值与 BI 工具"),
+    _resume_row("hr", "hr", "HRBP", "招聘、组织发展与绩效"),
+    _resume_row("sales", "sales", "销售/BD", "成单规模与客户资源"),
+    _resume_row("data-analyst", "data", "数据分析师", "SQL、Python 与可视化"),
+    _resume_row("campus", "campus", "校招应届", "实习与校园经历为主"),
 ]
 
 VISUAL_TEMPLATES: list[dict[str, Any]] = [
@@ -210,8 +146,8 @@ def filter_visual_templates(industry: str | None = None) -> list[dict[str, Any]]
 
 def get_industry_snippet(prompt_template_id: str | None) -> str:
     if not prompt_template_id:
-        return _WRITING_RULES
+        return GLOBAL_WRITING_RULES
     row = RESUME_TEMPLATE_BY_ID.get(prompt_template_id)
     if not row:
-        return _WRITING_RULES
-    return str(row.get("system_snippet") or _WRITING_RULES)
+        return GLOBAL_WRITING_RULES
+    return str(row.get("system_snippet") or GLOBAL_WRITING_RULES)

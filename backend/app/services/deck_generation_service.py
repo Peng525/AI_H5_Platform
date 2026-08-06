@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import GenerationLog, Project, Slide, User
+from app.services.image_search_service import search_image
 from app.schemas import AiDeckGenerateRequest, AiSlideGenerateRequest
 from app.services.deck_generator import new_public_id
 from app.services.llm.image_provider import generate_image
@@ -110,6 +111,19 @@ VISUAL_TO_LAYOUT = {
     "chart": "chart_left",
     "none": "key_points",
 }
+
+# ── 严格PPT模板约束模式 ──
+STRICT_TEMPLATE_TYPES = frozenset({
+    "title_page", "toc", "points", "cards",
+    "image_text_left", "image_text_right",
+})
+
+STRICT_TEMPLATE_ICONS = [
+    "target", "bolt", "trending_up", "bar_chart", "school",
+    "database", "settings", "star", "lightbulb", "groups",
+    "check_circle", "rocket_launch", "emoji_objects", "insights",
+    "handshake", "shield", "cloud", "devices", "palette", "campaign",
+]
 
 
 def _clean_text(value: Any, limit: int = 255) -> str:
@@ -275,7 +289,128 @@ def _normalize_modules(raw: Any) -> list[dict]:
     return out
 
 
+def _normalize_strict_slide(raw: dict, index: int = 0, total: int = 1) -> dict:
+    """将严格模板AI输出规范化为structured dict。
+    AI不输出icon/variant/image_query — 全部由后端/前端自动处理。"""
+    template_type = str(raw.get("template_type") or "points").strip()
+    if template_type not in STRICT_TEMPLATE_TYPES:
+        template_type = "points"
+
+    base = {
+        "template_type": template_type,
+        "title": _clean_text(raw.get("title"), 255),
+        "subtitle": _clean_text(raw.get("subtitle"), 512),
+    }
+
+    if template_type == "title_page":
+        base["author"] = _clean_text(raw.get("author"), 64)
+        base["date"] = _clean_text(raw.get("date"), 32)
+
+    elif template_type == "toc":
+        items = raw.get("items") or raw.get("points") or []
+        if isinstance(items, list):
+            normalized = []
+            for item in items:
+                if isinstance(item, str):
+                    normalized.append({"num": "", "title": _clean_text(item, 60)})
+                elif isinstance(item, dict):
+                    normalized.append({
+                        "num": _clean_text(item.get("num") or "", 8),
+                        "title": _clean_text(item.get("title") or item.get("body") or "", 60),
+                    })
+                if len(normalized) >= 8:
+                    break
+            base["items"] = normalized
+        else:
+            base["items"] = []
+
+    elif template_type == "points":
+        raw_points = raw.get("points") or []
+        if not isinstance(raw_points, list):
+            raw_points = []
+        normalized = []
+        for pt in raw_points[:5]:
+            if isinstance(pt, str):
+                normalized.append({"text": _clean_text(pt, 120)})
+            elif isinstance(pt, dict):
+                normalized.append({
+                    "text": _clean_text(pt.get("text") or pt.get("title") or pt.get("body") or "", 120),
+                })
+        # 至少1个要点
+        if not normalized:
+            normalized.append({"text": "要点内容"})
+        base["variant"] = len(normalized)  # 自动计算
+        base["points"] = normalized
+
+    elif template_type == "cards":
+        raw_cards = raw.get("cards") or []
+        if not isinstance(raw_cards, list):
+            raw_cards = []
+        normalized = []
+        for card in raw_cards[:4]:
+            if isinstance(card, str):
+                normalized.append({"title": _clean_text(card, 48), "body": ""})
+            elif isinstance(card, dict):
+                normalized.append({
+                    "title": _clean_text(card.get("title") or "", 48),
+                    "body": _clean_text(card.get("body") or card.get("text") or "", 160),
+                })
+        if not normalized:
+            normalized.append({"title": "卡片标题", "body": "内容待补充"})
+        base["variant"] = len(normalized)  # 自动计算
+        base["cards"] = normalized
+
+    elif template_type in ("image_text_left", "image_text_right"):
+        content_type = str(raw.get("content_type") or "points").strip()
+        if content_type not in ("points", "cards"):
+            content_type = "points"
+        base["content_type"] = content_type
+        # 图片搜索关键词（中文，3-5个词）
+        base["image_topic"] = _clean_text(raw.get("image_topic") or "", 120)
+
+        if content_type == "points":
+            raw_points = raw.get("points") or []
+            if not isinstance(raw_points, list):
+                raw_points = []
+            normalized = []
+            for pt in raw_points[:4]:
+                if isinstance(pt, str):
+                    normalized.append({"text": _clean_text(pt, 120)})
+                elif isinstance(pt, dict):
+                    normalized.append({
+                        "text": _clean_text(pt.get("text") or pt.get("title") or pt.get("body") or "", 120),
+                    })
+            if not normalized:
+                normalized.append({"text": "要点内容"})
+            base["variant"] = len(normalized)
+            base["points"] = normalized
+        else:
+            raw_cards = raw.get("cards") or []
+            if not isinstance(raw_cards, list):
+                raw_cards = []
+            normalized = []
+            for card in raw_cards[:3]:
+                if isinstance(card, str):
+                    normalized.append({"title": _clean_text(card, 48), "body": ""})
+                elif isinstance(card, dict):
+                    normalized.append({
+                        "title": _clean_text(card.get("title") or "", 48),
+                        "body": _clean_text(card.get("body") or card.get("text") or "", 160),
+                    })
+            if not normalized:
+                normalized.append({"title": "卡片标题", "body": "内容待补充"})
+            base["variant"] = len(normalized)
+            base["cards"] = normalized
+
+    return {k: v for k, v in base.items() if v not in ("", [], {})}
+
+
 def _extract_structured_slide(s: dict, index: int = 0, total: int = 1) -> dict:
+    # 严格模板约束模式：检测 template_type 字段
+    template_type = str(s.get("template_type") or "").strip()
+    if template_type in STRICT_TEMPLATE_TYPES:
+        return _normalize_strict_slide(s, index, total)
+
     if s.get("layout_id") or s.get("fixed_layout") or s.get("visual_intent") or s.get("chart"):
         return _normalize_fixed_layout_slide(s, index, total)
 
@@ -311,6 +446,15 @@ def _validate_slide_structure(slides: list[dict]) -> list[str]:
     warnings: list[str] = []
     for i, s in enumerate(slides):
         st = s.get("structured") if isinstance(s.get("structured"), dict) else {}
+
+        # 严格模板约束模式：验证 template_type
+        ttype = st.get("template_type") or ""
+        if ttype in STRICT_TEMPLATE_TYPES:
+            if ttype in ("image_text_left", "image_text_right"):
+                if not st.get("image_topic"):
+                    warnings.append(f"slide_{i + 1}:image_topic_missing")
+            continue
+
         if st.get("layout_id"):
             if st["layout_id"] not in FIXED_LAYOUT_IDS:
                 warnings.append(f"slide_{i + 1}:fixed_layout_rejected")
@@ -345,6 +489,30 @@ def _validate_slide_structure(slides: list[dict]) -> list[str]:
                 warnings.append(f"slide_{i + 1}:text_overflow_risk")
         if template not in ("cover", "section", "closing", "quote") and not modules and not st.get("headline"):
             warnings.append(f"slide_{i + 1}:missing_modules_or_headline")
+
+    # ── 跨页检测：相邻页标题是否疑似同一节被拆分 ──
+    for i in range(1, len(slides)):
+        prev_st = slides[i - 1].get("structured") if isinstance(slides[i - 1].get("structured"), dict) else {}
+        curr_st = slides[i].get("structured") if isinstance(slides[i].get("structured"), dict) else {}
+        prev_title = str(prev_st.get("title") or "").strip()
+        curr_title = str(curr_st.get("title") or "").strip()
+        if not prev_title or not curr_title:
+            continue
+        # 完全相同 → 明确拆分问题
+        if prev_title == curr_title:
+            warnings.append(f"slide_{i + 1}:title_identical_to_prev(可能同一节被拆分)")
+        # 前缀相同（如 "4.4 盈利策略" 和 "4.4 盈利策略（续）"）
+        elif len(prev_title) >= 6 and len(curr_title) >= 6:
+            short = min(len(prev_title), len(curr_title))
+            common = 0
+            for j in range(short):
+                if prev_title[j] == curr_title[j]:
+                    common += 1
+                else:
+                    break
+            if common >= 6 and common >= short * 0.7:
+                warnings.append(f"slide_{i + 1}:title_similar_to_prev(common_prefix={common}chars)")
+
     return warnings
 
 
@@ -352,7 +520,7 @@ def _llm_slides_to_seed(slides: list[dict], bg: str) -> list[dict]:
     out: list[dict] = []
     for idx, s in enumerate(slides):
         structured = _extract_structured_slide(s, idx, len(slides))
-        template = structured.get("layout_id") or structured.get("template") or "key_points"
+        template = structured.get("layout_id") or structured.get("template") or structured.get("template_type") or "key_points"
         out.append(
             {
                 "layout": template[:32],
@@ -588,6 +756,29 @@ async def _enrich_slide_images(
     return generated
 
 
+async def _enrich_strict_images(slides_seed: list[dict]) -> int:
+    """为严格模板 slides 搜索Unsplash/Pexels素材图片。
+    仅处理含 image_topic 的 image_text_left/right 页，每页约0.5秒。"""
+    generated = 0
+    for i, slide in enumerate(slides_seed):
+        st = slide.get("structured") if isinstance(slide.get("structured"), dict) else {}
+        image_topic = str(st.get("image_topic") or "").strip()
+        if not image_topic:
+            continue
+        try:
+            url = await search_image(image_topic, orientation="landscape")
+            if url:
+                st["image_url"] = url
+                slide["structured"] = st
+                generated += 1
+                logger.info("strict_image found for slide_%s topic=%r", i + 1, image_topic[:60])
+            else:
+                logger.info("strict_image not found for slide_%s topic=%r", i + 1, image_topic[:60])
+        except Exception as exc:
+            logger.warning("strict_image search error slide_%s: %s", i + 1, exc)
+    return generated
+
+
 def _build_topic(body: AiDeckGenerateRequest) -> str:
     parts = [body.topic.strip()]
     if body.extra_content and body.extra_content.strip():
@@ -650,13 +841,16 @@ async def generate_deck_from_ai(
         "page_contents": page_contents,
     }
 
-    messages = render_template("固定布局生成.yaml", variables)
+    # 严格模板模式使用专用Prompt
+    prompt_template = "严格模板生成.yaml" if body.strict_template_mode else "固定布局生成.yaml"
+    messages = render_template(prompt_template, variables)
     model_override = (body.model or "").strip() or None
     logger.info(
-        "deck_generate start user_id=%s pages=%s mode=%s model=%s",
+        "deck_generate start user_id=%s pages=%s mode=%s strict=%s model=%s",
         user.id,
         body.page_count,
         content_mode,
+        body.strict_template_mode,
         model_override or "(default)",
     )
     t0 = time.perf_counter()
@@ -664,12 +858,14 @@ async def generate_deck_from_ai(
     channel = ""
     model = ""
     try:
+        logger.info("deck_generate llm_call_start t=0.0s")
         raw, channel, model = await chat_completion(
             messages,
             channel=body.channel,
             tier=tier,
             model=model_override,
         )
+        logger.info("deck_generate llm_call_done t=%.1fs", time.perf_counter() - t0)
         logger.info(
             "deck_generate llm_done user_id=%s channel=%s model=%s raw_len=%s",
             user.id,
@@ -719,14 +915,21 @@ async def generate_deck_from_ai(
         }
         slides_seed = _llm_slides_to_seed(slides_raw, bg)
         struct_warnings = _validate_slide_structure(slides_seed)
-        images_generated = await _enrich_slide_images(
-            slides_seed,
-            viewport_id,
-            tier,
-            body.channel,
-            body.page_count,
-            deck_title=title,
-        )
+        # 严格模板模式：用素材搜索替代AI生图（快30-60倍）
+        t_img = time.perf_counter()
+        if body.strict_template_mode:
+            images_generated = await _enrich_strict_images(slides_seed)
+            logger.info("deck_generate strict_images_done t=%.1fs count=%s", time.perf_counter() - t0, images_generated)
+        else:
+            images_generated = await _enrich_slide_images(
+                slides_seed,
+                viewport_id,
+                tier,
+                body.channel,
+                body.page_count,
+                deck_title=title,
+            )
+            logger.info("deck_generate ai_images_done t=%.1fs count=%s", time.perf_counter() - t0, images_generated)
         if images_generated:
             template_settings["generationMeta"]["images_generated"] = images_generated
         log_msg = f"AI 全量生成成功 · {len(slides_seed)} 页"

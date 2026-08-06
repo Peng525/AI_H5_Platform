@@ -9,6 +9,8 @@
       @present="goPreview"
       @open-theme="themeDrawerOpen = !themeDrawerOpen"
       @back-to-review="goReviewFromHeader"
+      @save-pdf="onSavePdf"
+      @save-pptx="onSavePptx"
     />
 
     <Teleport to="body">
@@ -89,18 +91,17 @@
     </div>
 
     <div class="flex-1 min-h-0 flex flex-col relative">
-      <DeckGenerateOverlay
-        :open="generatingDeck"
-        :estimated-seconds="generateEstimatedSeconds"
-      />
-
+      <!-- _pending 阶段：纯转圈等待 API 返回 -->
       <div
-        v-if="showProjectLoading"
-        class="absolute inset-0 z-20 flex items-center justify-center bg-surface-container-low/90"
+        v-if="isPendingRoute"
+        class="flex-1 flex flex-col items-center justify-center gap-4 bg-surface-container-low"
       >
-        <PageLoading message="加载项目中…" />
+        <div class="w-14 h-14 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+        <p class="text-base text-on-surface-variant font-medium">AI 正在生成演示内容…</p>
+        <p class="text-xs text-on-surface-variant/50">预计 {{ generateEstimatedSeconds }} 秒</p>
       </div>
 
+      <!-- 工作区 -->
       <DeckEditorWorkspace
         v-if="showWorkspace"
         ref="workspaceRef"
@@ -128,14 +129,12 @@
 </template>
 
 <script setup>
-import { computed, onActivated, ref, watch } from 'vue'
+import { computed, onActivated, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../../api/client'
 import DeckEditorWorkspace from '../../components/DeckEditorWorkspace.vue'
 import ResultPageHeader from '../../components/create/ResultPageHeader.vue'
 import ResultPageFooter from '../../components/create/ResultPageFooter.vue'
-import DeckGenerateOverlay from '../../components/create/DeckGenerateOverlay.vue'
-import PageLoading from '../../components/PageLoading.vue'
 import { useToast } from '../../composables/useToast.js'
 import { useQuota } from '../../composables/useQuota.js'
 import {
@@ -157,6 +156,11 @@ import {
   copyEvaluationBundleMarkdown,
   downloadEvaluationBundle,
 } from '../../composables/useEvaluationBundle.js'
+import {
+  estimatePremiumDeckRange,
+  estimatePremiumDeckSeconds,
+} from '../../utils/deckGenerateEstimate.js'
+import { exportPdf, exportPptx } from '../../utils/exportDeck.js'
 
 defineOptions({ name: 'AiGenerateResult' })
 
@@ -187,9 +191,14 @@ const autoRevealOnLoad = ref(false)
 const isRevealing = ref(false)
 const initialProject = ref(null)
 const themeDrawerOpen = ref(false)
+const premiumJob = ref(null)
+const premiumPolling = ref(false)
 
 let titleTimer = null
+let premiumPollTimer = null
 let generationStarted = false
+
+const PREMIUM_POLL_MS = 3000
 
 function normalizeGenerateError(message) {
   const raw = String(message || '未知错误').trim()
@@ -199,6 +208,36 @@ function normalizeGenerateError(message) {
 const displayGenerateError = computed(() => normalizeGenerateError(generateError.value))
 
 const canRetryGenerate = computed(() => !!loadGenerateJob()?.body)
+
+const showGenerateOverlay = computed(() => premiumPolling.value)
+
+const overlayTitle = computed(() =>
+  premiumPolling.value ? '正在生成高质量演示' : '加载中…',
+)
+
+const overlayStageLabel = computed(() => {
+  if (!premiumPolling.value) return ''
+  return premiumJob.value?.stage_label
+    || premiumJob.value?.hint
+    || 'AI 正在根据您的提示词创建演示，请稍候…'
+})
+
+const overlayProgress = computed(() => {
+  if (!premiumPolling.value) return null
+  const p = premiumJob.value?.progress
+  return typeof p === 'number' ? p : 0
+})
+
+const overlayFooterHint = computed(() => {
+  if (premiumPolling.value && premiumJob.value?.total_pages) {
+    return `共 ${premiumJob.value.total_pages} 页 · 完成后将自动进入编辑器`
+  }
+  return '生成完成后将开始绘制页面'
+})
+
+function isPremiumJob(job) {
+  return job?.generationMode === 'premium' || !!job?.body?.ppt_template_id
+}
 
 function formatCaughtError(err) {
   if (err == null) return '未知错误（请打开浏览器控制台查看详情）'
@@ -216,12 +255,11 @@ function formatCaughtError(err) {
 }
 
 const project = computed(() => loadedProject.value)
-const showWorkspace = computed(() => !isPendingRoute.value && !generatingDeck.value && !generateError.value)
-const showProjectLoading = computed(
-  () => showWorkspace.value && pageLoading.value && !generatingDeck.value && !loadedProject.value
+const showWorkspace = computed(() =>
+  !isPendingRoute.value && !pageLoading.value && !loadFailed.value && !generateError.value
 )
 const showFooter = computed(
-  () => loadedProject.value && !loadFailed.value && !pageLoadError.value && !generatingDeck.value && !isRevealing.value
+  () => loadedProject.value && !loadFailed.value && !pageLoadError.value && !generatingDeck.value
 )
 const showEmptySlidesBanner = computed(
   () =>
@@ -238,6 +276,66 @@ function clearWorkspaceError() {
   workspaceError.value = ''
 }
 
+function stopPremiumPolling() {
+  if (premiumPollTimer) {
+    clearInterval(premiumPollTimer)
+    premiumPollTimer = null
+  }
+  premiumPolling.value = false
+}
+
+async function handlePremiumCompleted(job) {
+  const publicId = job?.project_public_id
+  if (!publicId) {
+    throw new Error('任务已完成但未返回项目 ID')
+  }
+  stopPremiumPolling()
+  premiumJob.value = null
+  generatingDeck.value = false
+  grantGenerateResultAccess(publicId)
+  projectTitle.value = String(job.topic || '').trim().slice(0, 80) || '高质量演示'
+  markShouldRevealDeck(publicId)
+  autoRevealOnLoad.value = true
+  isRevealing.value = true
+  pageLoading.value = true
+  await router.replace(`/create/generate/result/${publicId}`)
+  refreshQuota().catch(() => {})
+}
+
+async function pollPremiumJobOnce(jobId) {
+  const job = await api.getPremiumDeckJob(jobId)
+  premiumJob.value = job
+  if (job.status === 'completed' && job.project_public_id) {
+    await handlePremiumCompleted(job)
+    return
+  }
+  if (job.status === 'failed') {
+    stopPremiumPolling()
+    generatingDeck.value = false
+    generationStarted = false
+    generateError.value = job.error || '高质量演示生成失败'
+    premiumJob.value = null
+  }
+}
+
+function startPremiumPolling(jobId) {
+  stopPremiumPolling()
+  premiumPolling.value = true
+  pollPremiumJobOnce(jobId).catch((e) => {
+    console.error('[AiGenerateResult] premium poll failed', e)
+    stopPremiumPolling()
+    generatingDeck.value = false
+    generationStarted = false
+    generateError.value = formatCaughtError(e)
+    premiumJob.value = null
+  })
+  premiumPollTimer = setInterval(() => {
+    pollPremiumJobOnce(jobId).catch((e) => {
+      console.error('[AiGenerateResult] premium poll failed', e)
+    })
+  }, PREMIUM_POLL_MS)
+}
+
 function clearResultTransientState() {
   generateError.value = ''
   pageLoadError.value = ''
@@ -248,6 +346,8 @@ function clearResultTransientState() {
 
 function goReview() {
   clearResultTransientState()
+  stopPremiumPolling()
+  premiumJob.value = null
   clearGenerateJob()
   router.replace('/create/generate/review')
 }
@@ -278,6 +378,16 @@ async function runPendingGeneration() {
   generateEstimatedSeconds.value = job.estimatedSeconds || 48
   pageLoading.value = false
   try {
+    if (isPremiumJob(job)) {
+      const result = await api.submitPremiumDeckJob(job.body)
+      clearGenerateJob()
+      premiumJob.value = result
+      projectTitle.value = String(job.body.topic || '').trim().slice(0, 80) || '高质量演示'
+      generateEstimatedSeconds.value = estimatePremiumDeckRange(job.body.page_count).typicalSeconds
+      startPremiumPolling(result.job_id)
+      refreshQuota().catch(() => {})
+      return
+    }
     const created = await api.generateAiDeck(job.body)
     if (!created?.public_id) {
       throw new Error('服务器未返回项目 ID，请稍后重试')
@@ -289,6 +399,8 @@ async function runPendingGeneration() {
     syncFromProject(created)
     pageLoading.value = false
     pageLoadError.value = ''
+    loadFailed.value = false
+    workspaceError.value = ''
     projectTitle.value = created.title?.trim() || ''
     markShouldRevealDeck(created.public_id)
     autoRevealOnLoad.value = true
@@ -300,7 +412,9 @@ async function runPendingGeneration() {
     generateError.value = formatCaughtError(e)
     generationStarted = false
   } finally {
-    generatingDeck.value = false
+    if (!premiumPolling.value) {
+      generatingDeck.value = false
+    }
   }
 }
 
@@ -330,6 +444,8 @@ function onProjectLoaded(p) {
 }
 
 function onProjectLoadError(err) {
+  // _pending 占位ID 的加载失败是预期的，不显示错误
+  if (isPendingRoute.value) return
   loadFailed.value = true
   pageLoading.value = false
   initialProject.value = null
@@ -420,6 +536,28 @@ function goPreview() {
   }
 }
 
+async function onSavePdf() {
+  if (!loadedProject.value || isPendingRoute.value) return
+  toastSuccess('正在导出 PDF…')
+  try {
+    await exportPdf(loadedProject.value)
+    toastSuccess('PDF 已导出')
+  } catch (e) {
+    toastSuccess('PDF 导出失败：' + (e.message || '未知错误'))
+  }
+}
+
+async function onSavePptx() {
+  if (!loadedProject.value || isPendingRoute.value) return
+  toastSuccess('正在导出 PPTX…')
+  try {
+    await exportPptx(loadedProject.value)
+    toastSuccess('PPTX 已导出')
+  } catch (e) {
+    toastSuccess('PPTX 导出失败：' + (e.message || '未知错误'))
+  }
+}
+
 function regenerate() {
   if (!isPendingRoute.value) {
     markReturnToResult(routePublicId.value)
@@ -451,30 +589,21 @@ function applyAutoRevealForProject(pid) {
 }
 
 function bootstrap() {
-  consumeShouldRevealDeck()
   workspaceError.value = ''
+
   if (isPendingRoute.value) {
+    // 结果页刚进入，API 还未调用 → 发起生成
     pageLoading.value = false
     runPendingGeneration()
     return
   }
+
+  // 已有真实 projectId → 常规加载
   const pid = routePublicId.value
-  const hasLocal =
-    (loadedProject.value?.public_id === pid) ||
-    (initialProject.value?.public_id === pid)
-  if (hasLocal) {
-    if (initialProject.value && loadedProject.value?.public_id !== pid) {
-      syncFromProject(initialProject.value)
-    }
-    pageLoading.value = false
-    pageLoadError.value = ''
-    footerError.value = false
-    footerMessage.value = ''
-    applyAutoRevealForProject(pid)
-    return
-  }
+  if (!pid) return
   applyAutoRevealForProject(pid)
-  fetchProjectForHeader()
+  pageLoading.value = true
+  pageLoadError.value = ''
 }
 
 onActivated(() => {
@@ -492,6 +621,11 @@ onActivated(() => {
       workspaceRef.value.reveal.skipReveal()
     }
   }
+})
+
+onUnmounted(() => {
+  stopPremiumPolling()
+  if (titleTimer) clearTimeout(titleTimer)
 })
 
 watch(

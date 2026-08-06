@@ -51,20 +51,25 @@
 
 ## 演示文稿配置项
 
-### 快速生成 vs 高质量
+### 演示文稿生成（premium Worker）
 
-| 路径 | 入口 | 说明 |
-|------|------|------|
-| **快速生成** | 填写主题 →「编辑提示词」→ 生成 | 秒级、固定 8 种 layout；默认 **1280×720** |
-| **高质量（推荐）** | 生成页顶部 `DeckQualityHint` → ppt-master 导出 →「导入 ppt-master 成品」 | 原生 PPTX 版式，见 [`ppt-master-benchmark/h5-premium-workflow.md`](ppt-master-benchmark/h5-premium-workflow.md) |
+| 步骤 | 说明 |
+|------|------|
+| 选模板 | 空态 `DeckPptTemplatePicker` 或输入框上方「导入 PPT 模板」 |
+| 填主题 | 「继续生成」→ review →「生成演示文稿」 |
+| 进度 | 结果页轮询 Worker 阶段，完成后进入编辑器 |
+
+详见 [`ppt-master-benchmark/h5-premium-workflow.md`](ppt-master-benchmark/h5-premium-workflow.md)。
 
 | 配置 | 选项 | 后端字段 |
 |------|------|----------|
 | 页数 | 1–10 张卡片 | `page_count` |
 | 背景 | 经典白粉 / 浅灰 | `background_preset` → `#fafafa` / `#f0f2f5` |
-| 尺寸 | 默认动态 / 传统网页 / 移动端 | `viewport_mode` → `auto`（**web-1280**）/ `web-1280` / `mobile-375` |
+| 尺寸 | 默认动态 / 传统网页 / 移动端 | `viewport_mode` |
 | 语言 | 简体中文 / English | `language` |
-| 页数 | 左栏 ±，`N 张卡片` | `page_count` |
+| 严格模板 | **默认开启**（仅 6 种模板，无 AI 生图） | `strict_template_mode`（默认 `true`） |
+
+> **严格模板模式**（`strict_template_mode: true`）：AI 只输出文本 JSON，图标由前端 `matchIcon.js` 自动匹配，配图使用 Unsplash/Pexels 素材库搜索（0.3-2 秒/张），**不再调用 AI 生图 API**。关闭后回退到旧固定布局模式（含 AI 生图，耗时增加 10+ 分钟）。
 
 ## 提示编辑器（第 2 步）
 
@@ -129,15 +134,28 @@ Content-Type: application/json
 ```
 
 `content_mode: "per_page"` 时 `page_contents` 长度须等于 `page_count`。
+新增 `strict_template_mode: true`（默认开启）使用严格模板 Prompt + Unsplash 图片搜索。
 
-响应：`ProjectOut`（含 `slides` 与 `settings`）。每页 `structured_json` 存语义模板；`canvas_elements` 为空，由前端 `compileStructuredSlide` 排版。  
-生成过程中仅当 LLM 声明 `image_intent`（cover_bg / scene / roadmap）且提供 `image_prompt` 时才调用 AI 配图；失败不写 `image_url`（不用随机图）；`settings.generationMeta.images_generated` 记录张数。
+响应：`ProjectOut`（含 `slides` 与 `settings`）。每页 `structured_json` 存语义模板；`canvas_elements` 为空，由前端编译引擎排版。  
+
+**严格模板模式**：仅当 LLM 声明 `image_topic` 时才调用 Unsplash/Pexels 搜索配图（~0.5 秒）；失败不写 `image_url`。  
+**旧固定布局模式**：仅当 LLM 声明 `image_intent` 且提供 `image_prompt` 时才调用 AI 配图（15-60 秒/张）。
 
 ### 结构化幻灯片与排版
 
-- AI 只输出 `template` + `modules` / `headline` / `image_prompt`，详见 [`幻灯片模板规范.md`](./幻灯片模板规范.md)
-- 后端 [`deck_generation_service.py`](../backend/app/services/deck_generation_service.py) 解析后 `_enrich_slide_images`，再 `seed_project_slides`
-- 前端 [`compileStructuredSlide.js`](../frontend/src/utils/compileStructuredSlide.js)（版本 5）将 structured 转为 `canvas_elements`；历史项目因 `_compileVersion` 过期自动重编译
+- **严格模板**：AI 只输出 `template_type` + `title` + `points/cards` + `image_topic`，详见 [`幻灯片模板规范.md`](./幻灯片模板规范.md)
+- **固定布局**（旧）：AI 输出 `layout_id` + `points` + `image_prompt` + `chart`
+- 后端 `deck_generation_service.py` 解析后 `_enrich_strict_images`（严格）或 `_enrich_slide_images`（固定），再 `seed_project_slides`
+- 前端 `compilePptTemplateSlide.js` 或 `compileFixedDeckSlide.js` 将 structured 转为 `canvas_elements`
+
+### 结果页 Reveal 动画
+
+生成完成后自动播放逐页画笔绘制动画：
+- 每页元素逐个以画笔图标绘制（~800ms/元素，约 4-6 秒/页）
+- 页间暂停 1 秒，自动滚动到当前绘制页
+- 点击「跳过动画」立即显示全部页面
+- 生成期间不再全屏阻塞，改为居中轻量加载指示器
+- 详见 `useDeckRevealAnimation.js`
 
 ### 相关实现
 
@@ -146,7 +164,13 @@ Content-Type: application/json
 | 前端向导 | `frontend/src/views/create/` |
 | 草稿状态 | `frontend/src/composables/useAiCreateDraft.js`（sessionStorage） |
 | 生成服务 | `backend/app/services/deck_generation_service.py` |
-| 提示词模板 | `backend/templates/全量生成.yaml` |
+| 严格提示词模板 | `backend/templates/严格模板生成.yaml`（**默认**） |
+| 固定布局提示词模板 | `backend/templates/固定布局生成.yaml`（旧） |
+| 图片搜索服务 | `backend/app/services/image_search_service.py`（Unsplash/Pexels） |
+| PPT 编译引擎 | `frontend/src/utils/compilePptTemplateSlide.js` |
+| 图标匹配 | `frontend/src/utils/matchIcon.js` |
+| 内容切分 | `frontend/src/utils/splitContentIntoPages.js`（语义感知） |
+| Reveal 动画 | `frontend/src/composables/useDeckRevealAnimation.js` |
 | 幻灯片写入 | `backend/app/services/project_seed_service.py` |
 
 ## 配额与 LLM 配置

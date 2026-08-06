@@ -41,7 +41,7 @@
           <span class="text-xs font-medium text-on-surface-variant">语气</span>
           <textarea v-model="tone" rows="3" class="sidebar-field mt-1 w-full" />
         </label>
-        <label class="block text-sm">
+        <label v-if="!draft.pptTemplateId" class="block text-sm">
           <span class="text-xs font-medium text-on-surface-variant">演示主题</span>
           <select v-model="themeId" class="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
             <option v-for="opt in themeOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
@@ -147,7 +147,7 @@
               @click="generate"
             >
               <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
-              {{ generating ? '生成中…' : '生成' }}
+              {{ generating ? '生成中…' : '生成演示文稿' }}
             </button>
           </div>
         </div>
@@ -160,6 +160,7 @@
         </button>
       </div>
       <p v-if="error" class="text-sm text-red-600 mt-2 text-center px-4">{{ error }}</p>
+      <p v-if="premiumEstimateHint" class="text-xs text-on-surface-variant mt-1 text-center px-4">{{ premiumEstimateHint }}</p>
     </footer>
 
     <CardSplitModeDialog
@@ -201,8 +202,13 @@ import {
   saveGenerateJob,
   syncPageContents,
 } from '../../composables/useAiCreateDraft.js'
-import { splitContentIntoPages } from '../../utils/splitContentIntoPages.js'
+import {
+  estimatePremiumDeckRange,
+  estimateQuickDeckSeconds,
+  formatPremiumDeckRangeLabel,
+} from '../../utils/deckGenerateEstimate.js'
 import { listThemeOptions } from '../../utils/applyProjectTheme.js'
+import { splitContentIntoPages } from '../../utils/splitContentIntoPages.js'
 
 defineOptions({ name: 'AiGenerateReview' })
 
@@ -230,7 +236,17 @@ const pendingPageCount = ref(null)
 const generating = ref(false)
 const error = ref('')
 
-const estimatedSeconds = computed(() => 8 + pageCount.value * 4)
+const estimatedSeconds = computed(() => {
+  if (draft.value.pptTemplateId) {
+    return estimatePremiumDeckRange(pageCount.value).typicalSeconds
+  }
+  return estimateQuickDeckSeconds(pageCount.value)
+})
+
+const premiumEstimateHint = computed(() => {
+  if (!draft.value.pptTemplateId) return ''
+  return `高质量生成约 ${formatPremiumDeckRangeLabel(pageCount.value)}`
+})
 
 function sourceTextForSplit() {
   return (extraContent.value || draft.value.topic || '').trim()
@@ -377,6 +393,9 @@ function buildGenerateBody() {
     theme_id: themeId.value || draft.value.themeId || 'zjy-minimal',
     extra_instructions: extraInstructions.value,
     content_mode: contentMode.value,
+    ppt_template_id: draft.value.pptTemplateId || null,
+    ppt_template_kind: draft.value.pptTemplateKind || null,
+    strict_template_mode: true,  // 默认启用严格PPT模板约束
   }
   if (contentMode.value === 'per_page') {
     body.page_contents = syncPageContents(pageContents.value, pageCount.value)
@@ -401,16 +420,9 @@ function generate() {
   error.value = ''
   clearReturnToResult()
   saveDraft({ ...buildDraftPatch(), themeId: themeId.value })
-  try {
-    const body = buildGenerateBody()
-    saveGenerateJob(body, { estimatedSeconds: estimatedSeconds.value })
-    generating.value = false
-    router.push(`/create/generate/result/${PENDING_RESULT_PUBLIC_ID}`)
-  } catch (e) {
-    error.value = e.message || '无法开始生成'
-    generating.value = false
-  }
-}
+  const body = buildGenerateBody()
+  saveGenerateJob(body, { estimatedSeconds: estimatedSeconds.value })
+  router.push(`/create/generate/result/${PENDING_RESULT_PUBLIC_ID}`)
 </script>
 
 <style scoped>

@@ -3,15 +3,22 @@
     class="rounded-xl border bg-white shadow-sm overflow-hidden transition-colors flex flex-col w-full h-full"
     :class="selected ? 'border-primary ring-1 ring-primary/20' : 'border-outline-variant/50 hover:border-primary/30'"
   >
-    <button type="button" class="flex flex-col flex-1 text-left p-2.5 h-full min-h-[11rem]" @click="$emit('select')">
+    <button
+      type="button"
+      class="flex flex-col flex-1 text-left p-2.5 h-full"
+      :class="showPreview ? 'min-h-[11rem]' : 'min-h-[6rem]'"
+      @click="$emit('select')"
+    >
       <div
+        v-if="showPreview"
         class="aspect-[4/3] w-full rounded-lg bg-surface-container-low/80 border border-outline-variant/40 overflow-hidden shrink-0 mb-2 flex items-center justify-center"
       >
         <img
-          v-if="previewUrl"
+          v-if="previewUrl && !imgFailed"
           :src="previewUrl"
           :alt="title"
-          class="w-full h-full object-cover"
+          class="w-full h-full object-cover object-top"
+          @error="imgFailed = true"
         />
         <div v-else class="flex flex-col items-center gap-1 text-on-surface-variant/50">
           <span class="material-symbols-outlined text-[28px]">image</span>
@@ -43,13 +50,19 @@
 </template>
 
 <script setup>
-defineProps({
+import { ref, watch } from 'vue'
+
+const props = defineProps({
   title: { type: String, required: true },
   description: { type: String, default: '' },
   fields: { type: Array, default: () => [] },
   previewUrl: { type: String, default: '' },
   selected: { type: Boolean, default: false },
+  showPreview: { type: Boolean, default: true },
 })
 
 defineEmits(['select'])
+
+const imgFailed = ref(false)
+watch(() => props.previewUrl, () => { imgFailed.value = false })
 </script>

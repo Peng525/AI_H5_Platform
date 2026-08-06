@@ -1,4 +1,5 @@
 """项目与页面 API。"""
+import asyncio
 import json
 import logging
 
@@ -239,6 +240,9 @@ async def ai_generate_premium_project(
         logger.exception("ai_generate_premium_project failed user_id=%s", user.id)
         raise HTTPException(status_code=500, detail=f"提交失败：{exc}") from exc
     await db.commit()
+    from app.services.ppt_master_worker.scheduler import enqueue_premium_job
+
+    enqueue_premium_job(result["job_id"])
     return DeckPremiumJobOut(**result)
 
 
@@ -260,8 +264,21 @@ async def ai_generate_project(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # 强制严格模板模式 — 关闭旧AI生图管线，确保秒级响应
+    body.strict_template_mode = True
+
     try:
-        project = await generate_deck_from_ai(db, user, body)
+        # 硬超时 90 秒 — 超时直接报错，不无限等待
+        project = await asyncio.wait_for(
+            generate_deck_from_ai(db, user, body),
+            timeout=90.0,
+        )
+    except asyncio.TimeoutError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=504,
+            detail="生成超时（90秒）。请减少页数或缩短内容后重试。",
+        )
     except QuotaLlmError as exc:
         await db.rollback()
         raise HTTPException(status_code=402, detail=str(exc)) from exc

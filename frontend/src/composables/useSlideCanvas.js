@@ -394,6 +394,8 @@ export function useSlideCanvas(projectIdRef, slideIdRef, viewportIdRef = null) {
       elements.value = []
       return
     }
+    // 记录显式加载时间戳，供 watch 防抖
+    if (serverCanvas?.length) _lastExplicitLoad = Date.now()
     try {
       const raw = localStorage.getItem(storageKey(pid, sid))
       const stored = raw ? JSON.parse(raw) : []
@@ -701,8 +703,12 @@ export function useSlideCanvas(projectIdRef, slideIdRef, viewportIdRef = null) {
     }
   }
 
+  let _lastExplicitLoad = 0
+
   watch([projectIdRef, slideIdRef], () => {
     clearTimeout(saveTimer)
+    // 防抖：若 80ms 内已由 selectSlideInternal 显式加载过，跳过重复调用
+    if (Date.now() - _lastExplicitLoad < 80) return
     loadElements()
   }, { immediate: true })
 

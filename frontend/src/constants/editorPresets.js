@@ -10,8 +10,8 @@ export const VIEWPORT_PRESETS = [
   { id: 'web-1024', label: '网页 · 1024×768', width: 1024, height: 768, device: 'web' },
 ]
 
-/** AI 演示默认画布（宽屏卡片） */
-export const DEFAULT_WEB_VIEWPORT_ID = 'web-wide-1024'
+/** AI 演示默认画布（标准 16:9 PPT 比例） */
+export const DEFAULT_WEB_VIEWPORT_ID = 'web-1280'
 
 /** 宽屏阈值：宽/高 ≥ 此值视为 Gamma 风格横条卡片 */
 export const WIDE_VIEWPORT_RATIO = 2.2

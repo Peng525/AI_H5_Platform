@@ -68,7 +68,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import ResumeFormatToolbar from './ResumeFormatToolbar.vue'
 import PageLoading from '../PageLoading.vue'
 import { useResumeEditor } from '../../composables/useResumeEditor.js'
@@ -108,14 +108,51 @@ const {
   load,
 } = useResumeEditor(props.structured, props.visualDocument)
 
+const syncingFromProps = ref(false)
+const skipStructuredPropsSync = ref(0)
+const skipVisualPropsSync = ref(0)
+
+function loadFromProps() {
+  syncingFromProps.value = true
+  load({ structured: props.structured, visual_document: props.visualDocument })
+  nextTick(() => {
+    syncingFromProps.value = false
+  })
+}
+
 watch(
-  () => [props.structured, props.visualDocument],
-  () => load({ structured: props.structured, visual_document: props.visualDocument }),
-  { deep: true },
+  () => props.structured,
+  () => {
+    if (skipStructuredPropsSync.value > 0) {
+      skipStructuredPropsSync.value -= 1
+      return
+    }
+    loadFromProps()
+  },
 )
 
-watch(structured, (v) => emit('update:structured', v), { deep: true })
-watch(visualDocument, (v) => emit('update:visualDocument', v), { deep: true })
+watch(
+  () => props.visualDocument,
+  () => {
+    if (skipVisualPropsSync.value > 0) {
+      skipVisualPropsSync.value -= 1
+      return
+    }
+    loadFromProps()
+  },
+)
+
+watch(structured, (v) => {
+  if (syncingFromProps.value) return
+  skipStructuredPropsSync.value += 1
+  emit('update:structured', v)
+}, { deep: true })
+
+watch(visualDocument, (v) => {
+  if (syncingFromProps.value) return
+  skipVisualPropsSync.value += 1
+  emit('update:visualDocument', v)
+}, { deep: true })
 
 const activeTemplate = computed(() =>
   resolveTemplateComponent(visualDocument.value?.template_id),

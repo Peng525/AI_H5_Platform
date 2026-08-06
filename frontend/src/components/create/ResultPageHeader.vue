@@ -54,12 +54,50 @@
         <span class="material-symbols-outlined text-[18px]">play_arrow</span>
         <span class="hidden sm:inline">演示</span>
       </button>
+
+      <!-- 🆕 保存下拉按钮 -->
+      <div class="relative" ref="saveDropdownRef">
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-lg border border-outline-variant bg-white text-sm font-medium inline-flex items-center gap-1.5 transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50"
+          :disabled="!projectId || projectId === '_pending'"
+          @click="saveOpen = !saveOpen"
+        >
+          <span class="material-symbols-outlined text-[18px]">save</span>
+          <span class="hidden sm:inline">保存</span>
+          <span class="material-symbols-outlined text-[14px]">arrow_drop_down</span>
+        </button>
+        <div
+          v-if="saveOpen"
+          class="absolute right-0 top-full mt-1 w-44 bg-white rounded-lg border border-outline-variant shadow-elevated z-50 py-1"
+        >
+          <button
+            type="button"
+            class="w-full px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-low flex items-center gap-2 text-left"
+            @click="onSavePdf"
+          >
+            <span class="material-symbols-outlined text-[18px] text-on-surface-variant">picture_as_pdf</span>
+            导出为 PDF
+          </button>
+          <button
+            type="button"
+            class="w-full px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container-low flex items-center gap-2 text-left"
+            @click="onSavePptx"
+          >
+            <span class="material-symbols-outlined text-[18px] text-on-surface-variant">slideshow</span>
+            导出为 PPTX
+          </button>
+        </div>
+      </div>
+
       <UserMenu />
     </div>
   </header>
 </template>
 
 <script setup>
+import { onClickOutside } from '@vueuse/core'
+import { ref } from 'vue'
 import CreateHomeButton from './CreateHomeButton.vue'
 import UserMenu from './UserMenu.vue'
 
@@ -69,5 +107,19 @@ defineProps({
   themeDrawerOpen: { type: Boolean, default: false },
 })
 
-defineEmits(['update:title', 'save-title', 'present', 'open-theme', 'back-to-review'])
+const emit = defineEmits(['update:title', 'save-title', 'present', 'open-theme', 'back-to-review', 'save-pdf', 'save-pptx'])
+
+const saveOpen = ref(false)
+const saveDropdownRef = ref(null)
+onClickOutside(saveDropdownRef, () => { saveOpen.value = false })
+
+function onSavePdf() {
+  saveOpen.value = false
+  emit('save-pdf')
+}
+
+function onSavePptx() {
+  saveOpen.value = false
+  emit('save-pptx')
+}
 </script>

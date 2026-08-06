@@ -109,14 +109,14 @@
 ### 5.1 文档目录与存放规则
 严格遵循项目现有目录结构，所有文档统一归档在 `develop/docs/` 目录下，分类存放：
 ```
-E:/cursor projects/类ppt 小程序/                # 项目级基准文档（瀑布阶段产出，稳定少变）
+D:/cursor projects/类ppt 小程序/                # 项目级基准文档（瀑布阶段产出，稳定少变）
 │   ├── 商业提案.md
 │   ├── 可行性分析报告.md
 │   ├── 产品需求总纲PRD.md
 │   ├── 系统架构设计.md
 │   ├── 原型与交互说明.md
 │   └── 项目里程碑计划.md
-E:/cursor projects/类ppt 小程序/develop/docs/
+D:/cursor projects/类ppt 小程序/develop/docs/
 ├── 全局项目规范.md          # 项目宪法，所有角色必读
 ├── 全栈开发规范.md          # 开发执行层规范
 ├── 产品架构规范.md          # 本文件，产品架构层规范      

@@ -7,6 +7,7 @@ import { CANVAS_Z } from '../constants/canvasLayers.js'
 import { measureTextBlock, truncateLines } from './measureTextBlock.js'
 import { normalizeMaterialIconName } from './materialIcons.js'
 import { compileFixedDeckSlide, resolveFixedSlide } from './compileFixedDeckSlide.js'
+import { compilePptConstrainedSlide, isPptConstrainedTemplate } from './compilePptTemplateSlide.js'
 
 /** builder 行为变更时递增，触发 structured 页强制重编译 */
 export const STRUCTURED_COMPILE_VERSION = 8
@@ -838,6 +839,10 @@ const BUILDERS = {
 }
 
 export function compileStructuredSlide(structured, viewportId = 'web-wide-1024', themeId = 'zjy-minimal') {
+  // PPT严格模板优先调度
+  if (structured?.template_type && isPptConstrainedTemplate(structured.template_type)) {
+    return compilePptConstrainedSlide({ structured }, viewportId, themeId)
+  }
   if (resolveFixedSlide(structured)) return compileFixedDeckSlide(structured, viewportId, themeId)
   if (!structured?.template) return []
   resetCompileIds()
@@ -849,6 +854,10 @@ export function compileStructuredSlide(structured, viewportId = 'web-wide-1024',
 
 export function resolveSlideStructured(slide) {
   if (resolveFixedSlide(slide)) return resolveFixedSlide(slide)
+  // PPT严格模板：检测 template_type 字段
+  if (slide?.structured?.template_type && isPptConstrainedTemplate(slide.structured.template_type)) {
+    return slide.structured
+  }
   if (slide?.structured?.template) return slide.structured
   if (slide?.layout && BUILDERS[slide.layout]) {
     return {

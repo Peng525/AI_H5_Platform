@@ -48,7 +48,13 @@ RUN pip install --no-cache-dir --upgrade pip \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/ ./backend/
+COPY ppt-master-main/skills ./ppt-master-main/skills
 COPY --from=web-build /app/backend/static ./backend/static
+
+ENV PPT_MASTER_ROOT=/app/ppt-master-main \
+    PPT_MASTER_WORKSPACE=/app/backend/data/ppt_master_projects \
+    PPT_MASTER_MAX_CONCURRENT=1 \
+    PPT_MASTER_SKIP_IMAGES=1
 
 WORKDIR /app/backend
 RUN mkdir -p /app/backend/data
