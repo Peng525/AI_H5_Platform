@@ -422,7 +422,9 @@ function generate() {
   saveDraft({ ...buildDraftPatch(), themeId: themeId.value })
   const body = buildGenerateBody()
   saveGenerateJob(body, { estimatedSeconds: estimatedSeconds.value })
+  generating.value = false
   router.push(`/create/generate/result/${PENDING_RESULT_PUBLIC_ID}`)
+}
 </script>
 
 <style scoped>
