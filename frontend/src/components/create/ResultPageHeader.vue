@@ -20,7 +20,7 @@
       <input
         :value="title"
         type="text"
-        class="col-start-1 row-start-1 w-full min-w-[8rem] border border-transparent hover:border-outline-variant focus:border-primary/40 rounded-lg px-2 py-1 text-sm font-semibold bg-transparent focus:outline-none focus:ring-1 focus:ring-primary/30"
+        class="col-start-1 row-start-1 w-full min-w-[8rem] border border-transparent hover:border-outline-variant focus:border-primary/40 rounded-lg px-2 py-1 text-sm font-semibold bg-transparent focus:outline-none focus:ring-1 focus:ring-primary/30 placeholder:text-on-surface-variant/40"
         placeholder="无标题"
         @input="$emit('update:title', $event.target.value)"
         @blur="$emit('save-title')"

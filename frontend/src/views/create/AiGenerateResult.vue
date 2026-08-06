@@ -378,7 +378,7 @@ async function runPendingGeneration() {
   generateEstimatedSeconds.value = job.estimatedSeconds || 48
   pageLoading.value = false
   try {
-    if (isPremiumJob(job)) {
+    if (isPremiumJob(job) && !job.body.strict_template_mode) {
       const result = await api.submitPremiumDeckJob(job.body)
       clearGenerateJob()
       premiumJob.value = result
