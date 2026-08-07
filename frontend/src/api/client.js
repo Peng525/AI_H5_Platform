@@ -147,6 +147,13 @@ export const api = {
       body: JSON.stringify(body),
     }),
   getPremiumDeckJob: (jobId) => request(`/api/v1/项目/ai-生成-premium/${jobId}`),
+  // 多步编排生成 (Strategist→Executor→Designer)
+  submitOrchestratedDeckJob: (body) =>
+    request('/api/v1/项目/ai-生成-orchestrated', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  getOrchestratedDeckJob: (jobId) => request(`/api/v1/项目/ai-生成-orchestrated/${jobId}`),
   resolveProjectRef: (ref) => request(`/api/v1/项目/resolve/${encodeURIComponent(ref)}`),
   getProject: (publicId) => request(projectApiPath(publicId)),
   updateProjectSettings: (publicId, body) =>

@@ -91,14 +91,24 @@
     </div>
 
     <div class="flex-1 min-h-0 flex flex-col relative">
-      <!-- _pending 阶段：纯转圈等待 API 返回 -->
+      <!-- _pending 阶段：转圈 或 错误提示 -->
       <div
         v-if="isPendingRoute"
         class="flex-1 flex flex-col items-center justify-center gap-4 bg-surface-container-low"
       >
-        <div class="w-14 h-14 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-        <p class="text-base text-on-surface-variant font-medium">AI 正在生成演示内容…</p>
-        <p class="text-xs text-on-surface-variant/50">预计 {{ generateEstimatedSeconds }} 秒</p>
+        <template v-if="generateError">
+          <span class="material-symbols-outlined text-red-500 text-[48px]">error</span>
+          <p class="text-base text-red-600 font-medium text-center max-w-md">{{ displayGenerateError }}</p>
+          <div class="flex gap-3 mt-2">
+            <button class="px-4 py-2 rounded-lg bg-primary text-white text-sm" @click="retryPendingGeneration">重试</button>
+            <button class="px-4 py-2 rounded-lg border text-sm" @click="goReview">返回编辑</button>
+          </div>
+        </template>
+        <template v-else>
+          <div class="w-14 h-14 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p class="text-base text-on-surface-variant font-medium">AI 正在生成演示内容…</p>
+          <p class="text-xs text-on-surface-variant/50">预计 {{ generateEstimatedSeconds }} 秒</p>
+        </template>
       </div>
 
       <!-- 工作区 -->

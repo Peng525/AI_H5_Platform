@@ -196,6 +196,20 @@ class DeckPremiumJobOut(BaseModel):
     hint: str = ""
 
 
+class OrchestratedJobOut(BaseModel):
+    """多步编排生成任务状态"""
+    job_id: str
+    stage: str = "queued"  # queued | strategist | executing | designing | importing | completed | failed
+    phase: str = ""
+    current_page: int = 0
+    total_pages: int = 0
+    progress_pct: int = 0
+    message: str = ""
+    error: str = ""
+    project_public_id: str = ""
+    phases_meta: dict = Field(default_factory=dict)
+
+
 class OrderOut(BaseModel):
     id: int
     plan_id: str
@@ -583,6 +597,8 @@ class AdminGenerationLogOut(BaseModel):
     channel: str
     model: str = ""
     duration_ms: int | None = None
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
     success: bool
     message: str = ""
     created_at: datetime

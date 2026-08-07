@@ -17,7 +17,25 @@ def _ensure_data_dir() -> None:
 
 
 _ensure_data_dir()
-engine = create_async_engine(settings.database_url, echo=False)
+engine = create_async_engine(
+    settings.database_url,
+    echo=False,
+    connect_args={
+        "timeout": 15,  # 写锁等待15秒
+    },
+)
+
+async def _enable_wal() -> None:
+    """启用 WAL 模式，允许多读一写并发"""
+    import aiosqlite
+    from sqlalchemy import event
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def set_wal(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.close()
 SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
@@ -32,6 +50,9 @@ async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await _migrate_sqlite_columns(conn)
+        # 启用 WAL 模式，解决并发写锁问题
+        await conn.exec_driver_sql("PRAGMA journal_mode=WAL")
+        await conn.exec_driver_sql("PRAGMA busy_timeout=5000")
 
 
 async def _migrate_sqlite_columns(conn) -> None:
@@ -183,6 +204,10 @@ async def _migrate_sqlite_columns(conn) -> None:
             sync_conn.execute(text("ALTER TABLE generation_logs ADD COLUMN model VARCHAR(64) DEFAULT ''"))
         if gen_names and "duration_ms" not in gen_names:
             sync_conn.execute(text("ALTER TABLE generation_logs ADD COLUMN duration_ms INTEGER"))
+        if gen_names and "prompt_tokens" not in gen_names:
+            sync_conn.execute(text("ALTER TABLE generation_logs ADD COLUMN prompt_tokens INTEGER DEFAULT 0"))
+        if gen_names and "completion_tokens" not in gen_names:
+            sync_conn.execute(text("ALTER TABLE generation_logs ADD COLUMN completion_tokens INTEGER DEFAULT 0"))
 
         rv_cols = sync_conn.execute(text("PRAGMA table_info(resume_versions)")).fetchall()
         rv_names = {row[1] for row in rv_cols}

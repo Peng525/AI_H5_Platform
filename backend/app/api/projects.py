@@ -19,6 +19,7 @@ from app.schemas import (
     GenerateImageRequest,
     GenerateImageResponse,
     GenerationMetaOut,
+    OrchestratedJobOut,
     ProjectCreate,
     ProjectOut,
     ProjectSettingsUpdate,
@@ -35,6 +36,10 @@ from app.services.deck_generation_service import (
     generate_deck_from_ai,
     generate_single_slide_into_project,
     shift_slide_sort_orders_from,
+)
+from app.services.deck_orchestrator import (
+    get_orchestrator_progress,
+    orchestrate_deck_generation,
 )
 from app.services.deck_premium_job import (
     get_premium_job_status,
@@ -256,6 +261,82 @@ async def get_premium_deck_job(
     if not result:
         raise HTTPException(status_code=404, detail="任务不存在")
     return DeckPremiumJobOut(**result)
+
+
+# ── 多步编排生成（模仿PPT-Master工作流）──
+
+import uuid as _uuid
+
+_orchestrated_jobs: dict[str, dict] = {}
+
+
+@router.post("/项目/ai-生成-orchestrated", response_model=OrchestratedJobOut, summary="提交多步编排生成任务（Strategist→Executor→Designer）")
+async def ai_generate_orchestrated_project(
+    body: AiDeckGenerateRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """提交多步编排生成。返回 job_id 供前端轮询。"""
+    job_id = _uuid.uuid4().hex[:12]
+    from app.services.deck_orchestrator import OrchestratorProgress, _progress_store
+
+    progress = OrchestratorProgress(
+        stage="queued",
+        message="任务已入队，即将开始规划...",
+        total_pages=body.page_count,
+    )
+    _progress_store[job_id] = progress
+
+    # 后台异步执行
+    asyncio.create_task(_run_orchestrated_job(job_id, db, user, body))
+
+    return OrchestratedJobOut(
+        job_id=job_id,
+        stage="queued",
+        total_pages=body.page_count,
+        progress_pct=0,
+        message="任务已入队",
+    )
+
+
+async def _run_orchestrated_job(job_id: str, db: AsyncSession, user: User, body: AiDeckGenerateRequest):
+    """后台执行编排生成（独立事务）"""
+    from app.services.deck_orchestrator import _progress_store
+
+    progress = _progress_store.get(job_id)
+    try:
+        project = await orchestrate_deck_generation(db, user, body, job_id=job_id, executor_mode="serial")
+        if progress:
+            progress.stage = "completed"
+            progress.progress_pct = 100
+            progress.project_public_id = project.public_id
+            progress.message = "生成完成"
+    except Exception as exc:
+        logger.exception("orchestrated job failed job_id=%s", job_id)
+        if progress:
+            progress.stage = "failed"
+            progress.error = str(exc)
+            progress.message = f"生成失败: {exc}"
+
+
+@router.get("/项目/ai-生成-orchestrated/{job_id}", response_model=OrchestratedJobOut, summary="查询编排生成任务状态")
+async def get_orchestrated_deck_job(job_id: str):
+    """轮询编排生成进度"""
+    progress = get_orchestrator_progress(job_id)
+    if not progress:
+        raise HTTPException(status_code=404, detail="任务不存在或已过期")
+    return OrchestratedJobOut(
+        job_id=job_id,
+        stage=progress.stage,
+        phase=progress.phase,
+        current_page=progress.current_page,
+        total_pages=progress.total_pages,
+        progress_pct=progress.progress_pct,
+        message=progress.message,
+        error=progress.error,
+        project_public_id=progress.project_public_id,
+        phases_meta=progress.phases_meta,
+    )
 
 
 @router.post("/项目/ai-生成", response_model=ProjectOut, summary="AI 全量生成演示项目")

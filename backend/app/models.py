@@ -268,6 +268,8 @@ class GenerationLog(Base):
     channel: Mapped[str] = mapped_column(String(32))
     model: Mapped[str] = mapped_column(String(64), default="")
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    prompt_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    completion_tokens: Mapped[int] = mapped_column(Integer, default=0)
     success: Mapped[int] = mapped_column(Integer, default=1)
     message: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

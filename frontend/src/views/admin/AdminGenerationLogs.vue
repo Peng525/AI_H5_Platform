@@ -24,6 +24,7 @@
               <th class="px-4 py-3 font-medium">类型</th>
               <th class="px-4 py-3 font-medium">模型</th>
               <th class="px-4 py-3 font-medium">耗时</th>
+              <th class="px-4 py-3 font-medium">Token (输入/输出)</th>
               <th class="px-4 py-3 font-medium">通道</th>
               <th class="px-4 py-3 font-medium">状态</th>
               <th class="px-4 py-3 font-medium">时间</th>
@@ -39,6 +40,13 @@
               <td class="px-4 py-3 text-xs">{{ templateLabel(row.template_id) }}</td>
               <td class="px-4 py-3 font-mono text-xs">{{ row.model || '—' }}</td>
               <td class="px-4 py-3">{{ formatDuration(row.duration_ms) }}</td>
+              <td class="px-4 py-3 font-mono text-xs">
+                <span v-if="row.prompt_tokens || row.completion_tokens">
+                  {{ fmtK(row.prompt_tokens) }} / {{ fmtK(row.completion_tokens) }}
+                  <span class="text-on-surface-variant ml-1">({{ fmtK((row.prompt_tokens || 0) + (row.completion_tokens || 0)) }})</span>
+                </span>
+                <span v-else class="text-on-surface-variant/50">—</span>
+              </td>
               <td class="px-4 py-3 text-xs">{{ row.channel || '—' }}</td>
               <td class="px-4 py-3">
                 <span
@@ -51,7 +59,7 @@
               <td class="px-4 py-3 text-xs text-on-surface-variant whitespace-nowrap">{{ formatTime(row.created_at) }}</td>
             </tr>
             <tr v-if="!items.length">
-              <td colspan="7" class="px-4 py-8 text-center text-on-surface-variant text-sm">暂无记录</td>
+              <td colspan="8" class="px-4 py-8 text-center text-on-surface-variant text-sm">暂无记录</td>
             </tr>
           </tbody>
         </table>
@@ -98,8 +106,16 @@ const search = ref('')
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
+function fmtK(n) {
+  if (!n) return '0'
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'K'
+  return String(n)
+}
+
 function templateLabel(id) {
   if (id === 'full_deck') return '全量生成'
+  if (id === 'orchestrated_deck') return '编排生成'
+  if (id === 'single_slide') return '单页改写'
   if (id === 'image_gen') return '配图/生图'
   return id || '—'
 }

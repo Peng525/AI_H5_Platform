@@ -875,6 +875,8 @@ async def admin_list_generation_logs(
             channel=log.channel,
             model=log.model or "",
             duration_ms=log.duration_ms,
+            prompt_tokens=log.prompt_tokens or 0,
+            completion_tokens=log.completion_tokens or 0,
             success=bool(log.success),
             message=log.message or "",
             created_at=log.created_at,

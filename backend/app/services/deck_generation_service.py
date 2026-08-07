@@ -998,16 +998,15 @@ async def generate_deck_from_ai(
 
 
 TEMPLATE_HINT_INSTRUCTIONS = {
-    "magic": "自动选择最合适的 template（cover/section/split_lr/grid_2x2/cards_row 等）",
-    "bullets": "必须输出要点式内容，优先 key_points layout_id；根据内容的数字顺序或者标题顺序，提供对应的points，每个要点独立成段",
-    "paragraph": "必须输出段落式内容，优先 key_points 或 section；以一段完整说明为主，然后根据内容，查看是否还有小标题，并可以继续拆分为段落，一般再提供一个points作为辅助",
-    "cards": "必须输出卡片式内容，优先 key_points layout_id；根据内容的逻辑如顺序或者小标题拆分为独立 points，每个 point 结构清晰，适合前端渲染成卡片",
-    "image_text": "必须输出图片配文字结构，优先 scene_left layout_id；提供 image_prompt 与 body/points，图片放左侧，文字补充右侧或下方说明",
-    
-    "split": "必须使用 split_lr template，左右分栏",
-    "image": "split_lr 右栏仅在 image_intent=scene 时配图；cover 仅 cover_bg；steps 可 roadmap",
-    "grid": "必须使用 grid_2x2 template，四宫格卡片",
-    "text": "优先 paragraph 或 cards，以文字内容为主",
+    "magic": "自动选择最合适的 template_type（6种严格模板：title_page/toc/points/cards/image_text_left/image_text_right）",
+    "bullets": "必须输出要点式内容，优先 points 模板；提供 2-5 个 points，每个要点独立成段，纯文字无需配图",
+    "paragraph": "必须输出段落式内容，优先 points 或 cards 模板；以一段完整说明为主，然后根据内容拆分为子要点",
+    "cards": "必须输出卡片式内容，优先 cards 模板；拆分为 2-4 张独立卡片，每张有标题和正文",
+    "image_text": "必须输出图片配文字结构，优先 image_text_left 模板；提供 image_topic（3-5个中文关键词）用于配图搜索，左侧图片右侧内容",
+    "split": "使用 image_text_left 或 image_text_right 模板，左右分栏",
+    "image": "使用 image_text_left 或 image_text_right 模板，必须提供 image_topic",
+    "grid": "使用 cards 模板，多卡片并列展示",
+    "text": "优先 points 或 cards 模板，以文字内容为主",
 }
 
 
@@ -1037,6 +1036,44 @@ def _neighbor_context(slides: list, after_slide_id: int | None) -> tuple[str, st
     return prev_title, next_title, style_summary
 
 
+def _deck_style_snapshot(slides: list) -> str:
+    """从已有页面提取风格摘要：模板分布 + 内容语气采样。
+
+    不做页码提示、不做位置标记——单页生成就是全量生成的简化版，
+    只需让 LLM 知道已有页面用了什么模板、什么语气。
+    """
+    if not slides:
+        return ""
+
+    sorted_slides = sorted(slides, key=lambda s: s.sort_order)
+    template_seq: list[str] = []
+    content_samples: list[str] = []
+
+    for s in sorted_slides:
+        st = s.structured or {}
+        ttype = st.get("template_type") or s.layout or ""
+        template_seq.append(ttype)
+
+        pts = st.get("points") or st.get("cards") or []
+        if pts and isinstance(pts, list):
+            for p in pts[:1]:
+                txt = (p.get("text") or p.get("title") or "") if isinstance(p, dict) else str(p)
+                if txt:
+                    content_samples.append(txt[:50])
+        if len(content_samples) >= 3:
+            break
+
+    from collections import Counter
+    tc = Counter(template_seq)
+    template_summary = "、".join(f"{t}({c}页)" for t, c in tc.most_common(6))
+
+    parts = [f"已有模板分布：{template_summary}"]
+    if content_samples:
+        parts.append(f"内容语气参考：{'；'.join(content_samples[:3])}")
+
+    return "；".join(parts)
+
+
 async def shift_slide_sort_orders_from(
     db: AsyncSession,
     project_id: int,
@@ -1062,18 +1099,18 @@ async def generate_single_slide_into_project(
         raise QuotaLlmError(str(exc)) from exc
 
     replace_slide_id = body.replace_slide_id
-    prev_title, next_title, style_summary = _neighbor_context(project.slides, body.insert_after_slide_id)
     hint = TEMPLATE_HINT_INSTRUCTIONS.get(body.template_hint or "magic", TEMPLATE_HINT_INSTRUCTIONS["magic"])
+
+    # 风格快照：从已有页面提取模板分布和内容语气，确保单页风格匹配
+    style_snapshot = _deck_style_snapshot(project.slides)
+
     context_bits = [
         f"模板偏好：{hint}",
         f"演示整体标题：{project.title}",
     ]
-    if prev_title:
-        context_bits.append(f"前一页标题：{prev_title}")
-    if next_title:
-        context_bits.append(f"后一页标题：{next_title}")
-    if style_summary:
-        context_bits.append(f"已有页面风格参考：{style_summary}")
+    # 注入风格快照
+    if style_snapshot:
+        context_bits.append(style_snapshot)
 
     deck_body = AiDeckGenerateRequest(
         topic=body.prompt.strip(),
@@ -1098,7 +1135,8 @@ async def generate_single_slide_into_project(
         "page_contents": [],
     }
 
-    messages = render_template("固定布局生成.yaml", variables)
+    # 单页改写统一使用严格模板（与全量生成保持一致）
+    messages = render_template("严格模板生成.yaml", variables)
     model_override = (body.model or "").strip() or None
     t0 = time.perf_counter()
     raw = ""
