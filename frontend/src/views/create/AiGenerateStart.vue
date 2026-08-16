@@ -61,25 +61,13 @@
       </div>
 
       <div v-if="type !== 'resume-edit' && type !== 'resume-optimize'">
+        <!-- 导入 PPT 模板功能暂时弃用，见功能开发说明书
         <div v-if="type === 'deck'" class="flex items-center justify-start mb-2">
-          <button
-            type="button"
-            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant/80 bg-white text-xs font-medium text-on-surface hover:bg-surface-container-low transition disabled:opacity-50"
-            :disabled="pptTemplateImporting"
-            @click="triggerPptTemplateImport"
-          >
-            <span class="material-symbols-outlined text-[16px]">upload</span>
-            {{ pptTemplateImporting ? '导入中…' : '导入 PPT 模板' }}
-          </button>
-          <input
-            ref="pptTemplateFileRef"
-            type="file"
-            accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation"
-            class="hidden"
-            @change="onPptTemplateFileSelected"
-          />
+          <button ...>导入 PPT 模板</button>
+          <input ref="pptTemplateFileRef" type="file" ... />
         </div>
-        <p v-if="pptTemplateImportError" class="text-xs text-red-600 mb-2">{{ pptTemplateImportError }}</p>
+        <p v-if="pptTemplateImportError" ...>{{ pptTemplateImportError }}</p>
+        -->
         <GenerateTopicInput
           ref="topicInputRef"
           v-model="topic"
@@ -266,7 +254,7 @@ const type = ref('deck')
 const pageCount = ref(10)
 const background = ref('')
 const viewportMode = ref('auto')
-const imageAspectRatio = ref('9:16')
+const imageAspectRatio = ref('16:9')
 const imageColor = ref('')
 const imageStyle = ref('')
 const language = ref('简体中文')
@@ -708,6 +696,14 @@ function onSelectPptTemplate(tpl) {
   saveDraft({
     pptTemplateId: tpl.id,
     pptTemplateKind: tpl.kind || '',
+  })
+  // 自动滚动到提示词输入框并聚焦
+  nextTick(() => {
+    const el = topicInputRef.value?.textareaRef
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.focus()
+    }
   })
 }
 

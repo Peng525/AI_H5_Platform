@@ -282,41 +282,50 @@ async def ai_generate_orchestrated_project(
 
     progress = OrchestratorProgress(
         stage="queued",
-        message="任务已入队，即将开始规划...",
+        message="现在为您生成PPT",
         total_pages=body.page_count,
     )
     _progress_store[job_id] = progress
 
-    # 后台异步执行
-    asyncio.create_task(_run_orchestrated_job(job_id, db, user, body))
+    # 后台异步执行（传 user_id 而非 user 对象，避免 session 关闭后无法访问）
+    asyncio.create_task(_run_orchestrated_job(job_id, user.id, body))
 
     return OrchestratedJobOut(
         job_id=job_id,
         stage="queued",
         total_pages=body.page_count,
         progress_pct=0,
-        message="任务已入队",
+        message="现在为您生成PPT",
     )
 
 
-async def _run_orchestrated_job(job_id: str, db: AsyncSession, user: User, body: AiDeckGenerateRequest):
-    """后台执行编排生成（独立事务）"""
+async def _run_orchestrated_job(job_id: str, user_id: int, body: AiDeckGenerateRequest):
+    """后台执行编排生成（独立事务，使用自己的数据库会话）"""
+    from app.database import SessionLocal
     from app.services.deck_orchestrator import _progress_store
 
     progress = _progress_store.get(job_id)
-    try:
-        project = await orchestrate_deck_generation(db, user, body, job_id=job_id, executor_mode="serial")
-        if progress:
-            progress.stage = "completed"
-            progress.progress_pct = 100
-            progress.project_public_id = project.public_id
-            progress.message = "生成完成"
-    except Exception as exc:
-        logger.exception("orchestrated job failed job_id=%s", job_id)
-        if progress:
-            progress.stage = "failed"
-            progress.error = str(exc)
-            progress.message = f"生成失败: {exc}"
+    async with SessionLocal() as db:
+        try:
+            # 从数据库加载完整的 User 对象
+            from sqlalchemy import select as sa_select
+            result = await db.execute(sa_select(User).where(User.id == user_id))
+            user = result.scalar_one_or_none()
+            if not user:
+                raise ValueError(f"用户不存在: {user_id}")
+
+            project = await orchestrate_deck_generation(db, user, body, job_id=job_id, executor_mode="serial")
+            if progress:
+                progress.stage = "completed"
+                progress.progress_pct = 100
+                progress.project_public_id = project.public_id
+                progress.message = "生成完成"
+        except Exception as exc:
+            logger.exception("orchestrated job failed job_id=%s", job_id)
+            if progress:
+                progress.stage = "failed"
+                progress.error = str(exc)
+                progress.message = f"生成失败: {exc}"
 
 
 @router.get("/项目/ai-生成-orchestrated/{job_id}", response_model=OrchestratedJobOut, summary="查询编排生成任务状态")

@@ -225,6 +225,7 @@ async def _executor_phase_serial(
     canvas_w: int = DEFAULT_CANVAS_W,
     canvas_h: int = DEFAULT_CANVAS_H,
     theme_colors: dict | None = None,
+    progress: OrchestratorProgress | None = None,
 ) -> list[dict]:
     """逐页串行生成SVG（方案A：每页一次LLM调用）"""
     svgs = []
@@ -234,6 +235,12 @@ async def _executor_phase_serial(
 
     for page in pages:
         page_num = page.get("page_num", 1)
+        # 每页开始前更新进度
+        if progress:
+            progress.current_page = page_num
+            progress.progress_pct = int(15 + (page_num / len(pages)) * 65)
+            progress.message = f"正在生成第 {page_num} / {len(pages)} 页…"
+
         vars_ = _build_executor_vars(page, deck_title, len(pages), style, canvas_w, canvas_h, theme_colors)
         messages = render_template("orchestrate_executor.yaml", vars_)
 
@@ -352,35 +359,62 @@ async def _executor_phase(
     if executor_mode == "batch":
         result = await _executor_phase_batch(pages, deck_title, style, body)
     else:
-        result = await _executor_phase_serial(pages, deck_title, style, body, canvas_w, canvas_h, theme_colors)
-
-        # 更新进度（串行模式每页完成后更新）
-        if progress:
-            for i, _ in enumerate(result["svgs"]):
-                progress.current_page = i + 1
-                progress.progress_pct = int(40 + (i + 1) / len(pages) * 40)
+        result = await _executor_phase_serial(pages, deck_title, style, body, canvas_w, canvas_h, theme_colors, progress)
 
     return result
 
 
 # ── Phase 3: Designer ──
 
+def _svg_style_summary(svg_code: str) -> str:
+    """从 SVG 中提取风格摘要（只取配色和排版特征，不传完整 SVG）。
+    避免把 5000+ 字符的 SVG 代码塞进 LLM 上下文。"""
+    import re as _re
+    summary_parts = []
+
+    # 提取 fill/stroke 颜色
+    fills = _re.findall(r'\bfill\s*=\s*"([^"]*)"', svg_code)
+    strokes = _re.findall(r'\bstroke\s*=\s*"([^"]*)"', svg_code)
+    colors = set(f for f in fills + strokes if f.startswith("#") and len(f) == 7)
+    if colors:
+        summary_parts.append(f"配色: {', '.join(sorted(colors)[:8])}")
+
+    # 提取字号范围
+    font_sizes = _re.findall(r'font-size\s*=\s*"(\d+)"', svg_code)
+    if font_sizes:
+        sizes = sorted(set(int(s) for s in font_sizes))
+        summary_parts.append(f"字号范围: {sizes[0]}-{sizes[-1]}px (共{len(sizes)}种)")
+
+    # 提取圆角
+    rx_vals = _re.findall(r'\brx\s*=\s*"(\d+)"', svg_code)
+    if rx_vals:
+        summary_parts.append(f"圆角: rx={max(set(rx_vals), key=rx_vals.count)}")
+
+    # 提取文本内容前 80 字
+    texts = _re.findall(r'<text[^>]*>(.*?)</text>', svg_code)
+    text_content = " ".join(t.strip() for t in texts[:4] if t.strip())
+    if text_content:
+        summary_parts.append(f"内容摘要: {text_content[:80]}")
+
+    return "；".join(summary_parts) if summary_parts else "(无风格信息)"
+
+
 async def _designer_phase(
     svgs: list[dict],
     body: AiDeckGenerateRequest,
 ) -> dict:
-    """统一配色和视觉风格"""
-    slides_input = [
+    """提取统一配色方案（只传 SVG 风格摘要，不传完整 SVG）。"""
+    slides_summaries = [
         {
             "page_num": s["page_num"],
             "template_type": s.get("template_type", "points"),
-            "svg": s["svg"],
+            "summary": _svg_style_summary(s["svg"]),
         }
         for s in svgs
     ]
     vars_ = {
-        "slide_count": len(slides_input),
-        "slides": slides_input,
+        "slide_count": len(slides_summaries),
+        "slides": slides_summaries,
     }
     messages = render_template("orchestrate_designer.yaml", vars_)
     t0 = time.perf_counter()
@@ -394,31 +428,12 @@ async def _designer_phase(
 
     palette = data.get("palette") or {}
     style_notes = str(data.get("style_notes") or "").strip()
-    unified_svgs = data.get("slides") or []
-
-    # 如果 Designer 返回的 slides 数量不对，用原始 SVG
-    if len(unified_svgs) != len(svgs):
-        logger.warning(
-            "designer returned %s slides but expected %s, using originals",
-            len(unified_svgs), len(svgs),
-        )
-        unified_svgs = [
-            {"page_num": s["page_num"], "svg": s["svg"], "changes": "（未修改）"}
-            for s in svgs
-        ]
 
     duration_ms = int((time.perf_counter() - t0) * 1000)
     result = {
         "palette": palette,
         "style_notes": style_notes,
-        "svgs": [
-            {
-                "page_num": u.get("page_num", i + 1),
-                "svg": u.get("svg", svgs[i]["svg"] if i < len(svgs) else ""),
-                "changes": u.get("changes", ""),
-            }
-            for i, u in enumerate(unified_svgs)
-        ],
+        "svgs": svgs,  # 原始 SVG 不变，只附加 palette
         "meta": {
             "duration_ms": duration_ms,
             "channel": channel,
@@ -426,7 +441,8 @@ async def _designer_phase(
             "tokens": usage,
         },
     }
-    logger.info("orchestrator designer done duration_ms=%s tokens=%s", duration_ms, usage.get("total_tokens", 0))
+    logger.info("orchestrator designer done duration_ms=%s tokens=%s",
+                duration_ms, usage.get("total_tokens", 0))
     return result
 
 
@@ -559,35 +575,17 @@ def _svg_slides_to_seed(
         # 文字叠加层
         canvas_elements.extend(text_overlays)
 
-        # 构建 structured（兼容严格模板格式）
-        structured = {
-            "template_type": template_type,
-            "title": page_title,
-            "subtitle": plan.get("subtitle", ""),
-        }
-        if plan.get("author"):
-            structured["author"] = plan["author"]
-        if plan.get("date"):
-            structured["date"] = plan["date"]
-        if plan.get("key_points"):
-            pts = plan["key_points"]
-            if isinstance(pts, list):
-                structured["points"] = [{"text": str(p)[:120]} for p in pts[:5]]
-        if plan.get("image_topic"):
-            structured["image_topic"] = str(plan["image_topic"])[:120]
-        if plan.get("items"):
-            structured["items"] = plan["items"]
+        # 不设置 structured — canvas_elements 已有完整渲染数据，
+        # 否则前端 ensureSlideCompiled 会检测到 structured.template_type
+        # 并重新编译覆盖掉编排器生成的 SVG 背景 + 文字叠加层
 
         slides_seed.append({
             "layout": template_type[:32],
             "title": page_title,
             "subtitle": plan.get("subtitle", ""),
             "bullets": [],
-            "speakerNotes": "",
-            "animation": "fade",
-            "canvas_background": bg,
-            "canvas_elements": canvas_elements,  # 这次不空！包含SVG背景+文字叠加
-            "structured": structured,
+            "canvas_elements": canvas_elements,  # SVG背景+文字叠加，不设 structured 避免前端编译器覆盖
+            "structured": {},
         })
 
     return slides_seed
@@ -618,6 +616,8 @@ async def orchestrate_deck_generation(
     progress = _progress_store.get(job_id) if job_id else None
     if progress:
         progress.stage = "strategist"
+        progress.phase = "规划中"
+        progress.message = "正在分析主题，规划PPT结构…"
 
     # ── 准备变量 ──
     content_mode = body.content_mode or "free"
@@ -658,9 +658,9 @@ async def orchestrate_deck_generation(
         deck_title = strategist_result["title"]
         if progress:
             progress.stage = "executing"
-            progress.phase = "执行者"
+            progress.phase = "生成中"
             progress.progress_pct = 15
-            progress.message = f"规划完成，共 {len(pages_plan)} 页，开始生成SVG..."
+            progress.message = f"规划完成，共 {len(pages_plan)} 页，正在逐页生成…"
 
         # ── Phase 2: Executor ──
         logger.info("orchestrator phase2 executor start mode=%s canvas=%sx%s", executor_mode, canvas_w, canvas_h)
@@ -677,9 +677,9 @@ async def orchestrate_deck_generation(
         }
         if progress:
             progress.stage = "designing"
-            progress.phase = "UI设计师"
+            progress.phase = "最终校验"
             progress.progress_pct = 75
-            progress.message = f"SVG生成完成，正在统一视觉风格..."
+            progress.message = "页面生成完成，正在统一配色与视觉风格…"
 
         # ── Phase 3: Designer ──
         logger.info("orchestrator phase3 designer start")
@@ -689,7 +689,7 @@ async def orchestrate_deck_generation(
             progress.stage = "importing"
             progress.phase = "导入中"
             progress.progress_pct = 90
-            progress.message = "风格统一完成，正在导入到项目..."
+            progress.message = "校验完成，正在保存到项目…"
 
         # ── Phase 4: 转换为 slides_seed 并入库 ──
         preset = (body.background_preset or "").strip()
@@ -782,7 +782,7 @@ async def orchestrate_deck_generation(
             progress.stage = "completed"
             progress.progress_pct = 100
             progress.project_public_id = pid
-            progress.message = "生成完成"
+            progress.message = "PPT 已生成，正在跳转…"
 
         logger.info(
             "orchestrator complete project=%s slides=%s total_ms=%s executor_mode=%s",

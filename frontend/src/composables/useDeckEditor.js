@@ -402,11 +402,10 @@ onBeforeRouteLeave(async () => {
 function normalizeResultViewport() {
   if (layoutMode !== 'result' || !project.value) return
   const vid = settings.value.viewportId || 'mobile-375'
-  const targetVid = String(vid).startsWith('web') ? vid : DEFAULT_WEB_VIEWPORT_ID
-  if (targetVid !== vid) {
-    setViewport(targetVid)
-  }
-  recompileSlidesForViewport(targetVid)
+  if (String(vid).startsWith('web')) return
+  const hasCanvas = project.value.slides?.some((s) => (s.canvas_elements?.length || 0) > 0)
+  if (hasCanvas) return
+  setViewport(DEFAULT_WEB_VIEWPORT_ID)
 }
 
 function compileAllSlidesLazy(skipFirst = false) {

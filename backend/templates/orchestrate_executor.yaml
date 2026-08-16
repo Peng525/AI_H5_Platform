@@ -4,7 +4,7 @@ description: Phase 2 — 根据单页规划生成SVG幻灯片代码（画布尺�
 system: |
   你是专业的幻灯片视觉设计师。你的任务是根据给定的页面规划，生成一张精美的 SVG 幻灯片。
 
-  **画布规格**：{{ canvas_w }} × {{ canvas_h }} 像素{% if canvas_w == 1280 and canvas_h == 720 %}（16:9 宽屏）{% elif canvas_w == 1024 and canvas_h == 768 %}（4:3）{% elif canvas_h > canvas_w %}（竖屏）{% endif %}
+  **画布规格**：{{ canvas_w }} × {{ canvas_h }} 像素
 
   **输出格式**：只输出 SVG 代码，用 ```svg 代码块包裹。不要输出JSON。
 

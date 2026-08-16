@@ -53,7 +53,7 @@
           </span>
         </label>
 
-        <TencentCaptcha @ticket="onCaptchaTicket" @verified="captchaOk = $event" />
+        <SlideCaptcha @ticket="onCaptchaTicket" @verified="captchaOk = $event" />
 
         <p v-if="error" class="text-red-600 text-sm">{{ error }}</p>
 
@@ -80,7 +80,7 @@ import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../api/client'
 import { useAuth } from '../composables/useAuth'
-import TencentCaptcha from '../components/TencentCaptcha.vue'
+import SlideCaptcha from '../components/SlideCaptcha.vue'
 
 const route = useRoute()
 const router = useRouter()

@@ -789,9 +789,16 @@ def _build_topic(body: AiDeckGenerateRequest) -> str:
 def _normalize_deck_json(data: dict[str, Any], page_count: int) -> tuple[str, str, list[dict]]:
     title = str(data.get("title") or "AI 生成的演示").strip()[:120]
     theme = str(data.get("theme") or "ai-generated").strip()[:64]
-    slides = data.get("slides")
+    # 容错：LLM 可能返回 "pages" 或 "slides"
+    slides = data.get("slides") or data.get("pages")
     if not isinstance(slides, list) or not slides:
-        raise LlmError("大模型未返回有效的 slides 数组")
+        logger.error(
+            "_normalize_deck_json FAILED: keys=%s slides_type=%s slides_val=%s",
+            list(data.keys()) if isinstance(data, dict) else "NOT_DICT",
+            type(slides).__name__ if slides is not None else "None",
+            str(slides)[:300] if slides else "EMPTY",
+        )
+        raise LlmError("大模型未返回有效的 slides/pages 数组")
     if len(slides) > page_count:
         slides = slides[:page_count]
     return title, theme, slides
@@ -874,6 +881,12 @@ async def generate_deck_from_ai(
             len(raw),
         )
         data = extract_json(raw)
+        logger.info(
+            "deck_generate json_parsed user_id=%s keys=%s title=%s",
+            user.id,
+            list(data.keys()) if isinstance(data, dict) else type(data).__name__,
+            str(data.get("title", ""))[:60] if isinstance(data, dict) else "N/A",
+        )
         title, theme, slides_raw = _normalize_deck_json(data, body.page_count)
         logger.info(
             "deck_generate parsed user_id=%s title=%r slides=%s",
@@ -882,8 +895,18 @@ async def generate_deck_from_ai(
             len(slides_raw),
         )
     except LlmError:
+        logger.error(
+            "deck_generate llm_error user_id=%s raw_len=%s raw_preview=%s",
+            user.id,
+            len(raw) if raw else 0,
+            (raw[:1500] if raw else "EMPTY_RAW"),
+        )
         raise
     except Exception as exc:
+        logger.error(
+            "deck_generate unexpected_error user_id=%s err=%s raw_preview=%s",
+            user.id, exc, (raw[:1500] if raw else "EMPTY_RAW"),
+        )
         raise LlmError(f"生成失败：{exc}") from exc
     duration_ms = int((time.perf_counter() - t0) * 1000)
 

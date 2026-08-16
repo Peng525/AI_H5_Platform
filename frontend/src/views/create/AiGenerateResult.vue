@@ -94,7 +94,7 @@
       <!-- _pending 阶段：转圈 或 错误提示 -->
       <div
         v-if="isPendingRoute"
-        class="flex-1 flex flex-col items-center justify-center gap-4 bg-surface-container-low"
+        class="flex-1 flex flex-col items-center justify-center gap-4 bg-surface-container-low px-6"
       >
         <template v-if="generateError">
           <span class="material-symbols-outlined text-red-500 text-[48px]">error</span>
@@ -106,8 +106,29 @@
         </template>
         <template v-else>
           <div class="w-14 h-14 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-          <p class="text-base text-on-surface-variant font-medium">AI 正在生成演示内容…</p>
-          <p class="text-xs text-on-surface-variant/50">预计 {{ generateEstimatedSeconds }} 秒</p>
+          <p class="text-base text-on-surface-variant font-medium">{{ pendingTitle }}</p>
+          <p class="text-xs text-on-surface-variant/50">{{ pendingSubtitle }}</p>
+
+          <!-- 三阶段进度指示器 -->
+          <div class="flex items-center gap-1 mt-2 w-full max-w-xs">
+            <template v-for="(ph, idx) in orchestratedPhases" :key="ph.key">
+              <div class="flex flex-col items-center gap-1" style="width:60px">
+                <div
+                  class="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold transition-all duration-500"
+                  :class="ph.cls"
+                >
+                  <span v-if="ph.done" class="material-symbols-outlined text-[14px]">check</span>
+                  <span v-else>{{ idx + 1 }}</span>
+                </div>
+                <span class="text-[10px] leading-tight" :class="ph.labelCls">{{ ph.label }}</span>
+              </div>
+              <div
+                v-if="idx < orchestratedPhases.length - 1"
+                class="h-0.5 flex-1 rounded-full transition-all duration-700"
+                :class="orchestratedPhaseIdx > idx ? 'bg-green-400' : 'bg-outline-variant/20'"
+              />
+            </template>
+          </div>
         </template>
       </div>
 
@@ -245,6 +266,59 @@ const overlayFooterHint = computed(() => {
   return '生成完成后将开始绘制页面'
 })
 
+const pendingTitle = computed(() => {
+  if (premiumPolling.value) {
+    const phase = premiumJob.value?.stage || ''
+    if (phase === 'strategist') return '正在分析主题，规划PPT结构…'
+    if (phase === 'executing') return `正在生成第 ${premiumJob.value?.current_page || 1} / ${premiumJob.value?.total_pages || '?'} 页`
+    if (phase === 'designing') return '正在统一配色与视觉风格…'
+    if (phase === 'importing') return '正在保存到项目…'
+    if (phase === 'completed') return 'PPT 已生成，即将跳转…'
+    return '现在为您生成PPT'
+  }
+  return '现在为您生成PPT'
+})
+
+const pendingSubtitle = computed(() => {
+  if (premiumPolling.value) {
+    return premiumJob.value?.message || ''
+  }
+  return ''
+})
+
+const orchestratedPhases = computed(() => {
+  const stage = premiumPolling.value ? (premiumJob.value?.stage || '') : ''
+  const idx = stage === 'strategist' ? 0 : stage === 'executing' ? 1 : stage === 'designing' || stage === 'importing' || stage === 'completed' ? 2 : -1
+  return [
+    {
+      key: 'strategist',
+      label: idx > 0 ? '规划完成' : '规划中',
+      done: idx > 0,
+      cls: idx === 0 ? 'bg-primary text-on-primary' : idx > 0 ? 'bg-green-500 text-white' : 'bg-outline-variant/30 text-on-surface-variant/50',
+      labelCls: idx === 0 ? 'text-primary font-medium' : idx > 0 ? 'text-green-600' : 'text-on-surface-variant/50',
+    },
+    {
+      key: 'executing',
+      label: idx > 1 ? '生成完成' : '生成中',
+      done: idx > 1,
+      cls: idx === 1 ? 'bg-primary text-on-primary' : idx > 1 ? 'bg-green-500 text-white' : 'bg-outline-variant/30 text-on-surface-variant/50',
+      labelCls: idx === 1 ? 'text-primary font-medium' : idx > 1 ? 'text-green-600' : 'text-on-surface-variant/50',
+    },
+    {
+      key: 'designing',
+      label: idx > 2 ? '校验完成' : '最终校验',
+      done: idx > 2,
+      cls: idx === 2 ? 'bg-primary text-on-primary' : idx > 2 ? 'bg-green-500 text-white' : 'bg-outline-variant/30 text-on-surface-variant/50',
+      labelCls: idx === 2 ? 'text-primary font-medium' : idx > 2 ? 'text-green-600' : 'text-on-surface-variant/50',
+    },
+  ]
+})
+
+const orchestratedPhaseIdx = computed(() => {
+  const stage = premiumPolling.value ? (premiumJob.value?.stage || '') : ''
+  return stage === 'strategist' ? 0 : stage === 'executing' ? 1 : stage === 'designing' || stage === 'importing' || stage === 'completed' ? 2 : -1
+})
+
 function isPremiumJob(job) {
   return job?.generationMode === 'premium' || !!job?.body?.ppt_template_id
 }
@@ -303,7 +377,7 @@ async function handlePremiumCompleted(job) {
   premiumJob.value = null
   generatingDeck.value = false
   grantGenerateResultAccess(publicId)
-  projectTitle.value = String(job.topic || '').trim().slice(0, 80) || '高质量演示'
+  projectTitle.value = ''
   markShouldRevealDeck(publicId)
   autoRevealOnLoad.value = true
   isRevealing.value = true
@@ -344,6 +418,54 @@ function startPremiumPolling(jobId) {
       console.error('[AiGenerateResult] premium poll failed', e)
     })
   }, PREMIUM_POLL_MS)
+}
+
+// ── 编排模式轮询 ──
+
+const ORCHESTRATED_POLL_MS = 2000
+
+async function pollOrchestratedJobOnce(jobId) {
+  const job = await api.getOrchestratedDeckJob(jobId)
+  premiumJob.value = {
+    ...job,
+    status: job.stage,
+    stage_label: job.phase || job.message,
+    progress: job.progress_pct,
+    total_pages: job.total_pages,
+    current_page: job.current_page,
+    project_public_id: job.project_public_id,
+    error: job.error,
+  }
+  if (job.stage === 'completed') {
+    await handlePremiumCompleted({ project_public_id: job.project_public_id, topic: projectTitle.value })
+    return
+  }
+  if (job.stage === 'failed') {
+    stopPremiumPolling()
+    generatingDeck.value = false
+    generationStarted = false
+    generateError.value = job.error || '编排生成失败'
+    premiumJob.value = null
+  }
+}
+
+function startOrchestratedPolling(jobId) {
+  stopPremiumPolling()
+  premiumPolling.value = true
+  generationStarted = true
+  pollOrchestratedJobOnce(jobId).catch((e) => {
+    console.error('[AiGenerateResult] orchestrated poll failed', e)
+    stopPremiumPolling()
+    generatingDeck.value = false
+    generationStarted = false
+    generateError.value = formatCaughtError(e)
+    premiumJob.value = null
+  })
+  premiumPollTimer = setInterval(() => {
+    pollOrchestratedJobOnce(jobId).catch((e) => {
+      console.error('[AiGenerateResult] orchestrated poll failed', e)
+    })
+  }, ORCHESTRATED_POLL_MS)
 }
 
 function clearResultTransientState() {
@@ -388,35 +510,15 @@ async function runPendingGeneration() {
   generateEstimatedSeconds.value = job.estimatedSeconds || 48
   pageLoading.value = false
   try {
-    if (isPremiumJob(job) && !job.body.strict_template_mode) {
-      const result = await api.submitPremiumDeckJob(job.body)
-      clearGenerateJob()
-      premiumJob.value = result
-      projectTitle.value = String(job.body.topic || '').trim().slice(0, 80) || '高质量演示'
-      generateEstimatedSeconds.value = estimatePremiumDeckRange(job.body.page_count).typicalSeconds
-      startPremiumPolling(result.job_id)
-      refreshQuota().catch(() => {})
-      return
-    }
-    const created = await api.generateAiDeck(job.body)
-    if (!created?.public_id) {
-      throw new Error('服务器未返回项目 ID，请稍后重试')
-    }
+    // 默认使用编排模式（Strategist → Executor → Designer）
+    const result = await api.submitOrchestratedDeckJob(job.body)
     clearGenerateJob()
-    grantGenerateResultAccess(created.public_id)
-    applyProjectSettingsLocal(created.public_id, created.settings || {})
-    initialProject.value = created
-    syncFromProject(created)
-    pageLoading.value = false
-    pageLoadError.value = ''
-    loadFailed.value = false
-    workspaceError.value = ''
-    projectTitle.value = created.title?.trim() || ''
-    markShouldRevealDeck(created.public_id)
-    autoRevealOnLoad.value = true
-    isRevealing.value = true
-    await router.replace(`/create/generate/result/${created.public_id}`)
+    premiumJob.value = result
+    projectTitle.value = ''
+    generateEstimatedSeconds.value = job.estimatedSeconds || 60
+    startOrchestratedPolling(result.job_id)
     refreshQuota().catch(() => {})
+    return
   } catch (e) {
     console.error('[AiGenerateResult] generateAiDeck failed', e)
     generateError.value = formatCaughtError(e)
@@ -612,7 +714,7 @@ function bootstrap() {
   const pid = routePublicId.value
   if (!pid) return
   applyAutoRevealForProject(pid)
-  pageLoading.value = true
+  pageLoading.value = false
   pageLoadError.value = ''
 }
 
