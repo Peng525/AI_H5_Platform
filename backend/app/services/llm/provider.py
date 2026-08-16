@@ -48,6 +48,23 @@ def _normalize_openai_base_url(base_url: str) -> str:
     return base + "/v1"
 
 
+def _format_http_error(status_code: int, text: str) -> str:
+    """从 HTTP 错误响应体提取关键信息：HTML 取 <title>，其他取首行。"""
+    text = (text or "").strip()
+    if not text:
+        return str(status_code)
+    if text.startswith("<"):
+        m = re.search(r"<title>(.*?)</title>", text, re.I | re.S)
+        if m:
+            title = m.group(1).strip()
+            # title 里可能含状态码前缀（如 "504 504 Gateway"），去重避免重复
+            title = re.sub(rf"^{status_code}\b", "", title, flags=re.I).strip()
+            return f"{status_code} {title}" if title else str(status_code)
+        return f"{status_code} (HTML 错误页)"
+    snippet = text[:200].split("\n")[0].strip()
+    return f"{status_code} {snippet}" if snippet else str(status_code)
+
+
 def _resolve_channel_text_model(
     channel: str,
     tier: str | None = "free",
@@ -83,7 +100,7 @@ async def _chat_openai_compatible(
     async with httpx.AsyncClient(timeout=settings.llm_timeout) as client:
         resp = await client.post(url, headers=headers, json=payload)
         if resp.status_code >= 400:
-            raise LlmError(f"大模型请求失败 ({resp.status_code}): {resp.text[:500]}")
+            raise LlmError(f"大模型请求失败 ({_format_http_error(resp.status_code, resp.text)})")
         data = resp.json()
     try:
         text = data["choices"][0]["message"]["content"]

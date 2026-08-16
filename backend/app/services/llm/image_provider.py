@@ -7,7 +7,7 @@ import httpx
 
 from app.config import get_llm_provider, providers_ready_for_tier, settings
 from app.services.llm.model_tier import resolve_image_model
-from app.services.llm.provider import LlmError, _normalize_openai_base_url
+from app.services.llm.provider import LlmError, _format_http_error, _normalize_openai_base_url
 
 
 def _strip_secret(value: str) -> str:
@@ -144,7 +144,7 @@ async def _post_json(url: str, api_key: str, payload: dict[str, Any]) -> dict[st
         async with httpx.AsyncClient(timeout=settings.llm_timeout) as client:
             resp = await client.post(url, headers=headers, json=payload)
             if resp.status_code >= 400:
-                raise LlmError(f"生图请求失败 ({resp.status_code}): {resp.text[:500]}")
+                raise LlmError(f"生图请求失败 ({_format_http_error(resp.status_code, resp.text)})")
             return resp.json()
     except httpx.ConnectError as exc:
         raise LlmError("无法连接生图服务，请检查 LLM 配置与服务器出网") from exc
