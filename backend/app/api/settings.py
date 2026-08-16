@@ -1,10 +1,13 @@
 """大模型设置 API（管理员）。"""
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.config import settings
+from app.config import get_llm_providers, provider_tier, settings
 from app.deps.auth import require_admin
 from app.models import User
 from app.schemas import (
+    LlmProviderOut,
     LlmSettingsAdminOut,
     LlmSettingsUpdate,
     LlmTestResult,
@@ -15,7 +18,7 @@ from app.schemas import (
 from app.services.env_store import apply_settings_patch, mask_secret
 from app.services.llm.image_provider import generate_image
 from app.services.llm.model_tier import resolve_image_model
-from app.services.llm.provider import LlmError, _official_ready, _relay_ready
+from app.services.llm.provider import LlmError
 from app.services.prompt_template_service import (
     PromptTemplateError,
     delete_template as delete_prompt_template,
@@ -28,31 +31,29 @@ router = APIRouter(prefix="/api/v1/设置", tags=["设置"])
 
 
 def _admin_settings_out() -> LlmSettingsAdminOut:
+    providers = [
+        LlmProviderOut(
+            id=p["id"],
+            name=p["name"],
+            tier=p["tier"],
+            base_url=p["base_url"],
+            api_key_masked=mask_secret(p["api_key"]),
+            model=p["model"],
+            configured=bool(p["base_url"] and p["api_key"]),
+        )
+        for p in get_llm_providers()
+    ]
     return LlmSettingsAdminOut(
         default_channel=settings.llm_default_channel,
         auto_order=settings.llm_auto_order,
-        relay_configured=_relay_ready(),
-        official_configured=_official_ready(),
+        providers=providers,
         model_free=settings.llm_model_free,
         model_pro=settings.llm_model_pro,
         image_model_free=settings.llm_image_model_free,
         image_model_pro=settings.llm_image_model_pro,
-        relay_model=settings.llm_relay_model,
-        official_model=settings.llm_official_model,
         timeout=settings.llm_timeout,
         free_quota_per_user=settings.free_quota_per_user,
-        relay_base_url=settings.llm_relay_base_url,
-        relay_api_key_masked=mask_secret(settings.llm_relay_api_key),
-        official_base_url=settings.llm_official_base_url,
-        official_api_key_masked=mask_secret(settings.llm_official_api_key),
     )
-
-
-def _should_skip_secret(value: str | None) -> bool:
-    if value is None:
-        return True
-    v = value.strip()
-    return not v or v.startswith("****")
 
 
 @router.get("/大模型", response_model=LlmSettingsAdminOut, summary="获取大模型配置（管理员）")
@@ -62,31 +63,42 @@ async def get_llm_settings(_admin: User = Depends(require_admin)):
 
 @router.put("/大模型", response_model=LlmSettingsAdminOut, summary="保存大模型配置到 .env")
 async def update_llm_settings(body: LlmSettingsUpdate, _admin: User = Depends(require_admin)):
-    field_map = {
+    patch: dict[str, str | int | float] = {}
+
+    scalar_map = {
         "default_channel": "llm_default_channel",
         "auto_order": "llm_auto_order",
         "timeout": "llm_timeout",
         "free_quota_per_user": "free_quota_per_user",
-        "relay_base_url": "llm_relay_base_url",
-        "relay_model": "llm_relay_model",
-        "official_base_url": "llm_official_base_url",
-        "official_model": "llm_official_model",
         "model_free": "llm_model_free",
         "model_pro": "llm_model_pro",
         "image_model_free": "llm_image_model_free",
         "image_model_pro": "llm_image_model_pro",
     }
-    patch: dict[str, str | int | float] = {}
-
-    for field, attr in field_map.items():
+    for field, attr in scalar_map.items():
         val = getattr(body, field, None)
         if val is not None:
             patch[attr] = val
 
-    if not _should_skip_secret(body.relay_api_key):
-        patch["llm_relay_api_key"] = body.relay_api_key.strip()
-    if not _should_skip_secret(body.official_api_key):
-        patch["llm_official_api_key"] = body.official_api_key.strip()
+    if body.providers is not None:
+        existing = {p["id"]: p for p in get_llm_providers()}
+        merged: list[dict] = []
+        for item in body.providers:
+            pid = str(item.get("id") or "").strip().lower()
+            if not pid:
+                continue
+            api_key = str(item.get("api_key") or "").strip()
+            if (not api_key or api_key.startswith("****")) and pid in existing:
+                api_key = existing[pid]["api_key"]
+            merged.append({
+                "id": pid,
+                "name": str(item.get("name") or pid)[:32],
+                "tier": provider_tier(item.get("tier")),
+                "base_url": str(item.get("base_url") or "").strip(),
+                "api_key": api_key,
+                "model": str(item.get("model") or "").strip(),
+            })
+        patch["llm_providers_json"] = json.dumps(merged, ensure_ascii=False)
 
     if not patch:
         return _admin_settings_out()

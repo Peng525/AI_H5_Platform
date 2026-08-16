@@ -5,42 +5,22 @@ from typing import Any
 
 import httpx
 
-from app.config import settings
-from app.services.llm.model_tier import normalize_tier, resolve_image_model
-from app.services.llm.provider import LlmError, _normalize_openai_base_url, _official_ready, _relay_ready
+from app.config import get_llm_provider, providers_ready_for_tier, settings
+from app.services.llm.model_tier import resolve_image_model
+from app.services.llm.provider import LlmError, _normalize_openai_base_url
 
 
 def _strip_secret(value: str) -> str:
     return (value or "").strip()
 
 
-def _resolve_auto_order() -> list[str]:
-    order: list[str] = []
-    for part in settings.llm_auto_order.split(","):
-        ch = part.strip().lower()
-        if ch in ("relay", "official"):
-            order.append(ch)
-    if not order:
-        order = ["official", "relay"]
-    ready: list[str] = []
-    for ch in order:
-        if ch == "official" and _official_ready():
-            ready.append(ch)
-        if ch == "relay" and _relay_ready():
-            ready.append(ch)
-    return ready
-
-
 def _channel_credentials(channel: str) -> tuple[str, str]:
-    if channel == "relay":
-        if not _relay_ready():
-            raise LlmError("中转 API 未配置，请设置 LLM_RELAY_BASE_URL 与 LLM_RELAY_API_KEY")
-        return settings.llm_relay_base_url, _strip_secret(settings.llm_relay_api_key)
-    if channel == "official":
-        if not _official_ready():
-            raise LlmError("官方 API 未配置，请设置 LLM_OFFICIAL_API_KEY")
-        return settings.llm_official_base_url, _strip_secret(settings.llm_official_api_key)
-    raise LlmError(f"未知通道: {channel}")
+    p = get_llm_provider(channel)
+    if not p:
+        raise LlmError(f"未知通道: {channel}")
+    if not p["base_url"] or not p["api_key"]:
+        raise LlmError(f"通道「{p['name']}」未配置 base_url / api_key")
+    return p["base_url"], _strip_secret(p["api_key"])
 
 
 def _build_prompt(prompt: str, style: str | None = None) -> str:
@@ -276,34 +256,27 @@ async def generate_image(
         aspect_ratio, out_w, out_h = "1:1", 1024, 1024
 
     size = f"{out_w}x{out_h}"
-    model = resolve_image_model(tier)
-    tier_norm = normalize_tier(tier)
-    ch = (channel or settings.llm_default_channel).lower()
+    ch = (channel or "").strip().lower()
 
-    if tier_norm == "pro":
-        actual_channel = "relay"
-        display_channel = "official"
-    elif ch == "auto":
-        channels = _resolve_auto_order()
-        if not channels:
-            raise LlmError("auto 模式无可用通道，请配置 LLM_RELAY_* 或 LLM_OFFICIAL_API_KEY")
-        errors: list[str] = []
-        for used in channels:
-            try:
-                image = await _generate_on_channel(
-                    used, model, full_prompt, aspect_ratio, size, ref_url
-                )
-                return image, used, model, out_w, out_h
-            except LlmError as exc:
-                errors.append(f"{used}: {exc}")
-        raise LlmError("auto 模式全部通道失败 — " + "；".join(errors))
-    else:
-        if ch not in ("relay", "official"):
-            raise LlmError(f"未知通道: {channel}")
-        actual_channel = ch
-        display_channel = ch
+    if ch and ch != "auto" and get_llm_provider(ch):
+        p = get_llm_provider(ch)
+        model = p["model"] or resolve_image_model(tier)
+        image = await _generate_on_channel(
+            ch, model, full_prompt, aspect_ratio, size, ref_url
+        )
+        return image, ch, model, out_w, out_h
 
-    image = await _generate_on_channel(
-        actual_channel, model, full_prompt, aspect_ratio, size, ref_url
-    )
-    return image, display_channel, model, out_w, out_h
+    providers = providers_ready_for_tier(tier)
+    if not providers:
+        raise LlmError(f"{tier} 档无可用供应商，请在该档位配置至少一个 API（base_url + api_key）")
+    errors: list[str] = []
+    for p in providers:
+        try:
+            model = p["model"] or resolve_image_model(tier)
+            image = await _generate_on_channel(
+                p["id"], model, full_prompt, aspect_ratio, size, ref_url
+            )
+            return image, p["id"], model, out_w, out_h
+        except LlmError as exc:
+            errors.append(f"{p['name']}: {exc}")
+    raise LlmError(f"{tier} 档全部供应商失败 — " + "；".join(errors))

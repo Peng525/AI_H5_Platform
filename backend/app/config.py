@@ -1,4 +1,5 @@
 """应用配置（从环境变量读取）。"""
+import json
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -25,19 +26,13 @@ class Settings(BaseSettings):
     app_port: int = 8080
     database_url: str = "sqlite+aiosqlite:///./data/app.db"
 
-    # auto | relay | official
+    # auto | relay | official（或任意自定义 provider id）
     llm_default_channel: str = "auto"
     llm_auto_order: str = "official,relay"
     llm_timeout: float = 120.0
 
-    llm_relay_base_url: str = ""
-    llm_relay_api_key: str = ""
-    # 未指定 tier 时的兜底（与免费档一致）
-    llm_relay_model: str = "gemini-3.1-flash-image-preview"
-
-    llm_official_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
-    llm_official_api_key: str = ""
-    llm_official_model: str = "gemini-3.1-flash-image-preview"
+    # 供应商列表：JSON 数组 [{id,name,base_url,api_key,model}, ...]
+    llm_providers_json: str = ""
 
     # 会员档位模型（NovAI 等中转常用 -image-preview 后缀）
     llm_model_free: str = "gemini-3.1-flash-image-preview"
@@ -121,3 +116,60 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def provider_tier(value) -> str:
+    """归一化供应商档位标签：free(免费) | pro(付费)。"""
+    t = str(value or "").strip().lower()
+    if t in ("pro", "paid", "premium", "付费", "升级", "会员"):
+        return "pro"
+    return "free"
+
+
+def get_llm_providers() -> list[dict]:
+    """解析 LLM_PROVIDERS_JSON，返回 [{id, name, tier, base_url, api_key, model}]。"""
+    raw = (settings.llm_providers_json or "").strip()
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(data, list):
+        return []
+    out: list[dict] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        pid = str(item.get("id") or "").strip().lower()
+        if not pid:
+            continue
+        out.append({
+            "id": pid,
+            "name": str(item.get("name") or pid)[:32],
+            "tier": provider_tier(item.get("tier")),
+            "base_url": str(item.get("base_url") or "").strip(),
+            "api_key": str(item.get("api_key") or "").strip(),
+            "model": str(item.get("model") or "").strip(),
+        })
+    return out
+
+
+def get_llm_providers_by_tier(tier: str | None = "free") -> list[dict]:
+    """按档位取供应商列表。"""
+    t = provider_tier(tier)
+    return [p for p in get_llm_providers() if p["tier"] == t]
+
+
+def providers_ready_for_tier(tier: str | None = "free") -> list[dict]:
+    """按档位取已配置（base_url + api_key 齐全）的供应商，作为重试顺序。"""
+    return [p for p in get_llm_providers_by_tier(tier) if p["base_url"] and p["api_key"]]
+
+
+def get_llm_provider(channel: str) -> dict | None:
+    """按 id 查找供应商；找不到返回 None。"""
+    ch = (channel or "").strip().lower()
+    for p in get_llm_providers():
+        if p["id"] == ch:
+            return p
+    return None

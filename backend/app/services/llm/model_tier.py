@@ -22,5 +22,7 @@ def resolve_text_model(tier: str | None = None) -> str:
 
 
 def resolve_image_model(tier: str | None = None) -> str:
-    """配图统一使用 gpt-image-2（见 LLM_IMAGE_MODEL_FREE）。"""
+    """按档位返回生图模型（作为供应商未填 model 时的兜底）。"""
+    if normalize_tier(tier) == "pro":
+        return settings.llm_image_model_pro or settings.llm_image_model_free
     return settings.llm_image_model_free or settings.llm_image_model_pro

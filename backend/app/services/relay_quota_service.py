@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
-from app.config import settings
+from app.config import get_llm_provider, settings
 from app.services.llm.provider import _relay_ready
 
 
@@ -30,7 +30,7 @@ def _is_novai_profile(profile: str) -> bool:
         return True
     haystack = " ".join(
         [
-            settings.llm_relay_base_url.lower(),
+            (get_llm_provider("relay") or {}).get("base_url", "").lower(),
             settings.relay_novai_dashboard_url.lower(),
             settings.relay_dashboard_recharge_url.lower(),
         ]
@@ -46,7 +46,7 @@ def _effective_profile() -> str:
 
 
 def _origin_from_relay_base() -> str:
-    base = settings.llm_relay_base_url.strip().rstrip("/")
+    base = (get_llm_provider("relay") or {}).get("base_url", "").strip().rstrip("/")
     if not base:
         return ""
     parsed = urlparse(base)

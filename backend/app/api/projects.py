@@ -314,7 +314,7 @@ async def _run_orchestrated_job(job_id: str, user_id: int, body: AiDeckGenerateR
             if not user:
                 raise ValueError(f"用户不存在: {user_id}")
 
-            project = await orchestrate_deck_generation(db, user, body, job_id=job_id, executor_mode="serial")
+            project = await orchestrate_deck_generation(db, user, body, job_id=job_id)
             if progress:
                 progress.stage = "completed"
                 progress.progress_pct = 100

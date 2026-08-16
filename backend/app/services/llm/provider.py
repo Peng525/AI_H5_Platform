@@ -1,11 +1,11 @@
-"""大模型适配层：relay / official / auto。"""
+"""大模型适配层：支持任意多个 API 供应商（LLM_PROVIDERS_JSON）。"""
 import json
 import re
 from typing import Any
 
 import httpx
 
-from app.config import settings
+from app.config import get_llm_provider, providers_ready_for_tier, settings
 from app.services.llm.model_tier import resolve_text_model
 
 
@@ -17,17 +17,32 @@ class QuotaLlmError(LlmError):
     """配额不足；API 层应映射 HTTP 402。"""
 
 
+def _provider_ready(channel: str) -> bool:
+    p = get_llm_provider(channel)
+    return bool(p and p["base_url"] and p["api_key"])
+
+
 def _relay_ready() -> bool:
-    return bool(settings.llm_relay_base_url and settings.llm_relay_api_key.strip())
+    return _provider_ready("relay")
 
 
 def _official_ready() -> bool:
-    return bool(settings.llm_official_api_key.strip())
+    return _provider_ready("official")
 
 
 def _normalize_openai_base_url(base_url: str) -> str:
-    """OpenAI 兼容接口需以 /v1 结尾（如 https://us.novaiapi.com/v1）。"""
-    base = base_url.rstrip("/")
+    """OpenAI 兼容接口需以 /v1 结尾（如 https://us.novaiapi.com/v1）。
+
+    校验协议头：缺 http:// 或 https:// 时直接抛出清晰错误。
+    """
+    base = (base_url or "").strip().rstrip("/")
+    if not base:
+        raise LlmError("LLM base URL 未配置，请在设置页为对应供应商填写 base_url")
+    if not (base.startswith("http://") or base.startswith("https://")):
+        raise LlmError(
+            f"LLM base URL 缺少协议头（http:// 或 https://），当前值: {base_url!r}，"
+            "请在设置页为对应供应商填写完整 base_url，格式示例: https://your-relay.example.com/v1"
+        )
     if base.endswith("/v1") or base.endswith("/v1beta"):
         return base
     return base + "/v1"
@@ -41,13 +56,19 @@ def _resolve_channel_text_model(
     override = (model or "").strip()
     if override:
         return override
-
-    channel_name = (channel or "").strip().lower()
-    if channel_name == "relay" and settings.llm_relay_model.strip():
-        return settings.llm_relay_model.strip()
-    if channel_name == "official" and settings.llm_official_model.strip():
-        return settings.llm_official_model.strip()
+    p = get_llm_provider(channel)
+    if p and p["model"]:
+        return p["model"]
     return resolve_text_model(tier)
+
+
+def _channel_credentials(channel: str) -> tuple[str, str]:
+    p = get_llm_provider(channel)
+    if not p:
+        raise LlmError(f"未知通道: {channel}")
+    if not p["base_url"] or not p["api_key"]:
+        raise LlmError(f"通道「{p['name']}」未配置 base_url / api_key")
+    return p["base_url"], p["api_key"]
 
 
 async def _chat_openai_compatible(
@@ -76,76 +97,25 @@ async def _chat_openai_compatible(
     }
 
 
-async def chat_relay(
-    messages: list[dict[str, str]],
-    tier: str | None = "free",
-    model: str | None = None,
-) -> tuple[str, dict]:
-    if not _relay_ready():
-        raise LlmError("中转 API 未配置，请设置 LLM_RELAY_BASE_URL 与 LLM_RELAY_API_KEY")
-    resolved = _resolve_channel_text_model("relay", tier, model)
-    return await _chat_openai_compatible(
-        settings.llm_relay_base_url,
-        settings.llm_relay_api_key.strip(),
-        resolved,
-        messages,
-    )
-
-
-async def chat_official(
-    messages: list[dict[str, str]],
-    tier: str | None = "free",
-    model: str | None = None,
-) -> tuple[str, dict]:
-    if not _official_ready():
-        raise LlmError("官方 API 未配置，请设置 LLM_OFFICIAL_API_KEY")
-    resolved = _resolve_channel_text_model("official", tier, model)
-    return await _chat_openai_compatible(
-        settings.llm_official_base_url,
-        settings.llm_official_api_key.strip(),
-        resolved,
-        messages,
-    )
-
-
-def _resolve_auto_order() -> list[str]:
-    order = []
-    for part in settings.llm_auto_order.split(","):
-        ch = part.strip().lower()
-        if ch in ("relay", "official"):
-            order.append(ch)
-    if not order:
-        order = ["official", "relay"]
-    ready = []
-    for ch in order:
-        if ch == "official" and _official_ready():
-            ready.append(ch)
-        if ch == "relay" and _relay_ready():
-            ready.append(ch)
-    return ready
-
-
-async def _chat_auto_with_usage(
+async def _chat_tier_with_usage(
     messages: list[dict[str, str]],
     tier: str | None = "free",
     model: str | None = None,
 ) -> tuple[str, str, str, dict]:
-    channels = _resolve_auto_order()
-    if not channels:
-        raise LlmError("auto 模式无可用通道，请至少配置中转或官方 API 之一")
+    providers = providers_ready_for_tier(tier)
+    if not providers:
+        raise LlmError(f"{tier} 档无可用供应商，请在设置页为该档位配置至少一个 API（base_url + api_key）")
     errors: list[str] = []
-    for ch in channels:
+    for p in providers:
         try:
-            if ch == "official":
-                resolved = _resolve_channel_text_model("official", tier, model)
-                text, usage = await chat_official(messages, tier, model)
-                return text, "official", resolved, usage
-            resolved = _resolve_channel_text_model("relay", tier, model)
-            text, usage = await chat_relay(messages, tier, model)
-            return text, "relay", resolved, usage
+            resolved = (model or "").strip() or p["model"] or resolve_text_model(tier)
+            text, usage = await _chat_openai_compatible(
+                p["base_url"], p["api_key"], resolved, messages
+            )
+            return text, p["id"], resolved, usage
         except LlmError as exc:
-            errors.append(f"{ch}: {exc}")
-    raise LlmError("auto 模式全部通道失败 — " + "；".join(errors))
+            errors.append(f"{p['name']}: {exc}")
+    raise LlmError(f"{tier} 档全部供应商失败 — " + "；".join(errors))
 
 
 async def chat_completion(
@@ -166,19 +136,19 @@ async def chat_completion_with_usage(
     model: str | None = None,
 ) -> tuple[str, str, str, dict]:
     """返回 (回复文本, 通道, 实际使用的模型名, usage_dict)。
-    usage_dict = {"prompt_tokens": N, "completion_tokens": N, "total_tokens": N}"""
-    ch = (channel or settings.llm_default_channel).lower()
-    if ch == "auto":
-        return await _chat_auto_with_usage(messages, tier, model)
-    if ch == "relay":
-        resolved = _resolve_channel_text_model("relay", tier, model)
-        text, usage = await chat_relay(messages, tier, model)
-        return text, "relay", resolved, usage
-    if ch == "official":
-        resolved = _resolve_channel_text_model("official", tier, model)
-        text, usage = await chat_official(messages, tier, model)
-        return text, "official", resolved, usage
-    raise LlmError(f"未知通道: {channel}")
+
+    路由规则：显式传入某个供应商 id 时用该供应商；否则按档位(free/pro)路由，
+    同档位多个供应商出错时自动重试下一个。
+    """
+    ch = (channel or "").strip().lower()
+    if ch and ch != "auto" and get_llm_provider(ch):
+        p = get_llm_provider(ch)
+        if not p["base_url"] or not p["api_key"]:
+            raise LlmError(f"通道「{p['name']}」未配置 base_url / api_key")
+        resolved = _resolve_channel_text_model(ch, tier, model)
+        text, usage = await _chat_openai_compatible(p["base_url"], p["api_key"], resolved, messages)
+        return text, ch, resolved, usage
+    return await _chat_tier_with_usage(messages, tier, model)
 
 
 def _loads_json_relaxed(payload: str) -> dict[str, Any]:
