@@ -313,6 +313,7 @@ export const api = {
     const qs = q.toString()
     return request(`/api/v1/设置/大模型/测试${qs ? `?${qs}` : ''}`, { method: 'POST' })
   },
+  listLlmModels: () => request('/api/v1/llm/models'),
   sharePreview: (slug) => request(`/api/v1/分享/${slug}`),
 
   listResumeTemplates: (industry) => {

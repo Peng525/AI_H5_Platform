@@ -27,6 +27,7 @@ from app.services.deck_generation_service import (
     VIEWPORT_MAP,
     _build_topic,
     _build_style,
+    _check_channel_tier_access,
     _extract_structured_slide,
     _validate_slide_structure,
     new_public_id,
@@ -198,6 +199,7 @@ async def orchestrate_deck_generation(
 ) -> Project:
     """多步编排生成演示文稿：Strategist 规划 + 严格模板结构化输出。"""
     tier = body.tier or user.tier or "free"
+    _check_channel_tier_access(body.channel, tier)
     try:
         await check_and_consume(db, user.id, tier)
     except QuotaExceeded as exc:

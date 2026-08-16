@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_llm_provider
 from app.models import GenerationLog, Project, Slide, User
 from app.services.image_search_service import search_image
 from app.schemas import AiDeckGenerateRequest, AiSlideGenerateRequest
@@ -18,6 +19,15 @@ from app.services.prompt_template_service import render_template
 from app.services.quota import QuotaExceeded, check_and_consume
 
 logger = logging.getLogger(__name__)
+
+
+def _check_channel_tier_access(channel: str | None, tier: str) -> None:
+    """安全护栏：免费用户不能显式选用付费供应商。"""
+    if channel and str(channel).strip().lower() not in ("", "auto"):
+        p = get_llm_provider(str(channel))
+        if p and p["tier"] == "pro" and tier != "pro":
+            raise LlmError("免费用户无法使用付费 API，请升级到 Pro 会员或留空使用默认通道")
+
 
 BACKGROUND_COLORS = {
     "classic_white": "#fafafa",
@@ -822,6 +832,7 @@ async def generate_deck_from_ai(
     body: AiDeckGenerateRequest,
 ) -> Project:
     tier = body.tier or user.tier or "free"
+    _check_channel_tier_access(body.channel, tier)
     try:
         await check_and_consume(db, user.id, tier)
     except QuotaExceeded as exc:
@@ -1116,6 +1127,7 @@ async def generate_single_slide_into_project(
     body: AiSlideGenerateRequest,
 ) -> Slide:
     tier = body.tier or user.tier or "free"
+    _check_channel_tier_access(body.channel, tier)
     try:
         await check_and_consume(db, user.id, tier)
     except QuotaExceeded as exc:

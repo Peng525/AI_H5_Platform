@@ -42,6 +42,14 @@
           </select>
           <span class="material-symbols-outlined pill-chevron">expand_more</span>
         </label>
+        <label class="relative inline-flex items-center ml-auto" :title="modelSelectTitle">
+          <span class="text-[10px] text-on-surface-variant mr-1 whitespace-nowrap">模型</span>
+          <select v-model="selectedModelProviderId" class="pill-select max-w-[16rem]">
+            <option value="">默认（中转优先）</option>
+            <option v-for="m in availableModelOptions" :key="m.id" :value="m.id">{{ m.model }}</option>
+          </select>
+          <span class="material-symbols-outlined pill-chevron">expand_more</span>
+        </label>
       </div>
 
       <div v-if="type === 'image'" class="generate-pills-bar flex flex-wrap justify-start gap-1.5 items-center">
@@ -233,6 +241,7 @@ import ResumeTemplatePicker from '../../components/resume/ResumeTemplatePicker.v
 import { api } from '../../api/client.js'
 import { useToast } from '../../composables/useToast.js'
 import { loadDraft, saveDraft } from '../../composables/useAiCreateDraft.js'
+import { useAuth } from '../../composables/useAuth.js'
 import { loadResumeDraft, saveResumeDraft, clearResumeDraft, resolveResumeTab } from '../../composables/useResumeDraft.js'
 import { savePendingGenerate } from '../../composables/useResumePendingGenerate.js'
 import { isQuotaExceeded, isResumeLimit, isContentPolicy } from '../../composables/useResumeErrors.js'
@@ -250,6 +259,7 @@ import {
 const router = useRouter()
 const route = useRoute()
 const { success: toastSuccess } = useToast()
+const { user } = useAuth()
 const type = ref('deck')
 const pageCount = ref(10)
 const background = ref('')
@@ -258,6 +268,8 @@ const imageAspectRatio = ref('16:9')
 const imageColor = ref('')
 const imageStyle = ref('')
 const language = ref('简体中文')
+const selectedModelProviderId = ref('')
+const llmModels = ref([])
 const topic = ref('')
 const topicInputRef = ref(null)
 const selectedImageTemplateId = ref('')
@@ -357,6 +369,26 @@ const filteredVisualTemplates = computed(() => {
 })
 const isResumeTab = computed(() => type.value === 'resume-edit' || type.value === 'resume-optimize')
 
+async function loadLlmModels() {
+  try {
+    const data = await api.listLlmModels()
+    llmModels.value = (data.items || []).filter((m) => m.model)
+  } catch {
+    llmModels.value = []
+  }
+}
+
+const availableModelOptions = computed(() => {
+  const tier = user.value?.tier || 'free'
+  return llmModels.value.filter((m) => tier === 'pro' || m.tier === 'free')
+})
+
+const modelSelectTitle = computed(() =>
+  user.value?.tier === 'pro'
+    ? 'Pro 会员可用全部模型；留空默认中转优先、官方兜底'
+    : '免费会员仅可使用免费档模型；留空默认中转优先',
+)
+
 function resizeTopicInput() {
   topicInputRef.value?.resize()
 }
@@ -397,6 +429,8 @@ onMounted(() => {
   loadDeckPptTemplates()
   loadIndustries()
   loadResumePromptTemplates()
+  loadLlmModels()
+  selectedModelProviderId.value = draft.channel || ''
   if (isResumeTab.value) loadVisualTemplates()
   nextTick(resizeTopicInput)
 })
@@ -535,6 +569,10 @@ watch(topic, (val) => {
     selectedImageTemplateId.value = ''
   }
   nextTick(resizeTopicInput)
+})
+
+watch(selectedModelProviderId, (val) => {
+  saveDraft({ channel: val || undefined })
 })
 
 function onPaste() {
@@ -807,6 +845,7 @@ function goNext() {
     pageContents: [],
     pptTemplateId: selectedPptTemplateId.value,
     pptTemplateKind: deckPptTemplates.value.find((t) => t.id === selectedPptTemplateId.value)?.kind || '',
+    channel: selectedModelProviderId.value || undefined,
   })
   router.push('/create/generate/review')
 }

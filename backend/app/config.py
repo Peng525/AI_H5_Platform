@@ -161,9 +161,14 @@ def get_llm_providers_by_tier(tier: str | None = "free") -> list[dict]:
     return [p for p in get_llm_providers() if p["tier"] == t]
 
 
-def providers_ready_for_tier(tier: str | None = "free") -> list[dict]:
-    """按档位取已配置（base_url + api_key 齐全）的供应商，作为重试顺序。"""
-    return [p for p in get_llm_providers_by_tier(tier) if p["base_url"] and p["api_key"]]
+def providers_ready_auto(tier: str | None = "free") -> list[dict]:
+    """默认自动路由顺序（已配置 base_url + api_key）：
+    中转(free)优先，官方(pro)兜底；free 档用户仅能命中 free 供应商。"""
+    if provider_tier(tier) == "pro":
+        order = get_llm_providers_by_tier("free") + get_llm_providers_by_tier("pro")
+    else:
+        order = get_llm_providers_by_tier("free")
+    return [p for p in order if p["base_url"] and p["api_key"]]
 
 
 def get_llm_provider(channel: str) -> dict | None:

@@ -54,6 +54,13 @@
             <option value="English">English</option>
           </select>
         </label>
+        <label class="block text-sm">
+          <span class="text-xs font-medium text-on-surface-variant">模型</span>
+          <select v-model="selectedModelProviderId" :title="modelSelectTitle" class="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+            <option value="">默认（中转优先）</option>
+            <option v-for="m in availableModelOptions" :key="m.id" :value="m.id">{{ m.model }}</option>
+          </select>
+        </label>
         <div>
           <p class="text-xs font-medium text-on-surface-variant mb-2">页数</p>
           <div class="flex items-center gap-2">
@@ -192,6 +199,8 @@ import CreatePageHeaderNav from '../../components/create/CreatePageHeaderNav.vue
 import UserMenu from '../../components/create/UserMenu.vue'
 import { useToast } from '../../composables/useToast.js'
 import { useQuota } from '../../composables/useQuota.js'
+import { useAuth } from '../../composables/useAuth.js'
+import { api } from '../../api/client.js'
 import {
   clearReturnToResult,
   loadDraft,
@@ -215,7 +224,10 @@ defineOptions({ name: 'AiGenerateReview' })
 const router = useRouter()
 const { success: toastSuccess } = useToast()
 const { quotaText } = useQuota()
+const { user } = useAuth()
 const draft = ref(loadDraft())
+const llmModels = ref([])
+const selectedModelProviderId = ref(draft.value.channel || '')
 const densityOptions = ['简约', '精炼', '详细', '繁琐']
 
 const pageCount = ref(10)
@@ -235,6 +247,31 @@ const truncateDialogOpen = ref(false)
 const pendingPageCount = ref(null)
 const generating = ref(false)
 const error = ref('')
+
+async function loadLlmModels() {
+  try {
+    const data = await api.listLlmModels()
+    llmModels.value = (data.items || []).filter((m) => m.model)
+  } catch {
+    llmModels.value = []
+  }
+}
+
+const availableModelOptions = computed(() => {
+  const tier = user.value?.tier || 'free'
+  return llmModels.value.filter((m) => tier === 'pro' || m.tier === 'free')
+})
+
+const modelSelectTitle = computed(() =>
+  user.value?.tier === 'pro'
+    ? 'Pro 会员可用全部模型；留空默认中转优先、官方兜底'
+    : '免费会员仅可使用免费档模型；留空默认中转优先',
+)
+
+watch(selectedModelProviderId, (val) => {
+  draft.value.channel = val || undefined
+  saveDraft({ channel: val || undefined })
+})
 
 const estimatedSeconds = computed(() => {
   if (draft.value.pptTemplateId) {
@@ -348,6 +385,8 @@ function hydrateFromDraft() {
   contentMode.value = state.contentMode
   cardSplitMode.value = state.cardSplitMode
   pageContents.value = state.pageContents
+  selectedModelProviderId.value = d.channel || ''
+  loadLlmModels()
 }
 
 onMounted(hydrateFromDraft)
@@ -395,6 +434,7 @@ function buildGenerateBody() {
     content_mode: contentMode.value,
     ppt_template_id: draft.value.pptTemplateId || null,
     ppt_template_kind: draft.value.pptTemplateKind || null,
+    channel: draft.value.channel || null,
     strict_template_mode: true,  // 默认启用严格PPT模板约束
   }
   if (contentMode.value === 'per_page') {

@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 
-from app.config import get_llm_provider, providers_ready_for_tier, settings
+from app.config import get_llm_provider, providers_ready_auto, settings
 from app.services.llm.model_tier import resolve_text_model
 
 
@@ -119,7 +119,7 @@ async def _chat_tier_with_usage(
     tier: str | None = "free",
     model: str | None = None,
 ) -> tuple[str, str, str, dict]:
-    providers = providers_ready_for_tier(tier)
+    providers = providers_ready_auto(tier)
     if not providers:
         raise LlmError(f"{tier} 档无可用供应商，请在设置页为该档位配置至少一个 API（base_url + api_key）")
     errors: list[str] = []

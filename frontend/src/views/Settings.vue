@@ -62,31 +62,18 @@
             :key="p.id"
             class="border border-outline-variant rounded-xl p-4 space-y-3 bg-surface-container-low"
           >
-            <div class="flex items-center justify-between gap-3">
+            <div class="flex items-start justify-between gap-3">
               <label class="flex-1">
                 <span class="text-on-surface-variant text-xs">名称</span>
                 <input v-model="p.name" class="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2 bg-white" placeholder="如 DeepSeek 官方" />
               </label>
-              <div class="flex items-end gap-4 pt-5">
-                <div class="flex items-center gap-2 text-xs whitespace-nowrap">
-                  <span class="text-on-surface-variant">档位</span>
-                  <label class="flex items-center gap-1 cursor-pointer">
-                    <input type="radio" value="free" v-model="p.tier" />
-                    <span>免费</span>
-                  </label>
-                  <label class="flex items-center gap-1 cursor-pointer">
-                    <input type="radio" value="pro" v-model="p.tier" />
-                    <span>付费</span>
-                  </label>
-                </div>
-                <button
-                  type="button"
-                  class="text-xs text-red-600 hover:underline whitespace-nowrap"
-                  @click="removeProvider(i)"
-                >
-                  删除
-                </button>
-              </div>
+              <button
+                type="button"
+                class="mt-5 px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs whitespace-nowrap"
+                @click="removeProvider(i)"
+              >
+                删除
+              </button>
             </div>
 
             <div class="grid md:grid-cols-2 gap-3 text-sm">
@@ -107,9 +94,17 @@
                 <span class="text-on-surface-variant text-xs">默认模型</span>
                 <input v-model="p.model" class="mt-1 w-full border border-outline-variant rounded-lg px-3 py-2 bg-white" placeholder="如 deepseek-chat" />
               </label>
-              <p class="text-xs self-end" :class="p.base_url && p.api_key ? 'text-secondary' : 'text-red-600'">
-                {{ p.base_url && p.api_key ? '已配置' : '未配置' }}
-              </p>
+              <div class="flex items-end gap-3 text-xs whitespace-nowrap pb-1">
+                <span class="text-on-surface-variant">档位</span>
+                <label class="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" value="free" v-model="p.tier" />
+                  <span>免费</span>
+                </label>
+                <label class="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" value="pro" v-model="p.tier" />
+                  <span>付费</span>
+                </label>
+              </div>
             </div>
           </div>
         </section>

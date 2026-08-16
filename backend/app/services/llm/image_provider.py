@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 
-from app.config import get_llm_provider, providers_ready_for_tier, settings
+from app.config import get_llm_provider, providers_ready_auto, settings
 from app.services.llm.model_tier import resolve_image_model
 from app.services.llm.provider import LlmError, _format_http_error, _normalize_openai_base_url
 
@@ -266,7 +266,7 @@ async def generate_image(
         )
         return image, ch, model, out_w, out_h
 
-    providers = providers_ready_for_tier(tier)
+    providers = providers_ready_auto(tier)
     if not providers:
         raise LlmError(f"{tier} 档无可用供应商，请在该档位配置至少一个 API（base_url + api_key）")
     errors: list[str] = []
