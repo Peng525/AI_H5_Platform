@@ -137,5 +137,5 @@ Phase 1 结束后，对 5 个 profile 各算：
 
 ## 7. 相关文档
 
-- [AI PPT 生成方案对比](../AI-PPT生成方案对比.md)
+- [AI PPT 生成方案对比](../旧方案/AI-PPT生成方案对比.md)
 - [PPT Master FAQ](https://atomgit.com/hugohe3/ppt-master/blob/main/docs/faq.md)

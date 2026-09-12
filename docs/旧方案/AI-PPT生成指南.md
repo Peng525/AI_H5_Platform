@@ -1,4 +1,7 @@
-# AI PPT 生成指南（最终版）
+# AI PPT 生成指南（旧方案）
+
+> ⚠️ 旧方案文档。本文件不再代表当前实现。
+> 当前实现请以 `../README.md`、最新 Gate 核查结果和 Accepted ADR 为准。
 
 > **文档版本**：2026-05 · **状态**：当前有效（Last）  
 > **适用对象**：在本机用 Cursor + PPT Master 生成可编辑 `.pptx`，并可选导入本 H5 平台  
@@ -11,7 +14,7 @@
 | 目标 | 做法 |
 |------|------|
 | 生成 **可编辑 PowerPoint**（非截图） | [PPT Master](https://atomgit.com/hugohe3/ppt-master) + Cursor Agent |
-| **对比不同大模型** 谁更适合做 PPT | [`ppt-master-benchmark/`](./ppt-master-benchmark/) 五模型横评 |
+| **对比不同大模型** 谁更适合做 PPT | [`ppt-master-benchmark/`](../ppt-master-benchmark/) 五模型横评 |
 | 发布为 **移动端 H5 演示** | H5 管理端 `/admin/templates` → **从 PPT 导入** |
 
 **不在本指南范围**：H5 平台内「一键 AI 生成文稿」（后端 `chat_completion` 尚未接用户端）；若将来要做，与本文 Cursor 工作流 **并行不冲突**。
@@ -91,7 +94,7 @@ LLM_IMAGE_MODEL_FREE=gpt-image-2
 LLM_IMAGE_MODEL_PRO=gpt-image-2
 ```
 
-完整说明：[`ppt-master-benchmark/benchmark.env.example`](./ppt-master-benchmark/benchmark.env.example)
+完整说明：[`ppt-master-benchmark/benchmark.env.example`](../ppt-master-benchmark/benchmark.env.example)
 
 ### 3.3 DeepSeek Agent 稳定性
 
@@ -120,14 +123,14 @@ Executor：General
 
 ### 4.1 切换模型的唯一变量
 
-编辑 [`ppt-master-benchmark/model-profiles.yaml`](./ppt-master-benchmark/model-profiles.yaml)：
+编辑 [`ppt-master-benchmark/model-profiles.yaml`](../ppt-master-benchmark/model-profiles.yaml)：
 
 ```yaml
 active_profile: deepseek-v4-pro   # 改成下表五选一
 benchmark_phase: 1                # 1=只比模型  2=+ gpt-image-2
 ```
 
-再按 [`benchmark-runbook.md`](./ppt-master-benchmark/benchmark-runbook.md) 同步 **Cursor Settings → Models**（Base URL / API Key / Model 名），**新开 Agent 会话**。
+再按 [`benchmark-runbook.md`](../ppt-master-benchmark/benchmark-runbook.md) 同步 **Cursor Settings → Models**（Base URL / API Key / Model 名），**新开 Agent 会话**。
 
 ### 4.2 五个横评模型
 
@@ -153,12 +156,12 @@ Verify 失败时只改 yaml 内 `model_id`（如 `gpt-5.5-chat`），**不改** 
 
 | 类型 | 复制来源 |
 |------|----------|
-| 调研类 | [`prompt-调研类.md`](./ppt-master-benchmark/prompt-调研类.md) |
-| 报告类 | [`prompt-报告类.md`](./ppt-master-benchmark/prompt-报告类.md) |
-| 学术类 | [`prompt-学术类.md`](./ppt-master-benchmark/prompt-学术类.md) |
+| 调研类 | [`prompt-调研类.md`](../ppt-master-benchmark/prompt-调研类.md) |
+| 报告类 | [`prompt-报告类.md`](../ppt-master-benchmark/prompt-报告类.md) |
+| 学术类 | [`prompt-学术类.md`](../ppt-master-benchmark/prompt-学术类.md) |
 
-评分：[`evaluation-rubric.md`](./ppt-master-benchmark/evaluation-rubric.md)  
-记录：[`results-template.md`](./ppt-master-benchmark/results-template.md) → 存 [`results/`](./ppt-master-benchmark/results/)
+评分：[`evaluation-rubric.md`](../ppt-master-benchmark/evaluation-rubric.md)  
+记录：[`results-template.md`](../ppt-master-benchmark/results-template.md) → 存 [`results/`](../ppt-master-benchmark/results/)
 
 ### 4.4 Phase 2
 
@@ -219,10 +222,10 @@ Executor：Consultant_Top（报告）/ Consultant（调研）/ General（学术�
 | 文档 | 角色 | 何时阅读 |
 |------|------|----------|
 | **本文 `AI-PPT生成指南.md`** | **最终版入口（Last）** | 始终从这里开始 |
-| [`ppt-master-benchmark/`](./ppt-master-benchmark/) | 横评实操包（yaml、话术、评分） | Phase 1/2 横评时 |
+| [`ppt-master-benchmark/`](../ppt-master-benchmark/) | 横评实操包（yaml、话术、评分） | Phase 1/2 横评时 |
 | [`AI-PPT生成方案对比.md`](./AI-PPT生成方案对比.md) | 多方案详表、成本、SaaS 对照 | 选型论证、对外说明 |
-| [`develop/.env.example`](../.env.example) | H5 + DeepSeek 环境变量模板 | 首次配置 |
-| [`develop/README.md`](../README.md) | H5 平台功能与 admin 模板说明 | 导入与产品上下文 |
+| [`develop/.env.example`](../../.env.example) | H5 + DeepSeek 环境变量模板 | 首次配置 |
+| [`develop/README.md`](../../README.md) | H5 平台功能与 admin 模板说明 | 导入与产品上下文 |
 
 **已合并、勿重复维护的内容**：Cursor+DeepSeek 落地步骤、五模型映射、三类 8 页话术规范、两阶段评测流程——均以 **本文 + ppt-master-benchmark/** 为准。
 
@@ -240,7 +243,7 @@ Executor：Consultant_Top（报告）/ Consultant（调研）/ General（学术�
 ### 完成 Phase 1 横评
 
 - [ ] 5 profile × 3 类 = 15 次 run 均有记录
-- [ ] [`results/`](./ppt-master-benchmark/results/) 汇总表填满
+- [ ] [`results/`](../ppt-master-benchmark/results/) 汇总表填满
 - [ ] 确定 Top 1–2 进入 Phase 2
 
 ### 定稿上线

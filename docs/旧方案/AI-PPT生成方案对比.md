@@ -1,5 +1,8 @@
 # AI PPT 生成方案对比
 
+> ⚠️ 旧方案文档。本文件不再代表当前实现。
+> 当前实现请以 `../README.md`、最新 Gate 核查结果和 Accepted ADR 为准。
+
 > **文档版本**：2026-05  
 > **文档角色**：详细附录（方案详表、成本、SaaS 对照）  
 > **入口文档**：请先阅读 **[AI-PPT生成指南.md](./AI-PPT生成指南.md)**（最终版 Last，含落地步骤与横评索引）  
@@ -329,15 +332,15 @@ Executor：Consultant_Top
 
 本仓库提供 **PPT Master 五模型 A/B 测试** 文档包，路径：
 
-**[`docs/ppt-master-benchmark/`](./ppt-master-benchmark/README.md)**
+**[`docs/ppt-master-benchmark/`](../ppt-master-benchmark/README.md)**
 
 | 内容 | 文件 |
 |------|------|
-| 切换模型（改 `active_profile`） | [`model-profiles.yaml`](./ppt-master-benchmark/model-profiles.yaml) |
-| 环境变量 | [`benchmark.env.example`](./ppt-master-benchmark/benchmark.env.example) + `develop/.env` 中 `DEEPSEEK_*` |
-| 操作手册 | [`benchmark-runbook.md`](./ppt-master-benchmark/benchmark-runbook.md) |
-| 8 页话术 | [`prompt-调研类.md`](./ppt-master-benchmark/prompt-调研类.md) / [`报告类`](./ppt-master-benchmark/prompt-报告类.md) / [`学术类`](./ppt-master-benchmark/prompt-学术类.md) |
-| 评分与记录 | [`evaluation-rubric.md`](./ppt-master-benchmark/evaluation-rubric.md) / [`results-template.md`](./ppt-master-benchmark/results-template.md) |
+| 切换模型（改 `active_profile`） | [`model-profiles.yaml`](../ppt-master-benchmark/model-profiles.yaml) |
+| 环境变量 | [`benchmark.env.example`](../ppt-master-benchmark/benchmark.env.example) + `develop/.env` 中 `DEEPSEEK_*` |
+| 操作手册 | [`benchmark-runbook.md`](../ppt-master-benchmark/benchmark-runbook.md) |
+| 8 页话术 | [`prompt-调研类.md`](../ppt-master-benchmark/prompt-调研类.md) / [`报告类`](../ppt-master-benchmark/prompt-报告类.md) / [`学术类`](../ppt-master-benchmark/prompt-学术类.md) |
+| 评分与记录 | [`evaluation-rubric.md`](../ppt-master-benchmark/evaluation-rubric.md) / [`results-template.md`](../ppt-master-benchmark/results-template.md) |
 
 **横评模型**：`gemini-3-pro`、`claude-opus-4-8`、`claude-opus-4-7`、`gpt-5-5`、`deepseek-v4-pro`（除 DeepSeek 外复用 `LLM_RELAY_*`）。
 

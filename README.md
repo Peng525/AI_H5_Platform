@@ -120,7 +120,7 @@ RELAY_DASHBOARD_RECHARGE_URL=https://once-cf.novai.su/wallet
 
 ### 外部生成 PPT（Cursor + PPT Master）
 
-在本机用 Cursor 生成可编辑 `.pptx` 并导入探索模板，见 **[docs/AI-PPT生成指南.md](docs/AI-PPT生成指南.md)**（最终版入口，含五模型横评与 H5 导入步骤）。方案详表见 [docs/AI-PPT生成方案对比.md](docs/AI-PPT生成方案对比.md)。
+在本机用 Cursor 生成可编辑 `.pptx` 并导入探索模板，见 **[docs/旧方案/AI-PPT生成指南.md](docs/旧方案/AI-PPT生成指南.md)**（已归档为旧方案，含五模型横评与 H5 导入步骤；不再代表当前 H5 生成链路）。方案详表见 [docs/旧方案/AI-PPT生成方案对比.md](docs/旧方案/AI-PPT生成方案对比.md)。
 
 ---
 

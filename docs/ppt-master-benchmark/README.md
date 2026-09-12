@@ -6,7 +6,7 @@
 > 因此本目录暂不整体迁入 `旧方案/`。
 > 当前 AI PPT 架构请参考：`docs/README.md`、`docs/开发计划/`、`docs/项目决策记录/`
 
-> **上级文档**：[AI-PPT生成指南.md](../AI-PPT生成指南.md)（最终版入口）  
+> **上级文档**：[AI-PPT生成指南.md](../旧方案/AI-PPT生成指南.md)（已迁入 `旧方案/`）  
 > 本目录为横评 **实操包**：切换模型、三类 8 页话术、评分与记录。
 
 在 Cursor + PPT Master 工作流下，对比 **5 个模型** 在调研 / 报告 / 学术三类 8 页 deck 上的输出差异。
@@ -15,7 +15,7 @@
 
 **PPT Master 安装路径（本仓库）**：`develop/ppt-master-main`（[AtomGit](https://atomgit.com/hugohe3/ppt-master) ZIP 或 `git clone https://atomgit.com/hugohe3/ppt-master.git`）
 
-1. 阅读 [../AI-PPT生成指南.md](../AI-PPT生成指南.md) §3–§4
+1. 阅读 [../旧方案/AI-PPT生成指南.md](../旧方案/AI-PPT生成指南.md) §3–§4
 2. 配置 [`../../.env`](../../.env)（见 [`benchmark.env.example`](./benchmark.env.example)）
 3. 改 [`model-profiles.yaml`](./model-profiles.yaml) 的 `active_profile`
 4. 按 [`benchmark-runbook.md`](./benchmark-runbook.md) 同步 Cursor Settings
@@ -48,4 +48,4 @@
 | [`h5-premium-workflow.md`](./h5-premium-workflow.md) | H5 高质量：ppt-master → 导入 SOP |
 | [`h5-vs-ppt-master-compare.md`](./h5-vs-ppt-master-compare.md) | H5 直出 vs 导入对照 benchmark 用例 |
 
-方案详表见 [AI-PPT生成方案对比.md](../AI-PPT生成方案对比.md)。
+方案详表见 [AI-PPT生成方案对比.md](../旧方案/AI-PPT生成方案对比.md)。
