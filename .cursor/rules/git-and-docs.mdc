@@ -5,6 +5,11 @@ alwaysApply: true
 
 # Git Push、发布与文档规范
 
+> **修改系统前先读 [`docs/README.md`](docs/README.md)** —— 文档唯一入口：当前实现依据优先级与冲突裁决规则。
+> 事实依据优先级（7 级，从高到低）：① 当前源码与自动化测试 > ② 最新 Gate 核查报告（`开发计划/`）> ③ Accepted ADR（`项目决策记录/`）> ④ 当前开发计划 > ⑤ 当前规范（`当前规范/`）> ⑥ 其他 `docs/` 文档 > ⑦ 历史方案、调研与 Benchmark。
+> 冲突裁决：文档与源码冲突 → 以**源码 + 最新 Gate 核查结果**为准；旧方案与 Accepted ADR 冲突 → 以 **ADR** 为准；历史文档不得覆盖当前实现事实。
+> 标注 `⚠️`（历史参考文档 / 旧方案文档）的文件**不得**作为当前实现依据。
+
 完整说明见 [`docs/Push与发布规范.md`](docs/Push与发布规范.md)。每次开发完毕与 push 前**必须**执行下列检查。
 
 ## 开发完毕：Docker build（必做）
@@ -27,6 +32,7 @@ docker build -t ai-h5-platform:local .
 3. **文档**：较大变更同步 `README.md`、`docs/需求清单.md`、`docs/部署说明.md`、`.env.example`（见 Push 规范 §2.3）。
 4. **分支**：日常 push `develop`；**禁止**未经用户确认 force push `main`。
 5. **上线认知**：push `develop` **不会**更新 EC2；上云仅 merge `main` 后手动 **Deploy to EC2** workflow。
+6. **Source of Truth 入口**：**仅当**本次变更改变了「当前开发阶段 / 主生成链路 / 依据优先级 / 权威文档位置 / 文档分类」时，才须检查并按需更新 `docs/README.md`。普通功能实现、Bug 修复或不影响上述信息的改动，**无需**机械修改 `docs/README.md`。
 
 ## 部署固定策略（勿擅自改动）
 
