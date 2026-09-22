@@ -151,6 +151,7 @@
 
     <ResultPageFooter
       v-if="showFooter"
+      :saving="savingDraft"
       :message="footerMessage"
       :error="footerError"
       @save="onSave"
@@ -184,10 +185,6 @@ import {
   shouldAutoRevealDeck,
 } from '../../composables/useAiCreateDraft.js'
 import {
-  copyEvaluationBundleMarkdown,
-  downloadEvaluationBundle,
-} from '../../composables/useEvaluationBundle.js'
-import {
   estimatePremiumDeckRange,
   estimatePremiumDeckSeconds,
 } from '../../utils/deckGenerateEstimate.js'
@@ -211,6 +208,7 @@ const effectiveProjectId = computed(() =>
 const projectTitle = ref('')
 const footerMessage = ref('')
 const footerError = ref(false)
+const savingDraft = ref(false)
 const loadFailed = ref(false)
 const pageLoading = ref(true)
 const pageLoadError = ref('')
@@ -226,6 +224,7 @@ const premiumJob = ref(null)
 const premiumPolling = ref(false)
 
 let titleTimer = null
+let titleSave = Promise.resolve()
 let premiumPollTimer = null
 let generationStarted = false
 
@@ -595,14 +594,21 @@ function retryLoad() {
   workspaceRef.value?.load?.()
 }
 
+// Serialize debounced and explicit title saves so older requests cannot win.
+function persistProjectTitle() {
+  const publicId = routePublicId.value
+  const title = projectTitle.value.trim() || '无标题'
+  titleSave = titleSave.catch(() => {}).then(() => api.updateProject(publicId, { title }))
+  return titleSave
+}
+
 function saveProjectTitle() {
   if (!project.value && !routePublicId.value) return
   if (titleTimer) clearTimeout(titleTimer)
   titleTimer = setTimeout(async () => {
-    const title = projectTitle.value.trim() || '无标题'
+    titleTimer = null
     try {
-      const updated = await api.updateProject(routePublicId.value, { title })
-      if (loadedProject.value) loadedProject.value.title = updated.title
+      await persistProjectTitle()
     } catch (e) {
       footerError.value = true
       footerMessage.value = e.message || '标题保存失败'
@@ -611,31 +617,29 @@ function saveProjectTitle() {
 }
 
 async function onSave() {
+  if (savingDraft.value) return
+  savingDraft.value = true
   footerError.value = false
   footerMessage.value = ''
+  const publicId = routePublicId.value
   try {
-    if (titleTimer) {
-      clearTimeout(titleTimer)
-      titleTimer = null
-      const title = projectTitle.value.trim() || '无标题'
-      await api.updateProject(routePublicId.value, { title })
-    }
-    await workspaceRef.value?.flushCanvasSave?.()
-    const refreshed = await api.getProject(routePublicId.value)
+    if (!workspaceRef.value?.flushCanvasSave) throw new Error('编辑器尚未就绪，请稍后重试')
+    if (titleTimer) clearTimeout(titleTimer)
+    titleTimer = null
+    await persistProjectTitle()
+    await workspaceRef.value.flushCanvasSave()
+    const refreshed = await api.getProject(publicId)
+    if (routePublicId.value !== publicId) return
     loadedProject.value = refreshed
-    if (workspaceRef.value?.project) {
-      Object.assign(workspaceRef.value.project, refreshed)
-    }
-    downloadEvaluationBundle(refreshed, loadDraft())
-    try {
-      await copyEvaluationBundleMarkdown(refreshed, loadDraft())
-      toastSuccess('已保存并下载评估包，Markdown 已复制到剪贴板')
-    } catch {
-      toastSuccess('已保存并下载评估包')
-    }
+    // Keep the live editor draft: a GET response may predate edits made during saving.
+    toastSuccess('已保存为草稿，可在工作台继续编辑')
   } catch (e) {
-    footerError.value = true
-    footerMessage.value = e.message || '保存失败'
+    if (routePublicId.value === publicId) {
+      footerError.value = true
+      footerMessage.value = e.message || '保存失败'
+    }
+  } finally {
+    savingDraft.value = false
   }
 }
 

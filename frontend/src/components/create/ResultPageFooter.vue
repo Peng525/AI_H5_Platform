@@ -3,11 +3,13 @@
     <div class="flex flex-wrap items-center justify-center gap-3">
       <button
         type="button"
-        class="px-5 py-2.5 rounded-lg bg-primary text-on-primary text-sm font-medium inline-flex items-center gap-2"
+        class="px-5 py-2.5 rounded-lg bg-primary text-on-primary text-sm font-medium inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait"
+        :disabled="saving"
+        :aria-busy="saving"
         @click="$emit('save')"
       >
         <span class="material-symbols-outlined text-[18px]">save</span>
-        保存
+        {{ saving ? '保存中…' : '保存为草稿' }}
       </button>
       <button
         type="button"
@@ -29,6 +31,7 @@
 
 <script setup>
 defineProps({
+  saving: { type: Boolean, default: false },
   message: { type: String, default: '' },
   error: { type: Boolean, default: false },
 })

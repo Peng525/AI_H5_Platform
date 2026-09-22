@@ -43,7 +43,7 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(
     title=app_settings.app_name,
     description="智能 H5 演示平台 API — 支持 auto/中转/官方 大模型通道",
-    version="0.1.0",
+    version="0.1.1",
     lifespan=lifespan,
 )
 
